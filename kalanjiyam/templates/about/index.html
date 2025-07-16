@@ -1,0 +1,46 @@
+{% extends 'base-text.html' %}
+{% import "macros/components.html" as m %}
+
+{% set mailing_url = 'https://groups.google.com/g/kalanjiyam-announce' %}
+{% set code_url = 'https://github.com/kalanjiyam-org/kalanjiyam' %}
+{% set contact_url = url_for('about.contact') %}
+
+{% block title %}{{ m.title(_('About')) }}{% endblock %}
+
+{% block meta_description -%}
+Learn about Kalanjiyam's mission to make Siddha Knowledge Systems accessible to all.
+{%- endblock %}
+
+{% block content %}
+<div class="prose">
+<h1>{{ _('About Kalanjiyam') }}</h1>
+
+<p>{% trans %}
+Kalanjiyam's mission is to make the Siddha Knowledge Systems tradition radically accessible. Formal
+announcements about new features and releases are posted to our
+<a href="{{ mailing_url }}">mailing list</a>.
+{% endtrans %}</p>
+
+<p>{% trans %}
+We also maintain several other projects related to Siddha Knowledge Systems and
+Kalanjiyam and our other Siddha projects. <a href="{{ code_url }}">Our code</a>
+is open source and available on GitHub.
+{% endtrans %}</p>
+
+<p>{% trans %}
+If you have questions, comments, or suggestions, please
+<a href="{{ contact_url }}">contact us</a>.
+{% endtrans %}</p>
+
+<h2>{{ _('Quick links') }}</h2>
+
+<ul>
+<li><a href="{{ url_for('about.mission') }}">{{ _('Our mission') }}</a></li>
+<li><a href="{{ url_for('about.values') }}">{{ _('Our values') }}</a></li>
+<li><a href="{{ url_for('about.people.core') }}">{{ _('Our team') }}</a></li>
+<li><a href="{{ url_for('about.our_name') }}">{{ _('Why "Kalanjiyam"?') }}</a></li>
+<li><a href="{{ url_for('about.code_and_data') }}">{{ _('Code and data') }}</a></li>
+<li><a href="{{ contact_url }}">{{ _('Contact us') }}</a></li>
+</ul>
+</div>
+{% endblock %}

@@ -1,24 +1,35 @@
-"""Initializes the development database by creating all tables.
+#!/usr/bin/env python3
+"""Initialize the database with seed data."""
 
-This module is used in `scripts/initialize_from_scratch.sh`.
+import sys
+from pathlib import Path
 
-TODO: what are the implications of running `create_all` on app startup?
-"""
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
-
-from ambuda import config
-from ambuda import database as db
-
-load_dotenv()
+from kalanjiyam import config
+from kalanjiyam import database as db
 
 
-def run():
-    conf = config.load_config_object("development")
-    engine = create_engine(conf.SQLALCHEMY_DATABASE_URI)
-    db.Base.metadata.create_all(engine)
+def main():
+    """Initialize the database."""
+    config_obj = config.load_config_object("development")
+    
+    # Create database tables
+    db.create_all()
+    
+    # Initialize with seed data
+    from kalanjiyam.seed import dcs, lookup, texts
+    
+    # Import all seed modules to ensure they're registered
+    from kalanjiyam.seed.dictionaries import monier  # noqa
+    from kalanjiyam.seed.dictionaries import amarakosha  # noqa
+    from kalanjiyam.seed.dictionaries import apte  # noqa
+    from kalanjiyam.seed.texts import gretil  # noqa
+    
+    print("Database initialized successfully!")
 
 
 if __name__ == "__main__":
-    run()
+    main()

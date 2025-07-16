@@ -1,18 +1,23 @@
 [tool.coverage.run]
 omit = [
-    "ambuda/scripts/*",
-    "ambuda/seed/**",
+    "kalanjiyam/scripts/*",
+    "kalanjiyam/seed/**",
 ]
 
 [tool.poetry]
-name = "ambuda"
+packages = [
+    {include = "kalanjiyam", from = "."},
+    {include = "kalanjiyam/scripts/*", from = "."},
+    {include = "kalanjiyam/seed/**", from = "."},
+]
+name = "kalanjiyam"
 version = "0.1.0"
-description = "An open Sanskrit library"
-authors = ["Arun Prasad"]
+description = "An open Siddha Knowledge Systems library"
+authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.9"
 alembic = "1.8.0"
 amqp = "5.1.1"
 Babel = "^2.12"

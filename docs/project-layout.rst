@@ -1,109 +1,114 @@
-Project layout
-==============
+Project Layout
+=============
 
-Many of the toplevel files in the project directory are specific to our
-production environment.
+This document provides a high-level overview of Kalanjiyam's codebase structure.
 
-- `ambuda` contains the main server code.
+Directory Structure
+------------------
 
-- `data` contains third-party data. (Not in version control.)
+The main directories in the Kalanjiyam repository are:
 
+- `kalanjiyam` contains the main server code.
 - `docs` contains this documentation.
+- `migrations` contains database migration files.
+- `scripts` contains utility scripts for development and deployment.
+- `test` contains our test suite.
+- `deploy` contains deployment configuration files.
 
-- `env` contains our Python dependencies. (Not in version control.)
+The `kalanjiyam` Directory
+-------------------------
 
-- `migrations` contains database migration logic. For details on how to run
-  migrations, see :doc:`/managing-the-database`.
+`kalanjiyam` contains the main server code, and this is where you will spend most
+of your time when working on Kalanjiyam.
 
-- `node_modules` contains our JavaScript dependencies. (Not in version control.)
+Key files:
 
-- `production` contains production configs. (Not in version control.)
+- `__init__.py` is the main entrypoint to Kalanjiyam. It creates the app, sets up
+  extensions, and registers blueprints.
 
-- `scripts` contains various initialization scripts for the repo.
+- `config.py` contains configuration management code.
 
-- `test` contains all of our unit tests.
+- `database.py` contains database connection and session management code.
 
+- `models/` contains SQLAlchemy model definitions for our database tables.
 
-Core code
----------
+- `views/` contains Flask view functions and blueprints.
 
-`ambuda` contains the main server code, and this is where you will spend most
-of your time. Here are the toplevel files in this directory:
+- `templates/` contains Jinja2 templates for our HTML pages.
 
-- `__init__.py` is the main entrypoint to Ambuda. It creates the app, sets up
-  various URL routes, and adds filters that we can use in our template logic.
+- `static/` contains CSS, JavaScript, and other static assets.
 
-- `admin.py` defines our internal admin panel, which we use to make ad-hoc
-  changes to our production data.
+- `utils/` contains utility functions and helper modules.
 
-- `auth.py` contains our authentication logic.
+- `seed/` contains scripts that prepare text and parse data for the data repos that Kalanjiyam depends on.
 
-- `consts.py` contains important constants.
+- `tasks/` contains Celery task definitions for background jobs.
 
-- `database.py` defines the database schema. This is an important file that you
-  should change only with great care.
+- `views` contains Kalanjiyam's view logic, which combines most of the above to
+  create the actual web pages that users see.
 
-- `enums.py` contains small enumerated data that we also store in the database.
+The `views` Directory
+--------------------
 
-- `filters.py` contains template filters.
+The `views` directory contains all of Kalanjiyam's view logic. Views are organized
+by feature:
 
-- `queries.py` contains common database queries.
+- `about.py` contains basic pages about Kalanjiyam: our mission, values, etc.
 
-- `xml.py` contains common database queries.
+- `auth.py` contains authentication-related views (login, logout, etc.).
 
-And the important subdirectories:
+- `dictionaries.py` contains dictionary lookup functionality.
 
-- `data` contains our third-party data. (Not in version control.)
+- `proofing/` contains the proofreading interface that Kalanjiyam uses.
 
-- `models` defines our SQL table schemas and their relationships. All of these
-  models are imported into `database.py`.
+- `reader/` contains the text reading interface.
 
-- `scripts` contains utility scripts. Mostly, these are cleanup scripts that
-  prepare text and parse data for the data repos that Ambuda depends on.
+- `site.py` contains basic site pages like the homepage.
 
-- `seed` contains scripts to add data to the database. 
-
-- `static` contains static assets (CSS and JS, mainly).
-
-- `tasks` contains long-running background tasks. (Comnig soon.)
-
-- `templates` contains HTML templates.
-
-- `utils` contains various small utility functions.
-
-- `views` contains Ambuda's view logic, which combines most of the above to
-  create server responses.
-
-
-Database seed scripts
+The `models` Directory
 ---------------------
 
-Every database seed script is *idempotent*. That is, running a seed script
-hundreds of times has the same effect as running it once. Idempotence is
-important because it lets us experiment with seed scripts without corrupting
-the database over and over.
+The `models` directory contains SQLAlchemy model definitions. These models define
+the structure of our database tables and provide an object-oriented interface
+for working with our data.
 
+Key models include:
 
-Views
------
+- `User` represents users of the platform
+- `Text` represents texts in our collection
+- `Project` represents proofreading projects
+- `Dictionary` represents dictionary entries
 
-(This section expects a basic working knowledge of Flask.)
+The `seed` Directory
+-------------------
 
-- `proofing` contains all views related to texts. Everything under the `/texts`
-  URL prefix is located here.
+The `seed` directory contains scripts that prepare and load data into Kalanjiyam's
+database. This includes:
 
-- `reader` contains all views related to texts. Everything under the `/texts`
-  URL prefix is located here.
+- Text data from various sources
+- Dictionary data from traditional dictionaries
+- Parse data for grammatical analysis
+- User and project data for development
 
-- `about.py` contains basic pages about Ambuda: our mission, values, etc.
+The `static` Directory
+---------------------
 
-- `api.py` contains an API blueprint, which decocarates all API routes that
-  Ambuda uses.
+The `static` directory contains all of Kalanjiyam's static assets:
 
-- `auth.py` contains our authentication endpoints: sign in, sign out, etc.
+- `css/` contains stylesheets
+- `js/` contains JavaScript files
+- `images/` contains images and icons
+- `fonts/` contains custom fonts
 
-- `dictionaries.py` contains all views related to dictionary lookups.
-  Everything under the `/dictionaries` URL prefix is located here.
+The `templates` Directory
+------------------------
 
-- `site.py` contains basic high-level site pages, such as the About and Contact
-  pages.
+The `templates` directory contains Jinja2 templates for all of Kalanjiyam's HTML
+pages. Templates are organized by feature, similar to the views directory.
+
+Key template files:
+
+- `base.html` is the base template that all other templates extend
+- `about/` contains templates for about pages
+- `proofing/` contains templates for the proofreading interface
+- `reader/` contains templates for the text reading interface

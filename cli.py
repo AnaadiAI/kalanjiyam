@@ -8,12 +8,12 @@ from slugify import slugify
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-import ambuda
-from ambuda import database as db
-from ambuda import queries as q
-from ambuda.seed.utils.data_utils import create_db
-from ambuda.tasks.projects import create_project_inner
-from ambuda.tasks.utils import LocalTaskStatus
+import kalanjiyam
+from kalanjiyam import database as db
+from kalanjiyam import queries as q
+from kalanjiyam.seed.utils.data_utils import create_db
+from kalanjiyam.tasks.projects import create_project_inner
+from kalanjiyam.tasks.utils import LocalTaskStatus
 
 engine = create_db()
 
@@ -81,7 +81,7 @@ def add_role(username, role):
 @click.option("--pdf-path", help="path to the source PDF")
 def create_project(title, pdf_path):
     """Create a proofing project from a PDF."""
-    current_app = ambuda.create_app("development")
+    current_app = kalanjiyam.create_app("development")
     with current_app.app_context():
         session = q.get_session()
         arbitrary_user = session.query(db.User).first()
@@ -98,10 +98,10 @@ def create_project(title, pdf_path):
         )
         page_image_dir.mkdir(parents=True, exist_ok=True)
         create_project_inner(
-            title=title,
+            display_title=title,
             pdf_path=pdf_path,
             output_dir=str(page_image_dir),
-            app_environment=current_app.config["AMBUDA_ENVIRONMENT"],
+            app_environment=current_app.config["KALANJIYAM_ENVIRONMENT"],
             creator_id=arbitrary_user.id,
             task_status=LocalTaskStatus(),
         )

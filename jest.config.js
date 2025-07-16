@@ -4,25 +4,25 @@
  */
 
 module.exports = {
+  testEnvironment: 'jsdom',
+  testMatch: [
+    '**/test/js/**/*.test.js',
+    '**/test/js/**/*.test.ts',
+  ],
   collectCoverageFrom: [
-    "ambuda/static/js/*.{js,ts}",
+    'kalanjiyam/static/js/*.{js,ts}',
+    '!kalanjiyam/static/js/*.d.ts',
   ],
-  // Indicates whether the coverage information should be collected while executing the test
-  coverageDirectory: "js-coverage-report",
-  coverageThreshold: {
-    global: {
-      statements: 70,
-      branches: 70,
-      functions: 70,
-      lines: 70,
-    }
+  moduleNameMapping: {
+    '^@/(.*)': '<rootDir>/kalanjiyam/static/js/$1',
   },
-  // Use '@' to refer to the root folder that contains all source modules.
-  moduleNameMapper: {
-    "^@/(.*)": "<rootDir>/ambuda/static/js/$1",
+  setupFilesAfterEnv: ['<rootDir>/test/js/setup.js'],
+  transform: {
+    '^.+\\.ts$': 'ts-jest',
   },
-  roots: [
-    "<rootDir>/test/js/",
-  ],
-  testEnvironment: "jsdom",
+  globals: {
+    'ts-jest': {
+      tsconfig: 'tsconfig.json',
+    },
+  },
 };

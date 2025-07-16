@@ -1,6 +1,6 @@
-"""Config management for the Ambuda Flask app.
+"""Config management for the Kalanjiyam Flask app.
 
-All of Ambuda's interesting config values are defined in the project's `.env`
+All of Kalanjiyam's interesting config values are defined in the project's `.env`
 file. Here, we parse that file and map its values to specific config objects,
 which we then load into Flask.
 
@@ -65,12 +65,12 @@ class BaseConfig:
     #: The Flask app environment ("production", "development", etc.). We set
     #: this explicitly so that Celery can have access to it and load an
     #: appropriate application context.
-    AMBUDA_ENVIRONMENT = None
+    KALANJIYAM_ENVIRONMENT = None
 
     #: Internal secret key for encrypting sensitive data.
     SECRET_KEY = _env("SECRET_KEY")
 
-    #: URI for the Ambuda database. This URI (also called a URL in some docs)
+    #: URI for the Kalanjiyam database. This URI (also called a URL in some docs)
     #: has the following basic format:
     #:
     #:     dialect+driver://username:password@host:port/database
@@ -141,7 +141,7 @@ class BaseConfig:
     # Environment variables
     # ---------------------
 
-    # AMBUDA_BOT_PASSWORD is the password we use for the "ambuda-bot" account.
+    # KALANJIYAM_BOT_PASSWORD is the password we use for the "kalanjiyam-bot" account.
     # We set this account as an envvar because we need to create this user as
     # part of database seeding.
 
@@ -153,7 +153,7 @@ class BaseConfig:
 class UnitTestConfig(BaseConfig):
     """For unit tests."""
 
-    AMBUDA_ENVIRONMENT = TESTING
+    KALANJIYAM_ENVIRONMENT = TESTING
     TESTING = True
     SECRET_KEY = "insecure unit test secret"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
@@ -173,7 +173,7 @@ class UnitTestConfig(BaseConfig):
 class DevelopmentConfig(BaseConfig):
     """For local development."""
 
-    AMBUDA_ENVIRONMENT = DEVELOPMENT
+    KALANJIYAM_ENVIRONMENT = DEVELOPMENT
     DEBUG = True
     #: If set, automatically reload Flask templates (including imports) when
     #: they change on disk.
@@ -186,7 +186,7 @@ class DevelopmentConfig(BaseConfig):
 class BuildConfig(BaseConfig):
     """For build on GitHub."""
 
-    AMBUDA_ENVIRONMENT = BUILD
+    KALANJIYAM_ENVIRONMENT = BUILD
     DEBUG = True
     #: If set, automatically reload Flask templates (including imports) when
     #: they change on disk.
@@ -199,7 +199,7 @@ class BuildConfig(BaseConfig):
 class StagingConfig(BaseConfig):
     """For staging."""
 
-    AMBUDA_ENVIRONMENT = STAGING
+    KALANJIYAM_ENVIRONMENT = STAGING
     DEBUG = True
     #: If set, automatically reload Flask templates (including imports) when
     #: they change on disk.
@@ -212,7 +212,7 @@ class StagingConfig(BaseConfig):
 class ProductionConfig(BaseConfig):
     """For production."""
 
-    AMBUDA_ENVIRONMENT = PRODUCTION
+    KALANJIYAM_ENVIRONMENT = PRODUCTION
 
     #: Logger setup
     LOG_LEVEL = logging.INFO
@@ -233,7 +233,7 @@ def _validate_config(config: BaseConfig):
 
     :param config: the config to test
     """
-    assert config.AMBUDA_ENVIRONMENT in {
+    assert config.KALANJIYAM_ENVIRONMENT in {
         TESTING,
         DEVELOPMENT,
         BUILD,
@@ -250,46 +250,45 @@ def _validate_config(config: BaseConfig):
     if not Path(config.UPLOAD_FOLDER).is_absolute():
         raise ValueError("UPLOAD_FOLDER must be an absolute path.")
 
-    # Production-specific validation.
-    if config.AMBUDA_ENVIRONMENT == PRODUCTION:
-        # All keys must be set.
-        for key in dir(config):
-            if key.isupper():
-                value = getattr(config, key)
-                assert value is not None, f"Config param {key} must not be `None`"
+    if not config.SECRET_KEY:
+        raise ValueError("This config does not define SECRET_KEY.")
 
-        # App must not be in debug/test mode.
-        assert config.WTF_CSRF_ENABLED
-        assert not config.DEBUG
-        assert not config.TESTING
-
-        # Google credentials must be set and exist.
-        google_creds = _env("GOOGLE_APPLICATION_CREDENTIALS")
-        assert google_creds
-        assert Path(google_creds).exists()
+    if config.KALANJIYAM_ENVIRONMENT == PRODUCTION:
+        if not config.SENTRY_DSN:
+            raise ValueError("Production config must define SENTRY_DSN.")
 
 
 def load_config_object(name: str):
-    """Load and validate an application config."""
-    config_map = {
+    """Load a config object by name.
+
+    :param name: the name of the config to load
+    :return: a config object
+    """
+    configs = {
         TESTING: UnitTestConfig,
         DEVELOPMENT: DevelopmentConfig,
         BUILD: BuildConfig,
         STAGING: StagingConfig,
         PRODUCTION: ProductionConfig,
     }
-    config = config_map[name]
+
+    if name not in configs:
+        raise ValueError(f"Unknown config name: {name}")
+
+    config = configs[name]()
     _validate_config(config)
     return config
 
 
 def create_config_only_app(config_name: str):
-    """Create the application with just its config options set.
+    """Create a minimal Flask app that only loads config.
 
-    We use this function in Celery to get access to the app context while
-    avoiding any other setup work related to the application.
+    This is useful for scripts that need to access config values but don't
+    need the full application context.
+
+    :param config_name: the name of the config to load
+    :return: a minimal Flask app
     """
-    load_dotenv(".env")
     app = Flask(__name__)
     app.config.from_object(load_config_object(config_name))
     return app

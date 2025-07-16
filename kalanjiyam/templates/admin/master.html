@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Kalanjiyam Admin{% endblock %}</title>
+    <meta name="description" content="A breakthrough Siddha Knowledge Systems library. Read our library of traditional Siddha texts with word-by-word analysis, integrated dictionary support, and so much more.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="admin-body">
+    <header class="admin-header">
+        <div class="admin-header-content">
+            <h1 class="admin-title">Kalanjiyam Admin</h1>
+            <nav class="admin-nav">
+                <a href="{{ url_for('admin.index') }}" class="admin-nav-link">Dashboard</a>
+                <a href="{{ url_for('site.index') }}" class="admin-nav-link">View Site</a>
+                <a href="{{ url_for('auth.logout') }}" class="admin-nav-link">Logout</a>
+            </nav>
+        </div>
+    </header>
+    
+    <main class="admin-main">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

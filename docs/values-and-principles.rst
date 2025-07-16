@@ -1,50 +1,60 @@
-Values and principles
-=====================
+Values and Principles
+====================
 
+This document describes the values and principles that guide Kalanjiyam's technical
+decisions.
 
-Values
-------
+Mission
+-------
 
-Ambuda's mission is to make the Sanskrit tradition radically accessible.
-*Radical access* is Ambuda's core value, and it affects not only the project as
-a whole but also how we design and nurture our code and community.
+Kalanjiyam's mission is to make the Siddha Knowledge Systems tradition radically accessible.
+*Radical access* is Kalanjiyam's core value, and it affects not only the project as
+a whole but also our technical decisions.
 
-From a community perspective, radical access means that we communicate openly
-and visibly about our project. For us specifically, it means that we send out
-regular project updates on our mailing list, track technical work on GitHub,
-and have more open discussion on Discord. Everyone is welcome to join in on our
-ongoing discussion.
+What does "radical access" mean? It means that we want to remove as many barriers
+as possible between people and Siddha Knowledge Systems literature. This includes:
 
-From a code perspective, radical access means that we build in public so that
-everyone can see how our project is doing and participate in it themselves. It
-means that we bias toward obvious and boring technology that anyone can read
-and understand. And it means that we take care to write code that is clear and
-simple.
+- **Geographic barriers**: Anyone with an internet connection can access our texts
+- **Economic barriers**: All of our content is free to use
+- **Language barriers**: We provide translations and tools to help non-Tamil speakers
+- **Technical barriers**: Our platform works on any device and any browser
+- **Knowledge barriers**: We provide tools to help readers understand complex texts
 
-From a data perspective, radical access means that we rely on open and public
-data and produce open and public data in return. Although licensing rights
-often prevent it, we strive to release our texts under a `CC0`_ (public domain)
-license.
+Technical Principles
+-------------------
 
+Kalanjiyam's tech stack follows a few basic principles:
 
-Principles
-----------
+**Simplicity over complexity**
+    We prefer simple, well-understood technologies over complex ones. This makes
+    our code easier to maintain and our platform more reliable.
 
-Ambuda's tech stack follows a few basic principles:
+**Open source everything**
+    All of our code and data is open source. This allows others to learn from our
+    work, contribute improvements, and build on our platform.
 
-1. Our readers care about our content and features, *not* our technical stack.
-   All of our technical work should be connected to a clear user problem. We
-   must not build features just because they're interesting technically.
+**Performance matters**
+    We optimize for performance because slow loading times create barriers to access.
+    Our platform should feel fast and responsive on any device.
 
-2. The hidden enemy of any tech project is complexity. Unless there is a *very*
-   good reason to embrace it, we should keep complexity low in all parts of our
-   project.
+**Accessibility first**
+    We design our platform to be accessible to users with disabilities. This includes
+    screen reader support, keyboard navigation, and high contrast modes.
 
-3. Our core team is an ever-changing group of volunteers with various
-   backgrounds and skills. When in doubt, we should prefer simple, well-known,
-   and well-documented technologies that have been repeatedly tested in
-   production systems.
+**Mobile-first design**
+    Many of our users access our platform on mobile devices, so we design for mobile
+    first and desktop second.
 
+**Progressive enhancement**
+    Our platform works on any device and any browser, even if JavaScript is disabled.
+    We add enhanced features for modern browsers but don't require them.
 
-.. _CC0: https://creativecommons.org/publicdomain/zero/1.0/
+**Data preservation**
+    We treat our data as a precious resource that must be preserved for future
+    generations. We use robust backup systems and open file formats.
+
+**Community-driven**
+    We build our platform in collaboration with our community of users and
+    contributors. We listen to feedback and prioritize features that serve our
+    community's needs.
 

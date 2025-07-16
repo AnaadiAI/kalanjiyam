@@ -1,0 +1,132 @@
+#!/bin/bash
+
+KALANJIYAM_DEPLOY_CONFDIR=${HOME}/deploy-config/
+KALANJIYAM_WORKSPACE=${HOME}
+
+function show_help {
+    echo "Usage: $0 [OPTION]"
+    echo "Options:"
+    echo "          -l # Status of Kalanjiyam server"
+    echo "          -s # Start Kalanjiyam"
+    echo "          -x # Stop Kalanjiyam"
+    echo "          -h # Show this help"
+}
+
+function find_unused_port {
+    # Find an unused port starting from 5000
+    port=5000
+    while netstat -tuln | grep -q ":$port "; do
+        port=$((port + 1))
+    done
+    echo $port
+}
+
+function check_status {
+    if [ -z "$KALANJIYAM_HOST_IP" ] || [ -z "$KALANJIYAM_HOST_PORT" ]; then
+        echo "Kalanjiyam environment not configured."
+        return 1
+    fi
+    
+    port=$KALANJIYAM_HOST_PORT
+    echo "hello" > /dev/tcp/$KALANJIYAM_HOST_IP/$port
+    if [ $? -eq 0 ]; then
+        echo "Kalanjiyam is running on http://$KALANJIYAM_HOST_IP:$port"
+    else
+        echo "Kalanjiyam is not running."
+    fi
+}
+
+function start_kalanjiyam {
+    if [ -z "$KALANJIYAM_STAGING_DIR" ]
+    then
+        KALANJIYAM_STAGING_DIR=${HOME}/kalanjiyam-staging
+    fi
+
+    mkdir -p "$KALANJIYAM_STAGING_DIR"
+    if [ $? -ne 0 ]; then
+        echo "Error! staging directory -- $KALANJIYAM_STAGING_DIR -- create failed."
+        exit 1
+    fi
+
+    echo "export KALANJIYAM_STAGING_DIR=$KALANJIYAM_STAGING_DIR" >> $KALANJIYAM_STAGING_ENV
+    echo "> Change directory to $KALANJIYAM_STAGING_DIR"
+
+    echo "export KALANJIYAM_HOST_IP=$(ip route get 1 | awk '{print $7; exit}')" >> $KALANJIYAM_STAGING_ENV
+    source $KALANJIYAM_STAGING_ENV
+
+    echo "export KALANJIYAM_HOST_PORT=$(find_unused_port)" >> $KALANJIYAM_STAGING_ENV
+
+    if [ -z "$KALANJIYAM_IMAGE" ]
+    then
+        echo "Error! Invalid KALANJIYAM_IMAGE"
+        exit 1
+    fi
+
+    echo "export KALANJIYAM_IMAGE=$KALANJIYAM_IMAGE" >> $KALANJIYAM_STAGING_ENV
+
+    # Load environment variables
+    if [ ! -e "$KALANJIYAM_STAGING_ENV" ]
+    then
+        echo "Error! Invalid Kalanjiyam staging environment."
+        exit 1
+    fi
+
+    source $KALANJIYAM_STAGING_ENV
+    cd $KALANJIYAM_STAGING_DIR
+
+    echo "> Starting Kalanjiyam database setup..."
+    docker compose -f ${KALANJIYAM_DEPLOY_CONFDIR}/docker-compose-dbsetup.yml up
+    echo "> Kalanjiyam Database...UP"
+
+    echo "> Starting Kalanjiyam services..."
+    docker compose -f ${KALANJIYAM_DEPLOY_CONFDIR}/docker-compose.yml up --detach
+    echo "> Kalanjiyam URL........http://${KALANJIYAM_HOST_IP}:${KALANJIYAM_HOST_PORT} is UP"
+}
+
+function start_kalanjiyam {
+    if [ -z "$KALANJIYAM_STAGING_ENV" ]; then
+        echo "Kalanjiyam staging environment not found."
+        exit 1
+    fi
+
+    source $KALANJIYAM_STAGING_ENV
+    cd $KALANJIYAM_STAGING_DIR
+
+    echo "> Starting Kalanjiyam..."
+    docker compose -f ${KALANJIYAM_DEPLOY_CONFDIR}/docker-compose.yml up --detach
+    echo "> Kalanjiyam is now running on http://${KALANJIYAM_HOST_IP}:${KALANJIYAM_HOST_PORT}"
+}
+
+function stop_kalanjiyam {
+    if [ -z "$KALANJIYAM_STAGING_ENV" ]; then
+        echo "Kalanjiyam staging environment not found."
+        exit 1
+    fi
+
+    source $KALANJIYAM_STAGING_ENV
+    cd $KALANJIYAM_STAGING_DIR
+
+    echo "> Stopping Kalanjiyam..."
+    docker compose -f ${KALANJIYAM_DEPLOY_CONFDIR}/docker-compose.yml down
+    echo "> Kalanjiyam stopped."
+}
+
+# Main script logic
+case "$1" in
+    -l)
+        check_status
+        ;;
+    -s)
+        start_kalanjiyam
+        ;;
+    -x)
+        stop_kalanjiyam
+        ;;
+    -h|--help)
+        show_help
+        ;;
+    *)
+        echo "Invalid option. Use -h for help."
+        exit 1
+        ;;
+esac 

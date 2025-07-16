@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="{{ get_locale() }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Kalanjiyam{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}A breakthrough Siddha Knowledge Systems library. Read our library of traditional Siddha texts with word-by-word analysis, integrated dictionary support, and so much more.{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}siddha, knowledge systems, traditional medicine, alchemy, yoga, spiritual knowledge, tamil literature{% endblock %}">
+    <meta name="author" content="Kalanjiyam">
+    <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+    <meta property="og:description" content="{{ self.meta_description() }}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:site_name" content="Kalanjiyam">
+    <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='images/og-image.png') }}{% endblock %}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ self.og_title() }}">
+    <meta name="twitter:description" content="{{ self.meta_description() }}">
+    <meta name="twitter:image" content="{{ self.og_image() }}">
+    <link rel="canonical" href="{{ request.url }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="stylesheet" href="{{ asset('gen/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    {% include 'include/header.html' %}
+    
+    <main class="{% block main_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+    
+    {% include 'include/footer.html' %}
+    
+    <script src="{{ asset('gen/main.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
+
+

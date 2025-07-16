@@ -1,52 +1,70 @@
 #!/usr/bin/env python3
+"""Test production endpoints.
 
-"""A basic test suite to ensure that prod is loading correctly.
-
-We use this in our deploy script to check the basic health of the site.
+This script tests various endpoints on the production server to ensure they
+are working correctly.
 """
 
-import sys
-
 import requests
+import sys
+from urllib.parse import urljoin
 
-URLS_200 = [
+# Production URL
+BASE_URL = "https://kalanjiyam.org"
+
+# Test paths
+TEST_PATHS = [
     "/",
-    "/api/dictionaries/vacaspatyam/nara",
+    "/about/",
+    "/about/mission",
+    "/about/values",
+    "/about/people/",
     "/texts/",
-    "/texts/mahabharatam/1.1",
-    "/texts/mahabharatam/18.5",
     "/tools/dictionaries/",
-    "/tools/dictionaries/apte/nara",
-    "/tools/dictionaries/mw/nara",
-    "/tools/dictionaries/shabdakalpadruma/nara",
-    "/tools/dictionaries/vacaspatyam/nara",
     "/proofing/",
-    "/tools/dictionaries/",
+    "/blog/",
+    "/site/support",
+    "/site/donate",
+    "/auth/sign-in",
+    "/auth/register",
 ]
 
-
-def _ok(s) -> str:
-    print(f"\033[92m[  OK  ] {s}\033[0m")
-
-
-def _fail(s) -> str:
-    print(f"\033[91m[ FAIL ] {s}\033[0m")
-
-
-def check_200() -> bool:
-    ok = True
-    for path in URLS_200:
-        url = f"https://ambuda.org{path}"
-        resp = requests.get(url)
-        if resp.status_code == 200:
-            _ok(f"HTTP 200 {url}")
+def test_endpoint(path):
+    """Test a single endpoint."""
+    url = urljoin(BASE_URL, path)
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            print(f"✅ {url} - OK")
+            return True
         else:
-            _fail(f"HTTP 200 {url}")
-            ok = False
-    return ok
+            print(f"❌ {url} - Status {response.status_code}")
+            return False
+    except requests.RequestException as e:
+        print(f"❌ {url} - Error: {e}")
+        return False
 
+def main():
+    """Test all endpoints."""
+    print(f"Testing Kalanjiyam production server: {BASE_URL}")
+    print("=" * 60)
+    
+    success_count = 0
+    total_count = len(TEST_PATHS)
+    
+    for path in TEST_PATHS:
+        if test_endpoint(path):
+            success_count += 1
+    
+    print("=" * 60)
+    print(f"Results: {success_count}/{total_count} endpoints working")
+    
+    if success_count == total_count:
+        print("🎉 All tests passed!")
+        return 0
+    else:
+        print("⚠️  Some tests failed!")
+        return 1
 
 if __name__ == "__main__":
-    ok = check_200()
-    if not ok:
-        sys.exit(1)
+    sys.exit(main())

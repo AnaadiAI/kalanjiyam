@@ -1,100 +1,111 @@
 Architecture
-============
+===========
 
-.. note::
-   If you just want to get started, see the :doc:`/quickstart` guide.
+This document provides a high-level overview of Kalanjiyam's technical architecture.
 
+Overview
+--------
 
-Data formats
+Kalanjiyam is a web application built with Flask that provides access to Siddha Knowledge Systems
+literature. The application consists of several key components:
+
+- **Web server**: Flask application that serves HTML pages and API endpoints
+- **Database**: SQLite database (development) or PostgreSQL (production) for storing data
+- **Background tasks**: Celery for handling long-running tasks like OCR processing
+- **Static assets**: CSS, JavaScript, and images served directly by the web server
+
+Data Sources
 ------------
 
-All of our input data is stored in plain text.
+Kalanjiyam's data comes from several sources:
 
-We store text data as XML that conforms to the `TEI`_ standard. TEI is an
-enormously complicated spec, and by :doc:`principle (2)<values-and-principles>`,
-we would normally reject it. But TEI is a consensus format for encoding
-various useful properties of a text, such as:
+- **Text data**: Siddha texts from various manuscripts and published sources
+- **Dictionary data**: Traditional Siddha and Tamil dictionaries
+- **Parse data**: Grammatical analysis data from the Digital Corpus of Siddha
+  in `kalanjiyam.seed.dcs`. (Our raw upstream parse data uses the CoNLL-U format, but
+  we transform it into a more suitable format for our needs.)
 
-- metadata, including a text's source, author, publisher, and so on.
-- structure, including chapters, sections, headers, and footers.
-- unique IDs for specific objects of interest, such as verses and paragraphs.
-- corrections to the original text, as needed.
+Database
+--------
 
-The full TEI spec has hundreds of elements, but we restrict ourselves to a
-small subset.
+We use SQLAlchemy as our ORM and SQLite for development. SQLite is fast and great for prototyping. Kalanjiyam is a read-heavy website, so
+SQLite's performance characteristics work well for our use case.
 
-.. _TEI: https://tei-c.org
+For production, we use PostgreSQL for better concurrency and data integrity.
 
-Dictionary data, which mostly comes from the Cologne Digital Sanskrit Lexicons
-project, is typically in XML.
+Key database tables:
 
-Parse data uses a custom format that is similar to a TSV, and parsing logic is
-in `ambuda.seed.dcs`. (Our raw upstream parse data uses the CoNLL-U format, but
-this is too verbose for our needs and makes it difficult to quickly correct
-parse errors in the data.)
+- `users`: User accounts and authentication
+- `texts`: Siddha texts and their metadata
+- `projects`: Proofreading projects
+- `dictionaries`: Dictionary entries and definitions
+- `parses`: Grammatical analysis data
 
+Frontend
+--------
 
-Data storage
-------------
+Our frontend is built with vanilla HTML, CSS, and JavaScript. We use:
 
-We store our data in a `SQLite`_ database.
+- **Tailwind CSS** for styling
+- **Vanilla JavaScript** for interactivity
+- **HTMX** for dynamic content updates
+- **Sanscript.js** for script transliteration
 
-SQLite is fast and great for prototyping. Ambuda is a read-heavy website, so
-SQLite also scales well with increased traffic. Even if we become more
-write-heavy in the future, SQLite's write-ahead logging (WAL) is an option for
-higher write throughput. And if all of that fails, there's a clear migration
-path to Postgres with excellent tooling to support the migration.
+We avoid complex frontend frameworks to keep the codebase simple and maintainable.
 
-Much of our content is unstructured, but it has basic structured elements -- a
-parent text, an XML ID, a correspondence with some other resource -- that fit
-well in a traditional database schema. And, both SQLite and Postgres support
-JSON columns if we ever need that extra flexibility.
+Background Tasks
+---------------
 
-.. _SQLite: sqlite.org
+We use Celery for background tasks like:
 
+- OCR processing of manuscript images
+- Text parsing and analysis
+- Data import and processing
+- Email notifications
 
-Server
-------
+These tasks run asynchronously to avoid blocking the web interface.
 
-Our webserver is implemented in Python and runs on WSGI (Gunicorn).
+Static Assets
+-------------
 
-Python is not the world's most performant language, but it's great for rapid
-prototyping and has strong tooling support. Python 3 type annotations keep the
-code manageable, and Python's rich ecosystem of Sanskrit packages makes it a
-natural choice. It's a nice bonus as well that Python is extremely popular,
-which means that most contributors have some context on it.
+We use a simple build process for our static assets:
 
-Specifically, our backend code is written in `Flask`_, an elegant Python
-microframework. We chose Flask because it has a minimal surface area that new
-Python developers can easily understand. We use `SQLAlchemy`_, a best-in-class
-SQL library, to communicate with our database.
+- **Tailwind CSS** compiles our CSS from utility classes
+- **esbuild** bundles our JavaScript
+- **Asset hashing** for cache busting
 
-.. _Flask: https://flask.palletsprojects.com/en/2.1.x/
-.. _SQLAlchemy: https://www.sqlalchemy.org/
+The build process might seem overkill at first. But it keeps Kalanjiyam's CSS consistent, predictable, and fairly
+maintainable.
 
-
-CSS
----
-
-We manage our CSS using `Tailwind`_.
-
-If you're used to more traditional CSS framework, Tailwind might look hideous
-at first. But it keeps Ambuda's CSS consistent, predictable, and fairly
-professional without needing a complex build step or careful class management.
-
-.. _Tailwind: https://tailwindcss.com
-
-
-JavaScript
+Deployment
 ----------
 
-Our frontend code generally uses `Alpine.js`_.
+Kalanjiyam is deployed using Docker containers:
 
-Although we don't use `HTMX`_, we do as much work as we can server-side and use
-JavaScript only for small UX features that aren't worth a round-trip on the
-network. Some of the philosophy for this can be explained here:
+- **Web container**: Flask application
+- **Database container**: PostgreSQL
+- **Redis container**: For Celery task queue
+- **Nginx container**: For static file serving and load balancing
 
-https://htmx.org/essays/a-response-to-rich-harris/
+We use Docker Compose for local development and Kubernetes for production deployment.
 
-.. _Alpine.js: https://alpinejs.dev/
-.. _HTMX: https://htmx.org/
+Security
+--------
+
+We follow several security best practices:
+
+- **HTTPS everywhere**: All traffic is encrypted
+- **CSRF protection**: All forms are protected against CSRF attacks
+- **Input validation**: All user input is validated and sanitized
+- **SQL injection protection**: We use parameterized queries
+- **XSS protection**: We escape all user-generated content
+
+Monitoring
+----------
+
+We use several tools for monitoring:
+
+- **Sentry**: Error tracking and performance monitoring
+- **Logs**: Structured logging for debugging and analysis
+- **Health checks**: Automated health checks for all services
+- **Metrics**: Basic metrics collection for performance analysis

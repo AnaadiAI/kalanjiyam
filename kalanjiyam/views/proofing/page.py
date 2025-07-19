@@ -22,7 +22,6 @@ from kalanjiyam.utils.assets import get_page_image_filepath
 from kalanjiyam.utils.diff import revision_diff
 from kalanjiyam.utils.revisions import EditError, add_revision
 from kalanjiyam.views.api import bp as api
-from kalanjiyam.views.site import bp as site
 
 bp = Blueprint("page", __name__)
 
@@ -201,17 +200,6 @@ def edit_post(project_slug, page_slug):
         page_number=page_number,
         project=ctx.project,
     )
-
-
-@site.route("/static/uploads/<project_slug>/pages/<page_slug>.jpg")
-def page_image(project_slug, page_slug):
-    """(Debug only) Serve an image from the filesystem.
-
-    In production, we serve images directly from nginx.
-    """
-    assert current_app.debug
-    image_path = get_page_image_filepath(project_slug, page_slug)
-    return send_file(image_path)
 
 
 @bp.route("/<project_slug>/<page_slug>/history")

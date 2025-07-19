@@ -65,7 +65,7 @@ class BaseConfig:
     #: The Flask app environment ("production", "development", etc.). We set
     #: this explicitly so that Celery can have access to it and load an
     #: appropriate application context.
-    KALANJIYAM_ENVIRONMENT = None
+    KALANJIYAM_ENVIRONMENT = "development"
 
     #: Internal secret key for encrypting sensitive data.
     SECRET_KEY = _env("SECRET_KEY")
@@ -84,7 +84,7 @@ class BaseConfig:
     UPLOAD_FOLDER = _env("FLASK_UPLOAD_FOLDER")
 
     #: Logger setup
-    LOG_LEVEL = logging.INFO
+    LOG_LEVEL = logging.ERROR
 
     # Extensions
     # ----------

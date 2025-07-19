@@ -26,16 +26,18 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
+    {% block body %}
     {% include 'include/header.html' %}
     
     <main class="{% block main_class %}{% endblock %}">
-        {% block content %}{% endblock %}
-    </main>
+        {% block main %}{% endblock %}
+      </main>
     
     {% include 'include/footer.html' %}
     
     <script src="{{ asset('gen/main.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
+    {% endblock %}
 </body>
 </html>
 

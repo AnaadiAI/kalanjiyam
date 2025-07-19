@@ -1,9 +1,10 @@
 """Views for basic site pages."""
 
-from flask import Blueprint, redirect, render_template, session, url_for
+from flask import Blueprint, current_app, redirect, render_template, send_file, session, url_for
 
 from kalanjiyam import queries as q
 from kalanjiyam.consts import LOCALES
+from kalanjiyam.utils.assets import get_page_image_filepath
 
 bp = Blueprint("site", __name__)
 
@@ -43,6 +44,17 @@ def support():
 def sentry_500():
     """Sentry integration test. Should trigger a 500 error in prod."""
     _ = 1 / 0
+
+
+@bp.route("/static/uploads/<project_slug>/pages/<page_slug>.jpg")
+def page_image(project_slug, page_slug):
+    """(Debug only) Serve an image from the filesystem.
+
+    In production, we serve images directly from nginx.
+    """
+    assert current_app.debug
+    image_path = get_page_image_filepath(project_slug, page_slug)
+    return send_file(image_path)
 
 
 @bp.app_errorhandler(403)

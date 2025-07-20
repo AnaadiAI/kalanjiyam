@@ -66,11 +66,12 @@
 
   /* Dropdowns (e.g. in proofing editor) */
   .dropdown-pane {
-    @apply z-50 bg-white border border-teal-200 absolute a-hover-underline;
+    @apply z-50 bg-white border border-teal-200 absolute a-hover-underline rounded-lg;
     box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15);
+    min-width: 200px;
   }
   .dropdown-item {
-    @apply block w-full text-left p-2 hover:bg-peacock-subtle;
+    @apply block w-full text-left p-3 hover:bg-peacock-subtle transition-colors rounded;
   }
 
   /* Sidebar */

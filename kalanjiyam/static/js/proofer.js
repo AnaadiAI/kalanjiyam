@@ -54,6 +54,9 @@ export default () => ({
   // [transliteration] the destination script
   toScript: 'devanagari',
 
+  // Content
+  content: '',
+
   // Internal-only
   layoutClasses: CLASSES_SIDE_BY_SIDE,
   isRunningOCR: false,
@@ -63,6 +66,12 @@ export default () => ({
   init() {
     this.loadSettings();
     this.layoutClasses = this.getLayoutClasses();
+
+    // Initialize content from the textarea if it exists
+    const textarea = document.getElementById('content');
+    if (textarea && textarea.value) {
+      this.content = textarea.value;
+    }
 
     // Set `imageZoom` only after the viewer is fully initialized.
     this.imageViewer = initializeImageViewer(IMAGE_URL);
@@ -141,7 +150,15 @@ export default () => ({
         }
         return '(server error)';
       });
-    $('#content').value = content;
+    
+    // Update the Alpine.js data property directly
+    this.content = content;
+    
+    // Also update the DOM element for compatibility
+    const textarea = document.getElementById('content');
+    if (textarea) {
+      textarea.value = content;
+    }
 
     this.isRunningOCR = false;
   },
@@ -191,19 +208,25 @@ export default () => ({
   // Markup controls
 
   changeSelectedText(callback) {
-    // FIXME: more idiomatic way to get this?
-    const $textarea = $('#content');
-    const start = $textarea.selectionStart;
-    const end = $textarea.selectionEnd;
-    const { value } = $textarea;
+    // Get the textarea element
+    const textarea = document.getElementById('content');
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const { value } = textarea;
 
     const selectedText = value.substr(start, end - start);
     const replacement = callback(selectedText);
-    $textarea.value = value.substr(0, start) + replacement + value.substr(end);
+    const newValue = value.substr(0, start) + replacement + value.substr(end);
+    
+    // Update both the DOM element and Alpine.js data
+    textarea.value = newValue;
+    this.content = newValue;
 
     // Update selection state and focus for better UX.
-    $textarea.setSelectionRange(start, start + replacement.length);
-    $textarea.focus();
+    textarea.setSelectionRange(start, start + replacement.length);
+    textarea.focus();
   },
   markAsError() {
     this.changeSelectedText((s) => `<error>${s}</error>`);
@@ -223,7 +246,7 @@ export default () => ({
   replaceSAvagraha() {
     this.changeSelectedText((s) => s.replaceAll('S', 'ऽ'));
   },
-  transliterate() {
+  transliterateSelection() {
     this.changeSelectedText((s) => Sanscript.t(s, this.fromScript, this.toScript));
     this.saveSettings();
   },

@@ -9,15 +9,12 @@
 {# Use wrapping div so that we can use the Tailwind "peer" class. #}
 <div>
   {{ field(class_="hidden peer") }}
-  {{ field.label(class_="block border rounded p-2 mr-4
-  text-slate-700 border-slate-300 hover:bg-slate-300 "
-  + peer_classes
-  + " peer-checked:font-bold cursor-pointer") }}
+  {{ field.label(class_="block border border-teal-200 rounded-lg p-3 mr-4 text-peacock-primary hover:bg-peacock-light transition-colors " + peer_classes + " peer-checked:font-bold cursor-pointer") }}
 </div>
 {% endmacro %}
 
 
-{% block title %}Edit: {{ project.display_title }}/{{ cur.slug }} | Ambuda{% endblock %}
+{% block title %}Edit: {{ project.display_title }}/{{ cur.slug }} | Kalanjiyam{% endblock %}
 
 
 {% block main %}
@@ -36,7 +33,10 @@
   {{ mc.flash_messages() }}
 
   {% if conflict %}
-  <pre class="p-2 bg-slate-100 my-4">{{ conflict.content }}</pre>
+  <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+    <h3 class="text-red-800 font-semibold mb-2">{{ _('Conflict detected') }}</h3>
+    <pre class="text-red-700 text-sm">{{ conflict.content }}</pre>
+  </div>
   {% endif %}
 
   <form x-data="proofer" method="POST">
@@ -52,42 +52,58 @@
     {% endif %}
 
     {{ editor.menu_bar() }}
-    <div :class="layoutClasses">
+    
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 min-h-[600px]">
       {{ editor.text_box(form.content.data or "") }}
       {{ editor.image_box() }}
     </div>
 
-    <div class="my-8 p-4 border bg-slate-200 rounded">
-      {{ form.summary.label(class_="text-slate-600 mb-2 block") }}
-      {{ form.summary(class_="block rounded bg-white w-full mb-4 p-2",
-          placeholder=_("Fixed various OCR errors")) }}
+    <div class="mt-8 bg-white border border-teal-200 rounded-lg p-6 peacock-shadow">
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-peacock-primary mb-2">{{ form.summary.label.text }}</label>
+        {{ form.summary(class_="block rounded-lg bg-white w-full p-3 border border-teal-200 focus:border-peacock-primary focus:ring-2 focus:ring-peacock-light",
+            placeholder=_("Fixed various OCR errors")) }}
+      </div>
 
-      {{ form.status.label(class_="block") }}
-      {% set radios = form.status|list %}
-      <div class="flex my-4">
-        {{ _status(radios[0],
-        "peer-checked:bg-red-200 peer-checked:text-red-800 peer-checked:border-red-300") }}
-        {{ _status(radios[1],
-        "peer-checked:bg-yellow-200 peer-checked:text-yellow-800 peer-checked:border-yellow-300") }}
-        {% if not is_r0 %}
-        {{ _status(radios[2],
-        "peer-checked:bg-green-200 peer-checked:text-green-800 peer-checked:border-green-300") }}
-        {% endif %}
-        {{ _status(radios[3],
-        "peer-checked:bg-slate-100 peer-checked:text-gray-800 peer-checked:border-gray-300") }}
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-peacock-primary mb-3">{{ form.status.label.text }}</label>
+        {% set radios = form.status|list %}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {{ _status(radios[0],
+          "peer-checked:bg-red-100 peer-checked:text-red-800 peer-checked:border-red-300") }}
+          {{ _status(radios[1],
+          "peer-checked:bg-yellow-100 peer-checked:text-yellow-800 peer-checked:border-yellow-300") }}
+          {% if not is_r0 %}
+          {{ _status(radios[2],
+          "peer-checked:bg-emerald-100 peer-checked:text-emerald-800 peer-checked:border-emerald-300") }}
+          {% endif %}
+          {{ _status(radios[3],
+          "peer-checked:bg-slate-100 peer-checked:text-slate-800 peer-checked:border-slate-300") }}
+        </div>
       </div>
 
       {% if current_user.is_authenticated %}
       {% set cc0 = "https://creativecommons.org/publicdomain/zero/1.0/" %}
-      <p class="my-4 text-sm">{% trans %}
-      By saving your changes, you agree to release your contribution under the
-      <a class="underline" href="{{ cc0 }}">CC0 (public domain) license</a>.
-      {% endtrans %}</p>
+      <div class="mb-6 p-4 bg-peacock-subtle rounded-lg">
+        <p class="text-sm text-peacock-secondary">{% trans %}
+        By saving your changes, you agree to release your contribution under the
+        <a class="underline" href="{{ cc0 }}">CC0 (public domain) license</a>.
+        {% endtrans %}</p>
+      </div>
 
-      <input class="btn btn-submit"
-             type="submit"
-             value="{{ _('Publish changes') }}"
-             @click="hasUnsavedChanges = false">
+      <div class="flex items-center gap-4">
+        <button class="btn btn-submit flex items-center gap-2"
+                type="submit"
+                @click="hasUnsavedChanges = false">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          {{ _('Publish changes') }}
+        </button>
+        <span class="text-sm text-peacock-secondary" x-show="hasUnsavedChanges">
+          {{ _('You have unsaved changes') }}
+        </span>
+      </div>
       {% endif %}
     </div>
   </form>

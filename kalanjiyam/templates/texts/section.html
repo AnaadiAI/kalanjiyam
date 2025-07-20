@@ -14,30 +14,40 @@ For the corresponding JavaScript bindings and logic, see `reader.js`.
 {# Section header and help dialog. #}
 {% macro header() %}
 {% set url = url_for('texts.text', slug=text.slug) %}
-<header class="my-8">
-  <div class="text-center pb-4 font-bold border-b">
+<header class="my-8 text-center">
+  <div class="bg-white rounded-lg p-6 mb-6 peacock-shadow">
     {% if prev or next %}
-      <h1 class="text-2xl md:text-4xl"
+      <h1 class="text-3xl md:text-5xl font-bold text-peacock-primary mb-2"
           x-text="transliterateStr(data.section_title)">
         {{ section.title | devanagari }}
       </h1>
-      <a class="block text-sm hover:text-green-600" href="{{ url }}"
+      <a class="block text-lg text-peacock-secondary hover:text-peacock-primary transition-colors" href="{{ url }}"
           x-text="transliterateStr(data.text_title)">
         {{ text.title | devanagari }}
       </a>
     {% else %}
-      <h1 class="text-2xl md:text-4xl">{{ text.title | devanagari }}</h1>
+      <h1 class="text-3xl md:text-5xl font-bold text-peacock-primary">{{ text.title | devanagari }}</h1>
     {% endif %}
   </div>
 
   {% if has_no_parse %}
-  <p lang="en" class="text-center text-xs text-zinc-400 mt-2 mb-4">
-    {{ _('This text does not support clickable word meanings.') }}
-  </p>
+  <div class="bg-peacock-subtle rounded-lg p-4 mb-6">
+    <p lang="en" class="text-sm text-peacock-secondary">
+      <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      {{ _('This text does not support clickable word meanings.') }}
+    </p>
+  </div>
   {% else %}
-  <p lang="en" class="text-center text-xs text-zinc-400 mt-2 mb-4">
-    {{ _('Click on words to see what they mean.') }}
-  </p>
+  <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
+    <p lang="en" class="text-sm text-emerald-800">
+      <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      {{ _('Click on words to see what they mean.') }}
+    </p>
+  </div>
   {% endif %}
 </header>
 {% endmacro %}
@@ -45,10 +55,10 @@ For the corresponding JavaScript bindings and logic, see `reader.js`.
 
 {# Prev/next navigation links in the page footer. #}
 {% macro _footer_nav_link(text, section, display_text) %}
-{% set base = "rounded text-2xl h-12 w-12 leading-[3rem] text-center" %}
+{% set base = "rounded-lg text-2xl h-12 w-12 leading-[3rem] text-center transition-colors" %}
 {% if section %}
   {% set url = url_for('texts.section', text_slug=text.slug, section_slug=section.slug) %}
-  <a class="{{ base }} hover:bg-slate-100" href="{{ url }}"> {{ display_text | safe }}</a>
+  <a class="{{ base }} hover:bg-peacock-light text-peacock-primary" href="{{ url }}"> {{ display_text | safe }}</a>
 {% else %}
 <span class="{{ base }} text-slate-300">{{ display_text | safe }}</span>
 {% endif %}
@@ -58,8 +68,8 @@ For the corresponding JavaScript bindings and logic, see `reader.js`.
 {# Reader settings. In the future, these will be either on a separate page
 or in their own modal window. #}
 {% macro settings() %}
-  <div class="hidden md:inline text-sm border-r px-4">
-    <span>{{ _('Font Size:') }}</span>
+  <div class="hidden md:inline text-sm border-r border-teal-200 px-4">
+    <span class="text-peacock-secondary">{{ _('Font Size:') }}</span>
     <select class="f-select" x-model="fontSize" @change="saveSettings">
       <option value="md:text-base">{{ _('Tiny') }}</option>
       <option value="md:text-lg">{{ _('Small') }}</option>
@@ -68,15 +78,15 @@ or in their own modal window. #}
       <option value="md:text-3xl">{{ _('X-Large') }}</option>
     </select>
   </div>
-  <div class="text-sm border-r px-4">
-    <span class="hidden md:inline">{{ _('Script:') }}</span>
+  <div class="text-sm border-r border-teal-200 px-4">
+    <span class="hidden md:inline text-peacock-secondary">{{ _('Script:') }}</span>
     <select id="switch-sa" class="f-select" @change="saveSettings" x-model="script">
       {% include 'include/script-options.html' %}
     </select>
   </div>
   {% if not has_no_parse %}
-  <div class="hidden md:inline text-sm border-r px-4">
-    <span>{{ _('Parsed View:') }}</span>
+  <div class="hidden md:inline text-sm border-r border-teal-200 px-4">
+    <span class="text-peacock-secondary">{{ _('Parsed View:') }}</span>
     <select id="switch-parse-options" class="f-select" x-model="parseLayout" @change="saveSettings">
       <option value="in-place" selected>{{ _('In place') }}</option>
       <option value="side-by-side">{{ _('Side by side') }}</option>
@@ -89,14 +99,14 @@ or in their own modal window. #}
 {# Footer, including settings and nav links. #}
 {% macro footer() %}
 {# z-50 so that the footer renders on top of the sidebar. #}
-<footer class="flex items-center justify-between fixed bg-white left-0 right-0 bottom-0 h-12 border-t z-50">
+<footer class="flex items-center justify-between fixed bg-white left-0 right-0 bottom-0 h-12 border-t border-teal-200 z-50 peacock-shadow">
   <div class="text-sm pl-4">
-    <a class="hover:underline" href="{{ url_for('texts.text', slug=text.slug) }}"
+    <a class="hover:underline text-peacock-primary" href="{{ url_for('texts.text', slug=text.slug) }}"
         x-text="transliterateStr(data.text_title)">
       {{ text.title | devanagari }}
     </a>
     {% if not is_single_section_text %}
-    <span x-text="transliterateStr(data.section_title)">
+    <span class="text-peacock-secondary" x-text="transliterateStr(data.section_title)">
       {{ section.title | devanagari }}
     </span>
     {% endif %}
@@ -126,50 +136,58 @@ lg:top-10 is to vertically center the sidebar when sticky scrolling.
     fixed top-1/2 bottom-0 left-0 right-0
     flex flex-col flex-1
     p-4 overflow-auto
-    bg-slate-100 text-sm border-t
+    bg-white text-sm border-t border-teal-200
     md:text-base lg:border-t-0 lg:bg-white
-    lg:sticky lg:top-10 lg:max-w-lg lg:h-full-minus-nav lg:mr-8 lg:pl-8 lg:border-l
+    lg:sticky lg:top-10 lg:max-w-lg lg:h-full-minus-nav lg:mr-8 lg:pl-8 lg:border-l lg:border-teal-200
     lg:z-0"
     x-show="showSidebar" x-transition.opacity x-cloak>
-  <div>
-    <div>
-      <button class="block text-2xl p-2" @click="showSidebar = false">&times;</button>
-      <div id="parse--response" class="text-sm"></div>
+  <div class="bg-white rounded-lg p-4 peacock-shadow">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold text-peacock-primary">{{ _('Dictionary') }}</h3>
+      <button class="p-2 hover:bg-peacock-light rounded transition-colors" @click="showSidebar = false">
+        <svg class="w-5 h-5 text-peacock-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    
+    <div id="parse--response" class="text-sm mb-4"></div>
 
-      <div class="text-sm" x-show="wordAnalysis.form">
+    <div class="text-sm mb-4" x-show="wordAnalysis.form">
+      <div class="bg-peacock-subtle rounded-lg p-4">
         <header>
-          <h1 class="text-xl" lang="sa" x-text="transliterateStr(wordAnalysis.form)"></h1>
-          <p class="mb-8">
+          <h1 class="text-xl font-semibold text-peacock-primary" lang="sa" x-text="transliterateStr(wordAnalysis.form)"></h1>
+          <p class="mt-2 text-peacock-secondary">
             <span lang="sa" x-text="transliterateStr(wordAnalysis.lemma)"></span>
             <span x-text="wordAnalysis.parse"></span>
           </p>
         </header>
       </div>
-
-      <form id="dict--form" class="mb-4" @submit.prevent="searchDictionary">
-
-        {# Dictionary input field (desktop only, to save space) #}
-        <div class="mb-2 hidden lg:flex">
-          <input name="q" type="text" placeholder="राम, ರಾಮ, ma, rAma, ..."
-              class="p-2 flex-1 bg-slate-100 rounded-tl rounded-bl"
-              x-model="dictQuery"
-              ></input>
-          <input type="submit" value="{{ _('Search') }}"
-          class="cursor-pointer btn-submit p-2 rounded-tr rounded-br"></input>
-        </div>
-
-        <div x-cloak @click.outside="onClickOutsideOfSourceSelector"
-            class="relative text-sm select-none inline-block">
-          <div class="f-select bg-white lg:bg-slate-100 px-2 cursor-pointer inline-block"
-               @click.prevent="toggleSourceSelector">
-              {{ _('(choose dictionary)') }} <span class="text-xs">&#x25BC;</span>
-          </div>
-          <div x-show="showDictSourceSelector" class="dropdown-pane p-2 w-64 !static lg:!absolute">
-            {{ m_dict.source_multiselect(x_model='dictSources') }}
-          </div>
-        </div>
-      </form>
     </div>
+
+    <form id="dict--form" class="mb-4" @submit.prevent="searchDictionary">
+      {# Dictionary input field (desktop only, to save space) #}
+      <div class="mb-4 hidden lg:flex">
+        <input name="q" type="text" placeholder="राम, ರಾಮ, ma, rAma, ..."
+            class="p-2 flex-1 bg-white border border-teal-200 rounded-l focus:border-peacock-primary"
+            x-model="dictQuery"
+            ></input>
+        <input type="submit" value="{{ _('Search') }}"
+        class="cursor-pointer btn-submit p-2 rounded-r"></input>
+      </div>
+
+      <div x-cloak @click.outside="onClickOutsideOfSourceSelector"
+          class="relative text-sm select-none inline-block">
+        <div class="f-select bg-white border border-teal-200 px-3 py-2 cursor-pointer inline-block rounded"
+             @click.prevent="toggleSourceSelector">
+            {{ _('(choose dictionary)') }} <span class="text-xs">&#x25BC;</span>
+        </div>
+        <div x-show="showDictSourceSelector" class="dropdown-pane p-2 w-64 !static lg:!absolute">
+          {{ m_dict.source_multiselect(x_model='dictSources') }}
+        </div>
+      </div>
+    </form>
+    
     <div x-html="transliterateHTML(dictionaryResponse)"></div>
   </div>
 </div>
@@ -182,7 +200,7 @@ lg:top-10 is to vertically center the sidebar when sticky scrolling.
 {% else %}
 {% set page_title = text.title|devanagari %}
 {% endif %}
-{% block title %}{{ page_title }} | Ambuda{% endblock %}
+{% block title %}{{ page_title }} | Kalanjiyam{% endblock %}
 
 
 {% block main %}
@@ -192,9 +210,9 @@ lg:top-10 is to vertically center the sidebar when sticky scrolling.
 {# FIXME: unify <article> and these three <div>s into fewer elements. #}
 <article lang="sa" class="flex justify-around mb-32" x-data="reader" @click="onClick">
   {# w-full to avoid ugly rendering for long text on mobile. #}
-  <div class="px-4 pb-16 w-full md:max-w-xl"
+  <div class="px-4 pb-16 w-full md:max-w-2xl"
       :class="getParseLayoutClasses">
-  <div :class="fontSize">
+  <div :class="fontSize" class="bg-white rounded-lg p-6 peacock-shadow">
 
   {{ header() }}
 

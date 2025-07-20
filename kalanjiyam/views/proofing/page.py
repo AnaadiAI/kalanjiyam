@@ -5,7 +5,7 @@ The main route here is `edit`, which defines the page editor and the edit flow.
 
 from dataclasses import dataclass
 
-from flask import Blueprint, current_app, flash, render_template, send_file
+from flask import Blueprint, current_app, flash, render_template, send_file, request
 from flask_babel import lazy_gettext as _l
 from flask_login import current_user, login_required
 from flask_wtf import FlaskForm
@@ -13,6 +13,7 @@ from werkzeug.exceptions import abort
 from wtforms import HiddenField, RadioField, StringField
 from wtforms.validators import DataRequired
 from wtforms.widgets import TextArea
+import logging
 
 from kalanjiyam import database as db
 from kalanjiyam import queries as q
@@ -259,7 +260,7 @@ def revision(project_slug, page_slug, revision_id):
 @api.route("/ocr/<project_slug>/<page_slug>/")
 @login_required
 def ocr(project_slug, page_slug):
-    """Apply Google OCR to the given page."""
+    """Apply OCR to the given page using the specified engine."""
     project_ = q.project(project_slug)
     if project_ is None:
         abort(404)
@@ -268,6 +269,20 @@ def ocr(project_slug, page_slug):
     if not page_:
         abort(404)
 
+    # Get OCR engine from query parameter, default to 'google'
+    engine = request.args.get('engine', 'google')
+    
+    # Validate engine
+    from kalanjiyam.utils.ocr_engine import OcrEngineFactory
+    if engine not in OcrEngineFactory.get_supported_engines():
+        abort(400, description=f"Unsupported OCR engine: {engine}")
+
     image_path = get_page_image_filepath(project_slug, page_slug)
-    ocr_response = google_ocr.run(image_path)
-    return ocr_response.text_content
+    
+    try:
+        from kalanjiyam.utils.ocr_engine import run_ocr
+        ocr_response = run_ocr(image_path, engine_name=engine)
+        return ocr_response.text_content
+    except Exception as e:
+        logging.error(f"OCR failed for {project_slug}/{page_slug} with engine {engine}: {e}")
+        abort(500, description=f"OCR failed: {str(e)}")

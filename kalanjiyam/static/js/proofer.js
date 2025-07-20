@@ -128,11 +128,11 @@ export default () => ({
 
   // OCR controls
 
-  async runOCR() {
+  async runOCR(engine = 'google') {
     this.isRunningOCR = true;
 
     const { pathname } = window.location;
-    const url = pathname.replace('/proofing/', '/api/ocr/');
+    const url = pathname.replace('/proofing/', '/api/ocr/') + `?engine=${engine}`;
 
     const content = await fetch(url)
       .then((response) => {

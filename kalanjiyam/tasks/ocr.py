@@ -19,6 +19,7 @@ def _run_ocr_for_page_inner(
     app_env: str,
     project_slug: str,
     page_slug: str,
+    engine: str = 'google',
 ) -> int:
     """Must run in the application context."""
 
@@ -30,19 +31,34 @@ def _run_ocr_for_page_inner(
 
         # The actual API call.
         image_path = get_page_image_filepath(project_slug, page_slug)
-        ocr_response = google_ocr.run(image_path)
+        
+        from kalanjiyam.utils.ocr_engine import run_ocr
+        ocr_response = run_ocr(image_path, engine_name=engine)
 
         session = q.get_session()
         project = q.project(project_slug)
+        if project is None:
+            raise ValueError(f'Project "{project_slug}" not found.')
+        
         page = q.page(project.id, page_slug)
+        if page is None:
+            raise ValueError(f'Page "{page_slug}" not found in project "{project_slug}".')
 
-        page.ocr_bounding_boxes = google_ocr.serialize_bounding_boxes(
-            ocr_response.bounding_boxes
-        )
+        # Use the appropriate serialize function based on engine
+        if engine == 'google':
+            page.ocr_bounding_boxes = google_ocr.serialize_bounding_boxes(
+                ocr_response.bounding_boxes
+            )
+        else:
+            from kalanjiyam.utils.tesseract_ocr import serialize_bounding_boxes
+            page.ocr_bounding_boxes = serialize_bounding_boxes(
+                ocr_response.bounding_boxes
+            )
+        
         session.add(page)
         session.commit()
 
-        summary = "Run OCR"
+        summary = f"Run OCR ({engine})"
         try:
             return add_revision(
                 page=page,
@@ -54,7 +70,7 @@ def _run_ocr_for_page_inner(
             )
         except Exception as e:
             raise ValueError(
-                f'OCR failed for page "{project.slug}/{page.slug}".'
+                f'OCR failed for page "{project.slug}/{page.slug}" with engine {engine}.'
             ) from e
 
 
@@ -65,17 +81,20 @@ def run_ocr_for_page(
     app_env: str,
     project_slug: str,
     page_slug: str,
+    engine: str = 'google',
 ):
     _run_ocr_for_page_inner(
         app_env,
         project_slug,
         page_slug,
+        engine,
     )
 
 
 def run_ocr_for_project(
     app_env: str,
     project: db.Project,
+    engine: str = 'google',
 ) -> GroupResult | None:
     """Create a `group` task to run OCR on a project.
 
@@ -84,6 +103,9 @@ def run_ocr_for_project(
     >>> r = run_ocr_for_project(...)
     >>> progress = r.completed_count() / len(r.results)
 
+    :param app_env: Application environment
+    :param project: Project to run OCR on
+    :param engine: OCR engine to use ('google' or 'tesseract')
     :return: the Celery result, or ``None`` if no tasks were run.
     """
     flask_app = create_config_only_app(app_env)
@@ -96,6 +118,7 @@ def run_ocr_for_project(
                 app_env=app_env,
                 project_slug=project.slug,
                 page_slug=p.slug,
+                engine=engine,
             )
             for p in unedited_pages
         )

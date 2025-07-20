@@ -146,15 +146,24 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
     </div>
   </div>
 
-  <div x-data="{open: false}" class="relative">
+  <div x-data="{open: false, selectedEngine: 'google'}" class="relative">
     <button class="{{ button_css }}"
        @click.prevent="open=!open"
        @click.outside="open=false">{{ _('Tools') }}</button>
     <div x-show="open" class="dropdown-pane w-48">
       <ul class="text-sm" @click.prevent="open=false">
         <li>
+          <div class="dropdown-item">
+            <label class="block text-xs text-slate-600 mb-1">{{ _('OCR Engine:') }}</label>
+            <select class="w-full p-1 text-sm border rounded" x-model="selectedEngine">
+              <option value="google">{{ _('Google OCR') }}</option>
+              <option value="tesseract">{{ _('Tesseract OCR') }}</option>
+            </select>
+          </div>
+        </li>
+        <li>
           <button class="dropdown-item"
-                  @click.prevent="runOCR"
+                  @click.prevent="runOCR(selectedEngine)"
                   :disabled="isRunningOCR"
                   x-text="isRunningOCR ? '{{ _("Running OCR ...") }}' : '{{ _("Run OCR") }}'">
           </button>

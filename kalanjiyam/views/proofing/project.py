@@ -663,9 +663,22 @@ def batch_ocr(slug):
         abort(404)
 
     if request.method == "POST":
+        # Get OCR engine from form, default to 'google'
+        engine = request.form.get('engine', 'google')
+        
+        # Validate engine
+        from kalanjiyam.utils.ocr_engine import OcrEngineFactory
+        if engine not in OcrEngineFactory.get_supported_engines():
+            flash(_l("Unsupported OCR engine selected."))
+            return render_template(
+                "proofing/projects/batch-ocr.html",
+                project=project_,
+            )
+        
         task = ocr_tasks.run_ocr_for_project(
             app_env=current_app.config["KALANJIYAM_ENVIRONMENT"],
             project=project_,
+            engine=engine,
         )
         if task:
             return render_template(

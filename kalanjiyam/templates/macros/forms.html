@@ -13,7 +13,7 @@
 
 
 {% macro label(L) %}
-{{ L(class_="block text-slate-500 my-2") }}
+{{ L(class_="block text-peacock-secondary my-2") }}
 {% endmacro %}
 
 
@@ -30,9 +30,9 @@
 {% macro markdown_field(field) %}
 <div>
   {{ label(field.label) }}
-  {{ field(class_="border block p-2 w-full min-h-[200px] rounded") }}
+  {{ field(class_="border border-teal-200 block p-2 w-full min-h-[200px] rounded") }}
   {% set help_url = "https://commonmark.org/help/" %}
-  <p class="text-sm text-slate-500 mt-2 mb-4 a-underline">{% trans %}
+  <p class="text-sm text-peacock-secondary mt-2 mb-4 a-underline">{% trans %}
     You can format this text with Markdown.
     <a href="{{ help_url }}">Click here to learn more.</a>
   {% endtrans %}</p>
@@ -48,13 +48,13 @@
 
 {# Label for an auth field. #}
 {% macro auth_label(field) %}
-{{ field.label(class_="block text-slate-600") }}
+{{ field.label(class_="block text-peacock-secondary") }}
 {% endmacro %}
 
 
 {# Main input for an auth field. #}
 {% macro auth_input(field) %}
-{{ field(class_="w-full p-2 mt-2 border rounded") }}
+{{ field(class_="w-full p-2 mt-2 border border-teal-200 rounded") }}
 {% endmacro %}
 
 

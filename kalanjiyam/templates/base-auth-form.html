@@ -1,15 +1,12 @@
-{% extends 'base.html' %}
-
-
-{# Don't load any scripts, including tracking / analytics scripts
-   that might log the user's private tokens. #}
-{% block scripts %}{% endblock %}
-
-
-{% block body %}
-<body class="bg-slate-200">
-  <div class="max-w-md mx-auto mt-32 p-4">
-    {% block content %}{% endblock %}
-  </div>
+<!DOCTYPE html>
+<html lang="{{ get_locale() }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Kalanjiyam{% endblock %}</title>
+    <link rel="stylesheet" href="{{ asset('gen/style.css') }}">
+</head>
+<body class="bg-white">
+    {% block body %}{% endblock %}
 </body>
-{% endblock %}
+</html>

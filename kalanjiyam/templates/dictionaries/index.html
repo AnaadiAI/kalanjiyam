@@ -22,7 +22,7 @@ different languages.
         name="q"
         type="text"
         placeholder="{{ _('राम, ರಾಮ, rāma, rAma, ...') }}"
-        class="border border-slate-200 text-lg p-2 flex-1 bg-slate-100 text-slate-900 rounded-tl rounded-bl placeholder:text-slate-400"
+        class="border border-teal-200 text-lg p-2 flex-1 bg-white text-peacock-primary rounded-tl rounded-bl placeholder:text-peacock-secondary"
         x-model="query"
     >
     </input>
@@ -58,7 +58,7 @@ different languages.
 
 
 {% macro dictionary_history() %}
-<div class="text-sm my-4 pb-2 border-b text-slate-500
+<div class="text-sm my-4 pb-2 border-b border-teal-200 text-peacock-secondary
      flex items-start justify-between"
      x-cloak x-show="history.length">
   <div class="flex flex-1 overflow-hidden">
@@ -94,7 +94,7 @@ different languages.
 {% block main %}
 <article class="mx-4 md:mx-auto max-w-2xl md:mt-12 mb-24 md:mb-36">
 <header>
-  <h1 class="text-2xl md:text-4xl font-bold text-slate-300 my-4">
+  <h1 class="text-2xl md:text-4xl font-bold text-peacock-primary my-4">
     {{ _('Dictionary lookup') }}
   </h1>
 </header>

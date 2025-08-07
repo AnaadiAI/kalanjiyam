@@ -116,6 +116,33 @@ required only for specific features on Ambuda. For general usage, you can skip
 these.
 
 
+Background Task Services
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Ambuda uses Celery for background task processing, which is required for features
+like:
+
+- Project uploads (PDF processing and page splitting)
+- OCR (Optical Character Recognition) processing
+- Email sending
+- Batch operations
+
+To enable these features, you need to start both Redis and Celery:
+
+1. Start Redis (message broker and backend)::
+
+    make redis
+
+2. Start Celery worker (in a separate terminal)::
+
+    make celery
+
+.. note::
+    Without these services running, project uploads will appear to complete but
+    the actual PDF processing will not occur. The uploaded PDF will be saved but
+    not split into pages or added to the database.
+
+
 Google's Cloud Vision API
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 

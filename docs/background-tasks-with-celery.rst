@@ -24,7 +24,11 @@ First, install Redis, which we use to communicate with the Celery process::
     # If you're on a Linux system, send us a PR!
     ./scripts/install_osx_dependencies.sh
 
-Then, run Celery in a new terminal window::
+Then, start Redis (which serves as both the message broker and backend for Celery)::
+
+    make redis
+
+Finally, run Celery in a new terminal window::
 
     make celery
 
@@ -83,3 +87,9 @@ must kill then restart the Celery process.
 .. note::
     It's possible to hack around this problem, and I would love a pull request
     that does so. Check around first for any prior art we can repurpose here.
+
+
+Related Documentation
+--------------------
+
+- :doc:`batch-ocr-task-tracking` - Specific implementation details for batch OCR task tracking

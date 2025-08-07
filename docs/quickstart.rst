@@ -23,10 +23,11 @@ After that, you can bring up the development server::
 
 Then go to `localhost:5000` to see the local application.
 
-Some parts of Ambuda, such as PDF parsing, need to run tasks in the background.
+Some parts of Ambuda, such as PDF parsing and project uploads, need to run tasks in the background.
 To add support for these in your local setup, run the following::
 
     ./scripts/install_osx_dependencies.sh
+    make redis
     make celery
 
 Roughly, Tailwind generates a new CSS file whenever it detects certain changes

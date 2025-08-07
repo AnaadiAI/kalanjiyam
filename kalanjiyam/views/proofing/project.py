@@ -1,5 +1,8 @@
 import logging
 import re
+import os
+import json
+from datetime import datetime
 
 from celery.result import GroupResult
 from flask import (
@@ -30,6 +33,7 @@ from wtforms import (
 from wtforms.validators import DataRequired, ValidationError
 from wtforms.widgets import TextArea
 from wtforms_sqlalchemy.fields import QuerySelectField
+import redis
 
 from kalanjiyam import database as db
 from kalanjiyam import queries as q
@@ -42,6 +46,9 @@ from kalanjiyam.views.proofing.stats import calculate_stats
 
 bp = Blueprint("project", __name__)
 LOG = logging.getLogger(__name__)
+
+# Initialize Redis client
+redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 
 
 def _is_valid_page_number_spec(_, field):
@@ -662,6 +669,52 @@ def batch_ocr(slug):
     if project_ is None:
         abort(404)
 
+    # Check if there's an ongoing OCR task using Redis
+    task_key = f"ocr_task:{slug}"
+    task_info = redis_client.get(task_key)
+    
+    if task_info:
+        try:
+            task_data = json.loads(task_info)
+            task_id = task_data.get('task_id')
+            
+            # Try to restore the task to check if it's still active
+            r = GroupResult.restore(task_id, app=celery_app)
+            if r and r.results:
+                current = r.completed_count()
+                total = len(r.results)
+                # Check if task is still in progress (not all tasks completed)
+                if current < total:
+                    percent = current / total if total > 0 else 0
+                    
+                    # Calculate task status variables
+                    active_tasks = sum(1 for result in r.results if result.state == 'STARTED')
+                    pending_tasks = sum(1 for result in r.results if result.state == 'PENDING')
+                    failed_tasks = sum(1 for result in r.results if result.failed())
+                    
+                    return render_template(
+                        "proofing/projects/batch-ocr-post.html",
+                        project=project_,
+                        status="PROGRESS",
+                        current=current,
+                        total=total,
+                        percent=percent,
+                        task_id=task_id,
+                        active_tasks=active_tasks,
+                        pending_tasks=pending_tasks,
+                        failed_tasks=failed_tasks,
+                    )
+                else:
+                    # Task is complete, remove from Redis
+                    redis_client.delete(task_key)
+            else:
+                # Task not found or no results, remove from Redis
+                redis_client.delete(task_key)
+        except Exception as e:
+            LOG.warning(f"Error checking OCR task for {slug}: {e}")
+            # Task not found or error, remove from Redis
+            redis_client.delete(task_key)
+
     if request.method == "POST":
         # Get OCR engine from form, default to 'google'
         engine = request.form.get('engine', 'google')
@@ -681,6 +734,15 @@ def batch_ocr(slug):
             engine=engine,
         )
         if task:
+            # Store task info in Redis with expiration (24 hours)
+            task_info = {
+                'task_id': task.id,
+                'engine': engine,
+                'started_at': datetime.utcnow().isoformat(),
+                'project_slug': slug
+            }
+            redis_client.setex(task_key, 86400, json.dumps(task_info))
+            
             return render_template(
                 "proofing/projects/batch-ocr-post.html",
                 project=project_,
@@ -689,6 +751,9 @@ def batch_ocr(slug):
                 total=0,
                 percent=0,
                 task_id=task.id,
+                active_tasks=0,
+                pending_tasks=0,
+                failed_tasks=0,
             )
         else:
             flash(_l("All pages in this project have at least one edit already."))
@@ -699,6 +764,22 @@ def batch_ocr(slug):
     )
 
 
+def _clear_ocr_task_from_redis(task_id):
+    """Clear OCR task from Redis when it completes or fails."""
+    try:
+        # Find the task key by scanning Redis keys
+        for key in redis_client.scan_iter(match="ocr_task:*"):
+            task_info = redis_client.get(key)
+            if task_info:
+                task_data = json.loads(task_info)
+                if task_data.get('task_id') == task_id:
+                    redis_client.delete(key)
+                    LOG.debug(f"Cleared OCR task {task_id} from Redis key {key}")
+                    break
+    except Exception as e:
+        LOG.warning(f"Error clearing OCR task from Redis: {e}")
+
+
 @bp.route("/batch-ocr-status/<task_id>")
 def batch_ocr_status(task_id):
     r = GroupResult.restore(task_id, app=celery_app)
@@ -707,22 +788,34 @@ def batch_ocr_status(task_id):
     if r.results:
         current = r.completed_count()
         total = len(r.results)
-        percent = current / total
+        percent = current / total if total > 0 else 0
+
+        # Check if any tasks are actively being processed
+        active_tasks = sum(1 for result in r.results if result.state == 'STARTED')
+        pending_tasks = sum(1 for result in r.results if result.state == 'PENDING')
+        failed_tasks = sum(1 for result in r.results if result.failed())
 
         status = None
         if total:
             if current == total:
                 status = "SUCCESS"
+                # Clear the task from Redis when complete
+                _clear_ocr_task_from_redis(task_id)
+            elif failed_tasks > 0:
+                status = "FAILURE"
+                # Clear the task from Redis when failed
+                _clear_ocr_task_from_redis(task_id)
             else:
                 status = "PROGRESS"
-        else:
-            status = "FAILURE"
 
         data = {
             "status": status,
             "current": current,
             "total": total,
             "percent": percent,
+            "active_tasks": active_tasks,
+            "pending_tasks": pending_tasks,
+            "failed_tasks": failed_tasks,
         }
     else:
         data = {
@@ -730,6 +823,9 @@ def batch_ocr_status(task_id):
             "current": 0,
             "total": 0,
             "percent": 0,
+            "active_tasks": 0,
+            "pending_tasks": 0,
+            "failed_tasks": 0,
         }
 
     return render_template(

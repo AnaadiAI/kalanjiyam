@@ -127,7 +127,7 @@ db-seed-all: py-venv-check
 # Local run commands
 # ===============================================
 
-.PHONY: devserver celery
+.PHONY: devserver celery redis redis-stop
 
 # For Docker try `make mode=dev docker-start`
 devserver: py-venv-check
@@ -136,6 +136,14 @@ devserver: py-venv-check
 # Run a local Celery instance for background tasks.
 celery: 
 	celery -A kalanjiyam.tasks worker --loglevel=INFO
+
+# Start Redis server for Celery backend and broker.
+redis:
+	redis-server --daemonize yes
+
+# Stop Redis server.
+redis-stop:
+	redis-cli shutdown
 
 
 # Docker commands

@@ -6,7 +6,7 @@
 </div>
 {% endmacro %}
 
-{# kwargs: current, total, percent #}
+{# kwargs: current, total, percent, active_tasks, pending_tasks, failed_tasks #}
 {% if status == 'FAILURE' %}
   {% call components.div_warning() %}
   <p class="!mb-0">We weren't able to complete OCR on this project. If you
@@ -17,6 +17,22 @@
 {% elif status == 'PROGRESS' %}
   {{ progress_bar(percent) }}
   <p>Processed {{ current }} of {{ total }} unedited pages.</p>
+  
+  {% if active_tasks > 0 %}
+    <p class="text-sm text-gray-600">
+      <strong>{{ active_tasks }}</strong> pages currently being processed
+      {% if pending_tasks > 0 %}
+        • <strong>{{ pending_tasks }}</strong> pages waiting in queue
+      {% endif %}
+    </p>
+  {% elif current == 0 %}
+    <p class="text-sm text-gray-600">
+      OCR is starting up... This may take a few minutes for the first pages to complete.
+      {% if pending_tasks > 0 %}
+        <strong>{{ pending_tasks }}</strong> pages in queue.
+      {% endif %}
+    </p>
+  {% endif %}
 
 {% elif status == 'SUCCESS' %}
   {{ progress_bar(100) }}
@@ -25,4 +41,9 @@
 {% else %}
   {{ progress_bar(0) }}
   <p>Beginning OCR &hellip;</p>
+  {% if pending_tasks > 0 %}
+    <p class="text-sm text-gray-600">
+      <strong>{{ pending_tasks }}</strong> pages queued for processing.
+    </p>
+  {% endif %}
 {% endif %}

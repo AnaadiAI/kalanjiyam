@@ -175,7 +175,16 @@ class TranslationEngineFactory:
         if engine_name not in cls._engines:
             raise ValueError(f"Unsupported translation engine: {engine_name}. Supported engines: {list(cls._engines.keys())}")
         
-        return cls._engines[engine_name](**kwargs)
+        engine_class = cls._engines[engine_name]
+        
+        # Handle different constructor signatures
+        if engine_name == 'google':
+            return engine_class()  # GoogleTranslateEngine doesn't take kwargs
+        elif engine_name == 'openai':
+            api_key = kwargs.get('api_key')
+            return engine_class(api_key=api_key)
+        else:
+            return engine_class(**kwargs)
     
     @classmethod
     def get_supported_engines(cls) -> List[str]:

@@ -209,30 +209,76 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
 {% endmacro %}
 
 
-{# Image viewing area. #}
-{% macro image_box() %}
-<div class="bg-white border border-teal-200 rounded-lg p-4 peacock-shadow">
+{# Image viewing area with toggle for translation. #}
+{% macro image_box(translation_content=None, translation_metadata=None) %}
+<div class="bg-white border border-teal-200 rounded-lg p-4 peacock-shadow" x-data="{ showTranslation: false }">
   <div class="flex items-center justify-between mb-4">
-    <h3 class="text-lg font-semibold text-peacock-primary">{{ _('Original Image') }}</h3>
+    <h3 class="text-lg font-semibold text-peacock-primary" x-text="showTranslation ? '{{ _('Translation') }}' : '{{ _('Original Image') }}'"></h3>
     <div class="flex items-center gap-2">
-      <button type="button" id="osd-zoom-in" class="p-2 hover:bg-peacock-light rounded transition-colors" title="{{ _('Zoom in') }}">
+      <button type="button" 
+              @click="showTranslation = !showTranslation"
+              class="flex items-center gap-2 p-2 hover:bg-peacock-light rounded transition-colors"
+              :class="showTranslation ? 'bg-peacock-light' : ''"
+              title="{{ _('Toggle between image and translation') }}">
+        <svg class="w-5 h-5 text-peacock-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="!showTranslation">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
+        </svg>
+        <svg class="w-5 h-5 text-peacock-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="showTranslation">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <span x-text="showTranslation ? '{{ _('Show Image') }}' : '{{ _('Show Translation') }}'" class="text-sm"></span>
+      </button>
+      <button type="button" id="osd-zoom-in" class="p-2 hover:bg-peacock-light rounded transition-colors" title="{{ _('Zoom in') }}" x-show="!showTranslation">
         <svg class="w-5 h-5 text-peacock-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
         </svg>
       </button>
-      <button type="button" id="osd-zoom-out" class="p-2 hover:bg-peacock-light rounded transition-colors" title="{{ _('Zoom out') }}">
+      <button type="button" id="osd-zoom-out" class="p-2 hover:bg-peacock-light rounded transition-colors" title="{{ _('Zoom out') }}" x-show="!showTranslation">
         <svg class="w-5 h-5 text-peacock-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
         </svg>
       </button>
-      <button type="button" id="osd-home" class="p-2 hover:bg-peacock-light rounded transition-colors" title="{{ _('Reset view') }}">
+      <button type="button" id="osd-home" class="p-2 hover:bg-peacock-light rounded transition-colors" title="{{ _('Reset view') }}" x-show="!showTranslation">
         <svg class="w-5 h-5 text-peacock-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
         </svg>
       </button>
     </div>
   </div>
-  <div id="osd-image" class="w-full h-[500px] bg-peacock-subtle rounded-lg border border-teal-100"></div>
+  
+  <!-- Image content -->
+  <div x-show="!showTranslation" class="w-full h-[500px] bg-peacock-subtle rounded-lg border border-teal-100">
+    <div id="osd-image" class="w-full h-full"></div>
+  </div>
+  
+  <!-- Translation content -->
+  <div x-show="showTranslation" class="w-full h-[500px] bg-peacock-subtle rounded-lg border border-teal-100 p-4 overflow-y-auto">
+    {% if translation_content %}
+    <div class="prose max-w-none">
+      <h4 class="text-lg font-semibold text-peacock-primary mb-3">
+        {% if translation_metadata %}
+          {{ _('Translation') }} ({{ translation_metadata.source_language.upper() }} → {{ translation_metadata.target_language.upper() }})
+          <span class="text-sm font-normal text-peacock-secondary">via {{ translation_metadata.engine }}</span>
+        {% else %}
+          {{ _('Translation') }}
+        {% endif %}
+      </h4>
+      <div class="text-sm leading-relaxed whitespace-pre-wrap">{{ translation_content }}</div>
+    </div>
+    {% else %}
+    <div class="flex items-center justify-center h-full">
+      <div class="text-center">
+        <svg class="w-16 h-16 text-peacock-secondary mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+        </svg>
+        <h4 class="text-lg font-semibold text-peacock-primary mb-2">{{ _('No Translation Available') }}</h4>
+        <p class="text-peacock-secondary">{{ _('Translation has not been generated for this page yet.') }}</p>
+        <p class="text-sm text-peacock-secondary mt-2">{{ _('Use the batch translation feature to generate translations for this project.') }}</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endmacro %}
 

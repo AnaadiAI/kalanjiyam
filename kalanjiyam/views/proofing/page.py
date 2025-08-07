@@ -126,9 +126,28 @@ def edit(project_slug, page_slug):
     form.status.data = status_names[cur.status_id]
 
     has_edits = bool(cur.revisions)
+    translation_content = None
     if has_edits:
         latest_revision = cur.revisions[-1]
         form.content.data = latest_revision.content
+        
+        # Get translation for the latest revision (any available translation)
+        session = q.get_session()
+        translation = session.query(db.Translation).filter_by(
+            page_id=cur.id,
+            revision_id=latest_revision.id
+        ).first()
+        
+        if translation:
+            translation_content = translation.content
+            # Add translation metadata for display
+            translation_metadata = {
+                'source_language': translation.source_language,
+                'target_language': translation.target_language,
+                'engine': translation.translation_engine
+            }
+        else:
+            translation_metadata = None
 
     is_r0 = cur.status.name == SitePageStatus.R0
     image_number = cur.slug
@@ -145,6 +164,8 @@ def edit(project_slug, page_slug):
         page_context=ctx,
         page_number=page_number,
         project=ctx.project,
+        translation_content=translation_content,
+        translation_metadata=translation_metadata,
     )
 
 
@@ -186,6 +207,27 @@ def edit_post(project_slug, page_slug):
     image_number = cur.slug
     page_number = _get_page_number(ctx.project, cur)
 
+    # Get translation content for the latest revision (any available translation)
+    translation_content = None
+    if cur.revisions:
+        latest_revision = cur.revisions[-1]
+        session = q.get_session()
+        translation = session.query(db.Translation).filter_by(
+            page_id=cur.id,
+            revision_id=latest_revision.id
+        ).first()
+        
+        if translation:
+            translation_content = translation.content
+            # Add translation metadata for display
+            translation_metadata = {
+                'source_language': translation.source_language,
+                'target_language': translation.target_language,
+                'engine': translation.translation_engine
+            }
+        else:
+            translation_metadata = None
+
     # Keep args in sync with `edit`. (We can't unify these functions easily
     # because one function requires login but the other doesn't. Helper
     # functions don't have any obvious cutting points.
@@ -200,6 +242,8 @@ def edit_post(project_slug, page_slug):
         page_context=ctx,
         page_number=page_number,
         project=ctx.project,
+        translation_content=translation_content,
+        translation_metadata=translation_metadata,
     )
 
 

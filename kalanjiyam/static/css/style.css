@@ -60,7 +60,7 @@
     @apply bg-white hover:bg-peacock-light border border-teal-200;
   }
   .btn-submit {
-    @apply bg-peacock-gradient text-white hover:bg-peacock-primary transition;
+    @apply bg-peacock-primary text-white hover:bg-peacock-secondary transition;
     @apply active:translate-y-0.5;
   }
   ::file-selector-button {

@@ -39,6 +39,7 @@ from kalanjiyam import database as db
 from kalanjiyam import queries as q
 from kalanjiyam.tasks import app as celery_app
 from kalanjiyam.tasks import ocr as ocr_tasks
+from kalanjiyam.tasks import translation as translation_tasks
 from kalanjiyam.utils import project_utils, proofing_utils
 from kalanjiyam.utils.revisions import add_revision
 from kalanjiyam.views.proofing.decorators import moderator_required, p2_required
@@ -830,6 +831,170 @@ def batch_ocr_status(task_id):
 
     return render_template(
         "include/ocr-progress.html",
+        **data,
+    )
+
+
+@bp.route("/<slug>/batch-translate", methods=["GET", "POST"])
+@p2_required
+def batch_translate(slug):
+    project_ = q.project(slug)
+    if project_ is None:
+        abort(404)
+
+    # Check if there's an ongoing translation task using Redis
+    task_key = f"translation_task:{slug}"
+    task_info = redis_client.get(task_key)
+    
+    if task_info:
+        try:
+            task_data = json.loads(task_info)
+            task_id = task_data.get('task_id')
+            
+            # Try to restore the task to check if it's still active
+            r = GroupResult.restore(task_id, app=celery_app)
+            if r and r.results:
+                current = r.completed_count()
+                total = len(r.results)
+                # Check if task is still in progress (not all tasks completed)
+                if current < total:
+                    percent = current / total if total > 0 else 0
+                    
+                    # Calculate task status variables
+                    active_tasks = sum(1 for result in r.results if result.state == 'STARTED')
+                    pending_tasks = sum(1 for result in r.results if result.state == 'PENDING')
+                    failed_tasks = sum(1 for result in r.results if result.failed())
+                    
+                    return render_template(
+                        "proofing/projects/batch-translate.html",
+                        project=project_,
+                        status="PROGRESS",
+                        current=current,
+                        total=total,
+                        percent=percent,
+                        task_id=task_id,
+                        active_tasks=active_tasks,
+                        pending_tasks=pending_tasks,
+                        failed_tasks=failed_tasks,
+                    )
+                else:
+                    # Task is complete, remove from Redis
+                    redis_client.delete(task_key)
+            else:
+                # Task not found or no results, remove from Redis
+                redis_client.delete(task_key)
+        except Exception as e:
+            LOG.warning(f"Error checking translation task for {slug}: {e}")
+            # Task not found or error, remove from Redis
+            redis_client.delete(task_key)
+
+    if request.method == "POST":
+        # Get translation parameters from form
+        source_lang = request.form.get('source_lang', 'sa')
+        target_lang = request.form.get('target_lang', 'en')
+        engine = request.form.get('engine', 'google')
+        
+        # Validate engine
+        from kalanjiyam.utils.translation_engine import TranslationEngineFactory
+        if engine not in TranslationEngineFactory.get_supported_engines():
+            flash(_l("Unsupported translation engine selected."))
+            return render_template(
+                "proofing/projects/batch-translate.html",
+                project=project_,
+            )
+        
+        task = translation_tasks.run_translation_for_project(
+            app_env=current_app.config["KALANJIYAM_ENVIRONMENT"],
+            project=project_,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            engine=engine,
+        )
+        if task:
+            # Store task info in Redis with expiration (24 hours)
+            task_info = {
+                'task_id': task.id,
+                'engine': engine,
+                'source_lang': source_lang,
+                'target_lang': target_lang,
+                'started_at': datetime.utcnow().isoformat(),
+                'project_slug': slug
+            }
+            redis_client.setex(task_key, 86400, json.dumps(task_info))
+            
+            return render_template(
+                "proofing/projects/batch-translate.html",
+                project=project_,
+                status="PENDING",
+                current=0,
+                total=0,
+                percent=0,
+                task_id=task.id,
+                active_tasks=0,
+                pending_tasks=0,
+                failed_tasks=0,
+            )
+        else:
+            flash(_l("No pages with revisions found in this project."))
+
+    return render_template(
+        "proofing/projects/batch-translate.html",
+        project=project_,
+    )
+
+
+@bp.route("/batch-translate-status/<task_id>")
+def batch_translate_status(task_id):
+    r = GroupResult.restore(task_id, app=celery_app)
+    assert r, task_id
+
+    if r.results:
+        current = r.completed_count()
+        total = len(r.results)
+        percent = current / total if total > 0 else 0
+
+        # Check if any tasks are actively being processed
+        active_tasks = sum(1 for result in r.results if result.state == 'STARTED')
+        pending_tasks = sum(1 for result in r.results if result.state == 'PENDING')
+        failed_tasks = sum(1 for result in r.results if result.failed())
+
+        status = None
+        if total:
+            if current == total:
+                status = "SUCCESS"
+                # Clear the task from Redis when complete
+                from kalanjiyam.tasks.translation import _clear_translation_task_from_redis
+                _clear_translation_task_from_redis(task_id)
+            elif failed_tasks > 0:
+                status = "FAILURE"
+                # Clear the task from Redis when failed
+                from kalanjiyam.tasks.translation import _clear_translation_task_from_redis
+                _clear_translation_task_from_redis(task_id)
+            else:
+                status = "PROGRESS"
+
+        data = {
+            "status": status,
+            "current": current,
+            "total": total,
+            "percent": percent,
+            "active_tasks": active_tasks,
+            "pending_tasks": pending_tasks,
+            "failed_tasks": failed_tasks,
+        }
+    else:
+        data = {
+            "status": "PENDING",
+            "current": 0,
+            "total": 0,
+            "percent": 0,
+            "active_tasks": 0,
+            "pending_tasks": 0,
+            "failed_tasks": 0,
+        }
+
+    return render_template(
+        "include/translation-progress.html",
         **data,
     )
 

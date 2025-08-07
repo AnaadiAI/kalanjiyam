@@ -286,3 +286,51 @@ def ocr(project_slug, page_slug):
     except Exception as e:
         logging.error(f"OCR failed for {project_slug}/{page_slug} with engine {engine}: {e}")
         abort(500, description=f"OCR failed: {str(e)}")
+
+
+@api.route("/translate/<project_slug>/<page_slug>/")
+@login_required
+def translate(project_slug, page_slug):
+    """Apply translation to the given page using the specified engine."""
+    project_ = q.project(project_slug)
+    if project_ is None:
+        abort(404)
+
+    page_ = q.page(project_.id, page_slug)
+    if not page_:
+        abort(404)
+
+    # Get translation parameters from query parameters
+    source_lang = request.args.get('source_lang', 'sa')
+    target_lang = request.args.get('target_lang', 'en')
+    engine = request.args.get('engine', 'google')
+    revision_id = request.args.get('revision_id', type=int)
+    
+    # Validate engine
+    from kalanjiyam.utils.translation_engine import TranslationEngineFactory
+    if engine not in TranslationEngineFactory.get_supported_engines():
+        abort(400, description=f"Unsupported translation engine: {engine}")
+
+    # Get the revision to translate
+    if revision_id is None:
+        # Use the latest revision
+        if not page_.revisions:
+            abort(400, description="No revisions found for this page")
+        revision = page_.revisions[-1]  # Latest revision
+    else:
+        revision = q.get_session().query(db.Revision).filter_by(id=revision_id).first()
+        if not revision or revision.page_id != page_.id:
+            abort(400, description=f"Revision {revision_id} not found for this page")
+    
+    try:
+        from kalanjiyam.utils.translation_engine import translate_text
+        translation_response = translate_text(
+            revision.content, 
+            source_lang, 
+            target_lang, 
+            engine
+        )
+        return translation_response.translated_text
+    except Exception as e:
+        logging.error(f"Translation failed for {project_slug}/{page_slug} with engine {engine}: {e}")
+        abort(500, description=f"Translation failed: {str(e)}")

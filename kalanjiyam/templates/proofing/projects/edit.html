@@ -17,13 +17,15 @@
 {% set search_url = url_for("proofing.project.search", slug=project.slug)  %}
 {% set replace_url = url_for("proofing.project.replace", slug=project.slug)  %}
 {% set ocr_url = url_for("proofing.project.batch_ocr", slug=project.slug)  %}
+{% set translate_url = url_for("proofing.project.batch_translate", slug=project.slug)  %}
 
 <div class="prose">
 
 <ul>
   <li><a href="{{ search_url }}">{{ _('Search the project') }}</a></li>
   <li><a href="{{ replace_url }}">{{ _('Search & replace in the project') }}</a></li>
-  <li><a href="{{ ocr_url }}">{{ _('Run batch OCR') }}</a></p>
+  <li><a href="{{ ocr_url }}">{{ _('Run batch OCR') }}</a></li>
+  <li><a href="{{ translate_url }}">{{ _('Run batch translation') }}</a></li>
 </ul>
 
 {{ components.flash_messages() }}

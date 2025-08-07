@@ -192,3 +192,45 @@ class Revision(Base):
     project = relationship("Project")
     #: The status of this page.
     status = relationship("PageStatus", backref="revisions")
+
+
+class Translation(Base):
+
+    """A translation of a page revision.
+
+    Each translation corresponds to a specific revision and provides
+    the content in a different language.
+    """
+
+    __tablename__ = "proof_translations"
+
+    #: Primary key.
+    id = pk()
+    #: The page this translation corresponds to.
+    page_id = foreign_key("proof_pages.id")
+    #: The revision this translation is based on.
+    revision_id = foreign_key("proof_revisions.id")
+    #: The author of this translation (bot user for auto-translations).
+    author_id = foreign_key("users.id")
+    
+    #: The translated content.
+    content = Column(Text_, nullable=False)
+    
+    #: Source language code (e.g., 'sa' for Sanskrit).
+    source_language = Column(String, nullable=False)
+    #: Target language code (e.g., 'en' for English).
+    target_language = Column(String, nullable=False)
+    #: Translation engine used (e.g., 'google', 'openai').
+    translation_engine = Column(String, nullable=False)
+    
+    #: Translation status.
+    status = Column(String, default='pending', nullable=False)  # pending, completed, failed
+    #: Timestamp at which this translation was created.
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    #: Timestamp at which this translation was last updated.
+    updated_at = Column(DateTime, default=same_as("created_at"), nullable=False)
+
+    #: Relationships.
+    page = relationship("Page", backref="translations")
+    revision = relationship("Revision", backref="translations")
+    author = relationship("User", backref="translations")

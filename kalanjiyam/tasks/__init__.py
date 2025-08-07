@@ -25,6 +25,7 @@ app = Celery(
     include=[
             "kalanjiyam.tasks.projects",
     "kalanjiyam.tasks.ocr",
+    "kalanjiyam.tasks.translation",
     ],
 )
 app.conf.update(

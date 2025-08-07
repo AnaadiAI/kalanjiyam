@@ -23,28 +23,34 @@
   /* Needed to support the Alpine `x-cloak` attribute. */
   [x-cloak] { display: none !important; }
 
-  /* Peacock feather theme colors */
+  /* Siddha Peacock theme colors - inspired by Murugan's mayil */
   .text-brand { color: #0f766e; } /* Teal-800 */
-  .bg-brand { background: linear-gradient(135deg, #0f766e 0%, #0891b2 50%, #0e7490 100%); }
+  .bg-brand { background: linear-gradient(135deg, #0f766e 0%, #0891b2 50%, #7c3aed 100%); }
   
   /* Peacock accent colors */
   .text-peacock-primary { color: #0f766e; } /* Teal-800 */
   .text-peacock-secondary { color: #0891b2; } /* Cyan-600 */
-  .text-peacock-accent { color: #7c3aed; } /* Violet-600 */
+  .text-peacock-accent { color: #7c3aed; } /* Violet-600 - Murugan's color */
   .text-peacock-emerald { color: #059669; } /* Emerald-600 */
+  .text-peacock-gold { color: #fbbf24; } /* Amber-400 - Peacock feather */
   
   .bg-peacock-primary { background-color: #0f766e; } /* Teal-800 */
   .bg-peacock-secondary { background-color: #0891b2; } /* Cyan-600 */
   .bg-peacock-accent { background-color: #7c3aed; } /* Violet-600 */
   .bg-peacock-emerald { background-color: #059669; } /* Emerald-600 */
+  .bg-peacock-gold { background-color: #fbbf24; } /* Amber-400 */
   
   .bg-peacock-gradient { 
-    background: linear-gradient(135deg, #0f766e 0%, #0891b2 50%, #0e7490 100%); 
+    background: linear-gradient(135deg, #0f766e 0%, #0891b2 50%, #7c3aed 100%); 
   }
   
   .bg-peacock-subtle { background-color: #f0fdfa; } /* Teal-50 */
   .bg-peacock-light { background-color: #ccfbf1; } /* Teal-100 */
   .bg-peacock-medium { background-color: #99f6e4; } /* Teal-200 */
+  
+  /* Siddha-specific colors */
+  .bg-siddha-warm { background-color: #fef3c7; } /* Amber-50 */
+  .text-siddha-warm { color: #92400e; } /* Amber-800 */
 
   /* Form controls */
   .btn {

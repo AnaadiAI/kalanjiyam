@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Kalanjiyam{% endblock %}</title>
-    <meta name="description" content="{% block meta_description %}A breakthrough Siddha Knowledge Systems library. Read our library of traditional Siddha texts with word-by-word analysis, integrated dictionary support, and so much more.{% endblock %}">
-    <meta name="keywords" content="{% block meta_keywords %}siddha, knowledge systems, traditional medicine, alchemy, yoga, spiritual knowledge, tamil literature{% endblock %}">
+    <meta name="description" content="{% block meta_description %}A breakthrough Siddha Knowledge Systems platform. Preserve and study traditional Siddha texts through collaborative proofing, digital preservation, and community-driven knowledge sharing.{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}siddha, knowledge systems, traditional medicine, alchemy, yoga, spiritual knowledge, tamil literature, murugan, mayil, siddha texts, digital preservation{% endblock %}">
     <meta name="author" content="Kalanjiyam">
     <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
     <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
@@ -19,6 +19,7 @@
     <meta name="twitter:description" content="{{ self.meta_description() }}">
     <meta name="twitter:image" content="{{ self.og_image() }}">
     <link rel="canonical" href="{{ request.url }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">

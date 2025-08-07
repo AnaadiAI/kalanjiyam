@@ -130,15 +130,16 @@ def create_app(config_env: str):
     app.url_map.converters["list"] = ListConverter
 
     # Blueprints
-    app.register_blueprint(about, url_prefix="/about")
-    app.register_blueprint(api, url_prefix="/api")
-    app.register_blueprint(auth)
-    app.register_blueprint(blog, url_prefix="/blog")
-    app.register_blueprint(dictionaries, url_prefix="/tools/dictionaries")
-    app.register_blueprint(parses, url_prefix="/parses")
-    app.register_blueprint(proofing, url_prefix="/proofing")
-    app.register_blueprint(site)
-    app.register_blueprint(texts, url_prefix="/texts")
+    url_prefix = config_spec.APPLICATION_URL_PREFIX
+    app.register_blueprint(about, url_prefix=f"{url_prefix}/about")
+    app.register_blueprint(api, url_prefix=f"{url_prefix}/api")
+    app.register_blueprint(auth, url_prefix=url_prefix)
+    app.register_blueprint(blog, url_prefix=f"{url_prefix}/blog")
+    app.register_blueprint(dictionaries, url_prefix=f"{url_prefix}/tools/dictionaries")
+    app.register_blueprint(parses, url_prefix=f"{url_prefix}/parses")
+    app.register_blueprint(proofing, url_prefix=f"{url_prefix}/proofing")
+    app.register_blueprint(site, url_prefix=url_prefix)
+    app.register_blueprint(texts, url_prefix=f"{url_prefix}/texts")
 
     # Debug-only routes for local development.
     if app.debug or config.TESTING:

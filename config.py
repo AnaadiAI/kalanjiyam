@@ -95,6 +95,9 @@ class BaseConfig:
     #: explicit.
     BABEL_DEFAULT_LOCALE = "en"
 
+    #: URL prefix for the application. Set to "/kalanjiyam" for hosting at siddhasagaram.in/kalanjiyam
+    APPLICATION_URL_PREFIX = _env("APPLICATION_URL_PREFIX", "")
+
     # Flask-Mail
 
     #: URL for mail server.

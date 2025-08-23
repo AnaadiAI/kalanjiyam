@@ -68,7 +68,7 @@ export default () => ({
   imageViewer: null,
 
   // OCR Engine configurations
-  const ocrEngines = {
+  ocrEngines: {
     google: {
       name: 'Google OCR',
       languages: [
@@ -147,10 +147,10 @@ export default () => ({
       bilingualSeparator: ',',
       autoDetect: true
     }
-  };
+  },
 
   // Function to handle bilingual language selection
-  function handleBilingualLanguageSelection() {
+  handleBilingualLanguageSelection() {
     const engine = selectedEngine;
     const engineConfig = ocrEngines[engine];
     
@@ -186,10 +186,10 @@ export default () => ({
     // Show/hide additional language select based on engine
     const additionalLanguageDiv = document.getElementById('additional-language').parentNode;
     additionalLanguageDiv.style.display = engineConfig.supportsBilingual ? 'block' : 'none';
-  }
+  },
 
   // Function to update additional language options
-  function updateAdditionalLanguageOptions() {
+  updateAdditionalLanguageOptions() {
     const engine = selectedEngine;
     const engineConfig = ocrEngines[engine];
     const additionalLanguageSelect = document.getElementById('additional-language');
@@ -208,10 +208,10 @@ export default () => ({
       option.textContent = lang.text;
       additionalLanguageSelect.appendChild(option);
     });
-  }
+  },
 
   // Function to get combined language parameter
-  function getLanguageParameter() {
+  getLanguageParameter() {
     const engine = selectedEngine;
     const engineConfig = ocrEngines[engine];
     const primaryLanguage = document.getElementById('language').value;
@@ -230,10 +230,10 @@ export default () => ({
     }
     
     return primaryLanguage;
-  }
+  },
 
   // Function to get additional languages for Surya
-  function getAdditionalLanguages() {
+  getAdditionalLanguages() {
     const engine = selectedEngine;
     const additionalLanguage = document.getElementById('additional-language')?.value;
     
@@ -242,7 +242,7 @@ export default () => ({
     }
     
     return null;
-  }
+  },
 
   init() {
     this.loadSettings();

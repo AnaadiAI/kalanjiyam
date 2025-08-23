@@ -61,3 +61,4 @@ wtforms==3.0.1
 wtforms-sqlalchemy==0.3
 googletrans==4.0.0rc1
 openai>=1.0.0
+surya-ocr>=1.0.0

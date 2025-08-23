@@ -50,6 +50,11 @@ def _run_ocr_for_page_inner(
             page.ocr_bounding_boxes = google_ocr.serialize_bounding_boxes(
                 ocr_response.bounding_boxes
             )
+        elif engine == 'surya':
+            from kalanjiyam.utils.surya_ocr import serialize_bounding_boxes
+            page.ocr_bounding_boxes = serialize_bounding_boxes(
+                ocr_response.bounding_boxes
+            )
         else:
             from kalanjiyam.utils.tesseract_ocr import serialize_bounding_boxes
             page.ocr_bounding_boxes = serialize_bounding_boxes(

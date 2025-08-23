@@ -16,10 +16,12 @@ if [ -f /.dockerenv ]; then
     export PATH=$PATH:/venv/bin/
     
     # Start with conservative settings to prevent memory issues
-    celery -A kalanjiyam.tasks worker --loglevel=INFO --concurrency=2 --prefetch-multiplier=1
+    # Listen to both default and ocr queues
+    celery -A kalanjiyam.tasks worker --loglevel=INFO --concurrency=2 --prefetch-multiplier=1 -Q default,ocr
 else
     echo "Running locally..."
     
     # Start Celery worker locally with conservative settings
-    celery -A kalanjiyam.tasks worker --loglevel=INFO --concurrency=2 --prefetch-multiplier=1
+    # Listen to both default and ocr queues
+    celery -A kalanjiyam.tasks worker --loglevel=INFO --concurrency=2 --prefetch-multiplier=1 -Q default,ocr
 fi

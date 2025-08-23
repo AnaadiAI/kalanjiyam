@@ -142,6 +142,8 @@ def create_app(config_env: str):
     app.register_blueprint(public, url_prefix=f"{url_prefix}/books")
     app.register_blueprint(site, url_prefix=url_prefix)
     app.register_blueprint(texts, url_prefix=f"{url_prefix}/texts")
+    
+    # Admin functionality is now integrated into the main Flask-Admin interface
 
     # Debug-only routes for local development.
     if app.debug or config.TESTING:

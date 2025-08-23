@@ -27,6 +27,8 @@
     flex-direction: column;
   }
   
+
+  
   .content-header {
     flex-shrink: 0;
     margin-bottom: 1rem;
@@ -46,6 +48,10 @@
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
     background: white;
+  }
+  
+  .content-container.no-translation .scrollable-content {
+    overflow-y: visible;
   }
   
   .image-controls {
@@ -217,20 +223,28 @@
                 {{ selected_translation.content }}
               </div>
             {% endif %}
-            
-            <!-- No translation available -->
-            {% if not translations %}
-              <div class="text-center py-8 text-gray-500">
-                <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
-                </svg>
-                <p>No translation available for this page</p>
-              </div>
-            {% endif %}
           </div>
         </div>
       </div>
     </div>
+  </div>
+  
+  <!-- No translation available message - displayed outside the grid -->
+  {% if not translations %}
+    <div class="max-w-6xl mx-auto mt-4 mb-20">
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div class="flex items-center">
+          <svg class="w-5 h-5 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+          </svg>
+          <div>
+            <h3 class="text-sm font-medium text-yellow-800">No Translation Available</h3>
+            <p class="text-sm text-yellow-700 mt-1">Translation has not been generated for this page yet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
   </div>
 </div>
 

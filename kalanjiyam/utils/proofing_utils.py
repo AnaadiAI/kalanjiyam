@@ -16,7 +16,7 @@ and resolve any TODOs. -->
         <author>{author}</author>
       </titleStmt>
       <publicationStmt>
-        <publisher>Ambuda</publisher>
+        <publisher>Kalanjiyam</publisher>
         <!-- "free" or "restricted" depending on the license-->
         <availability status="{availability_status}">
           <license>
@@ -38,7 +38,7 @@ and resolve any TODOs. -->
     </fileDesc>
     <encodingDesc>
       <projectDesc>
-        <p>Produced through the distributed proofreading interface on Ambuda.</p>
+        <p>Produced through the distributed proofreading interface on Kalanjiyam.</p>
       </projectDesc>
     </encodingDesc>
     <revisionDesc>

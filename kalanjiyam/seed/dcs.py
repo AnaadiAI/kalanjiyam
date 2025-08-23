@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, load_only
 import kalanjiyam.database as db
 from kalanjiyam.seed.utils.data_utils import create_db
 
-REPO = "https://github.com/ambuda-org/dcs.git"
+REPO = "https://github.com/AnaadiAI/dcs.git"
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data" / "kalanjiyam-dcs"
 

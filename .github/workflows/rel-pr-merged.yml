@@ -2,7 +2,7 @@
 
 name: Teardown staging deployment
 env:
-  AMBUDA_VERSION: v0.1
+  KALANJIYAM_VERSION: v0.1
 
 on:
   # push:
@@ -38,10 +38,10 @@ jobs:
 
       - name: Extract Image tag
         shell: bash
-        run: echo "${AMBUDA_IMAGE}" >> image-name
+        run: echo "${KALANJIYAM_IMAGE}" >> image-name
         id: extract_image_details
         env:
-          AMBUDA_IMAGE: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          KALANJIYAM_IMAGE: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
 
       - uses: actions/upload-artifact@v3
         with:
@@ -62,12 +62,12 @@ jobs:
       - name: extract_image_details
         shell: bash
         run: |
-          echo "AMBUDA_IMAGE=`cat image-name`" >> $GITHUB_ENV
+          echo "KALANJIYAM_IMAGE=`cat image-name`" >> $GITHUB_ENV
           cat image-name
 
       - name: Stop the deploy job
         id: stagingdeploy
-        run: bash /home/ambuda-devbot/bin/ambuda-runner -i ${{ env.AMBUDA_IMAGE }} -x
+        run: bash /home/kalanjiyam-devbot/bin/kalanjiyam-runner -i ${{ env.KALANJIYAM_IMAGE }} -x
 
   commeent_pr_merged:
       # This job only runs on PR open or reopen

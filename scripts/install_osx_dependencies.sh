@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Install OS-specific binaries that we use in Ambuda.
+# Install OS-specific binaries that we use in Kalanjiyam.
 
 # Redis
 # =====

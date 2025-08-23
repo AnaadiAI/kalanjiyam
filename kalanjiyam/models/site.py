@@ -31,7 +31,7 @@ class ProjectSponsorship(Base):
 
 class ContributorInfo(Base):
 
-    """Information about an Ambuda contributor.
+    """Information about a Kalanjiyam contributor.
 
     For now, we use this for just proofreaders. Long-term, we might include
     other types of contributors here as well.

@@ -59,12 +59,12 @@ def get_block_slugs(text_slug: str) -> set[str]:
         return {b.slug for b in blocks}
 
 
-def write(ambuda_text_slug: str, dcs_text_name: str, xml_id_for_text: str):
-    text_slugs = get_block_slugs(ambuda_text_slug)
+def write(kalanjiyam_text_slug: str, dcs_text_name: str, xml_id_for_text: str):
+    text_slugs = get_block_slugs(kalanjiyam_text_slug)
     num_hits = 0
     num_misses = 0
 
-    with open(f"{ambuda_text_slug}.txt", "w") as f:
+    with open(f"{kalanjiyam_text_slug}.txt", "w") as f:
         for block_slug, parse_blob in iter_parsed_blocks(dcs_text_name):
             if block_slug in text_slugs:
                 num_hits += 1
@@ -80,7 +80,7 @@ def write(ambuda_text_slug: str, dcs_text_name: str, xml_id_for_text: str):
 
 def run():
     write(
-        ambuda_text_slug="kumarasambhavam",
+        kalanjiyam_text_slug="kumarasambhavam",
         dcs_text_name="Kumārasaṃbhava",
         xml_id_for_text="Ku",
     )
@@ -88,13 +88,13 @@ def run():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract parse data.")
-    parser.add_argument("--ambuda-slug", required=True)
+    parser.add_argument("--kalanjiyam-slug", required=True)
     parser.add_argument("--dcs-name", required=True)
     parser.add_argument("--xml-id", required=True)
 
     args = parser.parse_args()
     write(
-        ambuda_text_slug=args.ambuda_slug,
+        kalanjiyam_text_slug=args.kalanjiyam_slug,
         dcs_text_name=args.dcs_name,
         xml_id_for_text=args.xml_id,
     )

@@ -3,7 +3,7 @@
 from sqlalchemy import Column, ForeignKey, Integer
 from sqlalchemy.orm import declarative_base
 
-#: The base class for all of Ambuda's models. All new models should inherit
+#: The base class for all of Kalanjiyam's models. All new models should inherit
 #: from this class.
 Base = declarative_base()
 

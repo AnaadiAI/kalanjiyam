@@ -1,7 +1,7 @@
 Background tasks with Celery
 ============================
 
-Sometimes, a user on Ambuda will request an operation that takes a long time
+Sometimes, a user on Kalanjiyam will request an operation that takes a long time
 for our application code to process. Some examples of long-running tasks include:
 
 - calling a third-party API like Google OCR.

@@ -12,7 +12,7 @@ export PYTHONPATH=$PYTHONPATH:/app
 
 function init_vidyut_data () 
 {
-    VIDYUT_DATA_URL="https://github.com/ambuda-org/vidyut-py/releases/download/0.2.0/data-0.2.0.zip"
+    VIDYUT_DATA_URL="https://github.com/AnaadiAI/vidyut-py/releases/download/0.2.0/data-0.2.0.zip"
        
     if [ -z "${VIDYUT_DATA_DIR}" ]; 
     then

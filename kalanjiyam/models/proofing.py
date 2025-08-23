@@ -146,7 +146,7 @@ class PageStatus(Base):
 
     """The transcription status of a given page.
 
-    For specific values, see `ambuda.seed.lookup.page_status`.
+    For specific values, see `kalanjiyam.seed.lookup.page_status`.
     """
 
     __tablename__ = "proof_page_statuses"

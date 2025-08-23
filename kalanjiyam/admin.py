@@ -9,7 +9,7 @@ import kalanjiyam.database as db
 import kalanjiyam.queries as q
 
 
-class AmbudaIndexView(AdminIndexView):
+class KalanjiyamIndexView(AdminIndexView):
     @expose("/")
     def index(self):
         if not current_user.is_moderator:
@@ -94,8 +94,8 @@ def create_admin_manager(app):
     session = q.get_session_class()
     admin = Admin(
         app,
-        name="Ambuda",
-        index_view=AmbudaIndexView(),
+        name="Kalanjiyam",
+        index_view=KalanjiyamIndexView(),
         base_template="admin/master.html",
     )
 

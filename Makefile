@@ -214,7 +214,7 @@ coverage:
 coverage-report: coverage
 	coverage report --fail-under=80
 
-# Generate Ambuda's technical documentation.
+# Generate Kalanjiyam's technical documentation.
 # After the command completes, open "docs/_build/index.html".
 docs: py-venv-check
 	cd docs && make html

@@ -1,7 +1,7 @@
 Creating data from the command line
 ===================================
 
-Ambuda exposes a basic CLI for common administrative tasks. This interface lets
+Kalanjiyam exposes a basic CLI for common administrative tasks. This interface lets
 you quickly create objects to interact with on the development server.
 
 Create a new user::

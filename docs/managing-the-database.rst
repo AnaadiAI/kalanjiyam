@@ -17,7 +17,7 @@ The usual fix for this problem is to define database **migrations**. Each
 migration defines how we want to modify the database and how to undo those
 changes if we decide not to keep them.
 
-In Ambuda, we manage our database schemas with `SQLAlchemy`_, and we manage our
+In Kalanjiyam, we manage our database schemas with `SQLAlchemy`_, and we manage our
 migrations with a companion library called `Alembic`_.
 
 This guide will show you how to use Alembic for common development tasks.

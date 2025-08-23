@@ -1,4 +1,4 @@
-"""Various endpoints for the Ambuda blog.
+"""Various endpoints for the Kalanjiyam blog.
 
 The blog is a work in progress and doesn't have a defined voice, level of
 formality, etc. For now, we use it for any text content that it doesn't make

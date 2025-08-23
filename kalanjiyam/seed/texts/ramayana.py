@@ -62,7 +62,7 @@ def run():
     text_slug = "ramayanam"
 
     print("Initializing database ...")
-    engine = ambuda.seed.utils.data_utils.create_db()
+    engine = kalanjiyam.seed.utils.data_utils.create_db()
 
     print("Cleaning up old state ...")
     iti.delete_existing_text(engine, text_slug)
@@ -75,7 +75,7 @@ def run():
             n = "0" + n
 
         url = BASE_URL.format(n=n)
-        text = ambuda.seed.utils.data_utils.fetch_text(url)
+        text = kalanjiyam.seed.utils.data_utils.fetch_text(url)
         kandas.append(parse_kanda(text))
 
     print("Writing text ...")

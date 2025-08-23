@@ -46,7 +46,7 @@ def init_secrets(_):
 
 @task
 def init_repo(_):
-    url = "https://github.com/ambuda-org/ambuda.git"
+    url = "https://github.com/AnaadiAI/kalanjiyam.git"
     with c.cd(APP_DIRECTORY):
         c.run("git init .")
         c.run(f"git remote add origin {url}")
@@ -119,7 +119,7 @@ def rollback(_, commit):
 @task
 def restart_application(_):
     """Restart the production gunicorn instance."""
-    r.run("systemctl restart ambuda")
+    r.run("systemctl restart kalanjiyam")
 
 
 @task
@@ -142,4 +142,4 @@ def run_module(_, module):
 def seed_gretil(_):
     with c.cd(APP_DIRECTORY):
         c.run("./scripts/fetch-gretil-data.sh")
-        run_module(_, "ambuda.seed.gretil")
+        run_module(_, "kalanjiyam.seed.gretil")

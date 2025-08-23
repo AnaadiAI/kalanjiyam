@@ -1,7 +1,7 @@
 Installation
 ============
 
-This guide will show you how to install Ambuda and its dependencies. By the end
+This guide will show you how to install Kalanjiyam and its dependencies. By the end
 of this guide, you'll have a working devserver that contains the same texts and
 data as our production server.
 
@@ -9,7 +9,7 @@ data as our production server.
 Before you begin
 ----------------
 
-We recommend using the latest version of Python. At a mininum, Ambuda requires
+We recommend using the latest version of Python. At a mininum, Kalanjiyam requires
 Python 3.10.
 
 We also recommend having a recent version of `npm`. We use `npm` to fetch our
@@ -18,25 +18,25 @@ currently use npm version 8.5.2.)
 
 We tested this setup on a MacBook running macOS 12.3 Monterey, but we think it
 will work on most Unix machines. If you have installation problems that seem
-specific to the Ambuda project, please file an issue on our repo or let us know
+specific to the Kalanjiyam project, please file an issue on our repo or let us know
 on our Discord server.
 
 
 Code dependencies
 -----------------
 
-Start by downloading Ambuda's project code from GitHub::
+Start by downloading Kalanjiyam's project code from GitHub::
 
-    $ git clone git@github.com:ambuda-org/ambuda.git
+    $ git clone git@github.com/AnaadiAI/kalanjiyam.git
 
 You can install all dependencies with a simple `make` call::
 
     $ make install
 
-This command will install Ambuda's Python and JavaScript dependencies, create a
+This command will install Kalanjiyam's Python and JavaScript dependencies, create a
 new database, and add a sample dictionary and a few sample texts to that database.
 
-If the install command succeeds, you can bring up a basic version of Ambuda by
+If the install command succeeds, you can bring up a basic version of Kalanjiyam by
 running the following commands::
 
     # Enter the virtual environment.
@@ -51,13 +51,13 @@ running the following commands::
 Environment setup
 -----------------
 
-Behind the scenes, we configure Ambuda by setting various environment
+Behind the scenes, we configure Kalanjiyam by setting various environment
 variables, which is the standard practice for Flask applications. To organize
 all of these settings, we keep environment variables in a `.env` file in the
 project root.
 
 `make install` creates an `.env` file for you. If you ever need to add more
-variables in the future, just edit `.env`. All Ambuda code will refer to
+variables in the future, just edit `.env`. All Kalanjiyam code will refer to
 `.env` by default.
 
 If you need access to these environment variables as part of some other script,
@@ -85,7 +85,7 @@ run a local development environment using Docker by running:
 Data dependencies
 -----------------
 
-The `ambuda` repo doesn't contain any of the texts, dictionaries, or parse data
+The `kalanjiyam` repo doesn't contain any of the texts, dictionaries, or parse data
 that we serve on our library. To install this data, we run different **seed
 scripts** that fetch the data we need from the Internet.
 
@@ -111,15 +111,15 @@ might take several minutes to run.
 Service dependencies
 --------------------
 
-Ambuda has several important service dependencies. These dependencies are
-required only for specific features on Ambuda. For general usage, you can skip
+Kalanjiyam has several important service dependencies. These dependencies are
+required only for specific features on Kalanjiyam. For general usage, you can skip
 these.
 
 
 Background Task Services
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Ambuda uses Celery for background task processing, which is required for features
+Kalanjiyam uses Celery for background task processing, which is required for features
 like:
 
 - Project uploads (PDF processing and page splitting)
@@ -173,7 +173,7 @@ Then, download your JSON credentials and set the `GOOGLE_APPLICATION_CREDENTIALS
 environment variable in your `.env` file to point to these credentials.
 
 .. note::
-    Ambuda uses reCAPTCHA v2. It is slightly less sophisticated than v3 but has
+    Kalanjiyam uses reCAPTCHA v2. It is slightly less sophisticated than v3 but has
     better privacy guarantees.
 
 .. _`How to set up reCAPTCHA`: https://developers.google.com/recaptcha/intro

@@ -52,7 +52,7 @@ def test_is_valid_reset_token():
 def test_register__unauth(client):
     r = client.get("/register")
     assert r.status_code == 200
-    assert "Create an Ambuda account" in r.text
+    assert "Create a Kalanjiyam account" in r.text
 
 
 def test_register__unauth_post__ok(client):
@@ -82,7 +82,7 @@ def test_register__banned(banned_client):
 
 def test_sign_in__unauth(client):
     r = client.get("/sign-in")
-    assert ">Sign in to Ambuda<" in r.text
+    assert ">Sign in to Kalanjiyam<" in r.text
 
 
 def test_sign_in__unauth_post__ok(client):
@@ -174,7 +174,7 @@ def test_change_password(rama_client):
 def test_change_password__ok(client):
     # Create a dummy user
     session = q.get_session()
-    user = db.User(username="sample-user", email="foo@ambuda.org")
+    user = db.User(username="sample-user", email="foo@siddhasagaram.in")
     user.set_password("password")
     session.add(user)
     session.commit()

@@ -1,4 +1,4 @@
-"""General information about Ambuda."""
+"""General information about Kalanjiyam."""
 
 from flask import Blueprint, redirect, render_template, url_for
 

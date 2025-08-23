@@ -1,7 +1,7 @@
 Running in production
 =====================
 
-Some quick adhoc notes for running Ambuda in a production environment.
+Some quick adhoc notes for running Kalanjiyam in a production environment.
 
 
 Gunicorn

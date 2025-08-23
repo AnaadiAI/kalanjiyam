@@ -22,7 +22,7 @@ if [ ! -f $DB_FILE_PATH ]; then
     python -m scripts.initialize_db
 
     # Add some starter data with a few basic seed scripts.
-    python -m ambuda.seed.lookup && python -m ambuda.seed.texts.gretil && python -m ambuda.seed.dcs
+    python -m kalanjiyam.seed.lookup && python -m kalanjiyam.seed.texts.gretil && python -m kalanjiyam.seed.dcs
 
     # Create Alembic's migrations table.
     /venv/bin/alembic ensure_version
@@ -33,7 +33,7 @@ if [ ! -f $DB_FILE_PATH ]; then
 fi
 
 # Update to the latest migration.
-python -m ambuda.seed.lookup
+python -m kalanjiyam.seed.lookup
 /venv/bin/alembic upgrade head
 
 # Run the devserver, and live reload our CSS and JS.

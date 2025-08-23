@@ -1,7 +1,7 @@
 Quickstart
 ==========
 
-All of Ambuda's major commands are in `Makefile`.
+All of Kalanjiyam's major commands are in `Makefile`.
 
 
 Running the development server
@@ -23,7 +23,7 @@ After that, you can bring up the development server::
 
 Then go to `localhost:5000` to see the local application.
 
-Some parts of Ambuda, such as PDF parsing and project uploads, need to run tasks in the background.
+Some parts of Kalanjiyam, such as PDF parsing and project uploads, need to run tasks in the background.
 To add support for these in your local setup, run the following::
 
     ./scripts/install_osx_dependencies.sh
@@ -31,7 +31,7 @@ To add support for these in your local setup, run the following::
     make celery
 
 Roughly, Tailwind generates a new CSS file whenever it detects certain changes
-to Ambuda's HTML files. For more details, see the `Tailwind docs`_.
+to Kalanjiyam's HTML files. For more details, see the `Tailwind docs`_.
 
 .. _Tailwind docs: https://tailwindcss.com/docs/
 

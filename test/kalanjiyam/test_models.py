@@ -15,7 +15,7 @@ def test_text__str(client):
 
 def test_user__is_ok_when_created(client):
     session = get_session()
-    user = db.User(username="test", email="test@ambuda.org")
+    user = db.User(username="test", email="test@siddhasagaram.in")
     user.set_password("my-password")
     session.add(user)
     session.commit()
@@ -27,7 +27,7 @@ def test_user__is_ok_when_created(client):
 
 def test_user__set_and_check_password(client):
     session = get_session()
-    user = db.User(username="test", email="test@ambuda.org")
+    user = db.User(username="test", email="test@siddhasagaram.in")
     user.set_password("my-password")
     session.add(user)
     session.commit()
@@ -40,7 +40,7 @@ def test_user__set_and_check_password(client):
 
 def test_user__set_and_check_role(client):
     session = get_session()
-    user = db.User(username="test", email="test@ambuda.org")
+    user = db.User(username="test", email="test@siddhasagaram.in")
     user.set_password("my-password")
     session.add(user)
     session.flush()
@@ -59,7 +59,7 @@ def test_user__deletion(client):
     session = get_session()
 
     # Check active user
-    user = db.User(username="test", email="test@ambuda.org")
+    user = db.User(username="test", email="test@siddhasagaram.in")
     user.set_password("my-password")
     session.add(user)
     session.commit()

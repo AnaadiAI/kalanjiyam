@@ -69,7 +69,7 @@ def test_parse_tei_header():
           <author>AUTHOR</author>
         </titleStmt>
         <publicationStmt>
-          <publisher>Ambuda</publisher>
+          <publisher>Kalanjiyam</publisher>
           <!-- "free" or "restricted" depending on the license-->
           <availability status="AVAILABILITY">
             <license>
@@ -91,7 +91,7 @@ def test_parse_tei_header():
       </fileDesc>
       <encodingDesc>
         <projectDesc>
-          <p>Produced through the distributed proofreading interface on Ambuda.</p>
+          <p>Produced through the distributed proofreading interface on Kalanjiyam.</p>
         </projectDesc>
       </encodingDesc>
       <revisionDesc>
@@ -102,7 +102,7 @@ def test_parse_tei_header():
     parsed = x.parse_tei_header(header)
     assert parsed["title"] == "TITLE"
     assert parsed["author"] == "AUTHOR"
-    assert parsed["publisher"] == "Ambuda"
+    assert parsed["publisher"] == "Kalanjiyam"
 
 
 def test_parse_tei_header__elements_missing():

@@ -19,7 +19,7 @@ class Spec:
     filename: str
 
 
-REPO = "https://github.com/ambuda-org/gretil.git"
+REPO = "https://github.com/AnaadiAI/gretil.git"
 PROJECT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = PROJECT_DIR / "data" / "kalanjiyam-gretil"
 #: Slug to use for texts that have only one section.

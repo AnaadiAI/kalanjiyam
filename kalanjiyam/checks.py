@@ -131,7 +131,7 @@ def _check_lookup_tables(session) -> list[str]:
 
 
 def _check_bot_user(session) -> list[str]:
-    """Check that the ambuda-bot user exists."""
+    """Check that the kalanjiyam-bot user exists."""
     username = consts.BOT_USERNAME
     # Assume bot user is active
     bot_user = session.query(db.User).filter_by(username=username).first()
@@ -162,14 +162,14 @@ def _check_database_engine(engine: Engine):
         _warn()
         _warn("For more information, see our official docs at:")
         _warn()
-        _warn("    https://ambuda.readthedocs.io/en/latest/managing-the-database.html")
+        _warn("    https://kalanjiyam.readthedocs.io/en/latest/managing-the-database.html")
         _warn()
         _warn("If the error persists, please ping the #backend channel on the")
-        _warn("Ambuda Discord server (https://discord.gg/7rGdTyWY7Z).")
+        _warn("Kalanjiyam Discord server (https://discord.gg/7rGdTyWY7Z).")
         sys.exit(1)
     else:
         # Style the output to match Flask's styling.
-        print(" * [OK] Ambuda database check has passed.", flush=True)
+        print(" * [OK] Kalanjiyam database check has passed.", flush=True)
 
 
 def check_database_uri(database_uri: str):

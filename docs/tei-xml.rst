@@ -5,7 +5,7 @@ TEI XML
 What is TEI XML?
 ----------------
 
-Ambuda's text data is stored as XML, both on disk and in our database.
+Kalanjiyam's text data is stored as XML, both on disk and in our database.
 Specifically, we use a set of XML conventions defined by the *Text Encoding
 Initiative* (TEI). For brevity, we use the term *TEI XML* to refer to any XML
 that follows the TEI conventions.
@@ -18,7 +18,7 @@ At the same time, the TEI guidelines are complex and overwhelming. They define
 hundreds of different elements and attributes that one could use to describe the
 structure of essentially any printed book or manuscript.
 
-But, there's a small subset of TEI XML that is suitable for Ambuda's needs.
+But, there's a small subset of TEI XML that is suitable for Kalanjiyam's needs.
 That's what we will describe here.
 
 .. note::

@@ -1,18 +1,18 @@
-How to contribute to Ambuda
+How to contribute to Kalanjiyam
 ===========================
 
-Thank you for your interest in contributing to Ambuda! Ambuda is expanding
+Thank you for your interest in contributing to Kalanjiyam! Kalanjiyam is expanding
 rapidly, and we're grateful for all the help we can get to complete this
 ambitious project.
 
-This doc will show you how you can contribute to Ambuda's technical work.
+This doc will show you how you can contribute to Kalanjiyam's technical work.
 
 
 Reporting an issue
 ------------------
 
 Create a GitHub issues for any *technical* bugs or issues you see while using
-Ambuda. Please don't report errors on the text or parse data here.
+Kalanjiyam. Please don't report errors on the text or parse data here.
 
 
 Submitting patches
@@ -45,9 +45,9 @@ Patch standards:
 
 ### Submitting a PR
 
-- Fork from [Ambuda repo][fork]
+- Fork from [Kalanjiyam repo][fork]
 
-- `cd ambuda`
+- `cd kalanjiyam`
 
 - Make code changes and commit 
 
@@ -57,9 +57,9 @@ Patch standards:
 
 ### Setting up your dev environment
 
-Our [technical documentation][docs] will help you build Ambuda on your local
+Our [technical documentation][docs] will help you build Kalanjiyam on your local
 machine and run routine development tasks like testing and linting.
 
-[docs]: https://ambuda.readthedocs.io/en/latest/
-[fork]: https://github.com/ambuda-org/ambuda
-[pr]: https://github.com/ambuda-org/ambuda:development
+[docs]: https://kalanjiyam.readthedocs.io/en/latest/
+[fork]: https://github.com/AnaadiAI/kalanjiyam
+[pr]: https://github.com/AnaadiAI/kalanjiyam:development

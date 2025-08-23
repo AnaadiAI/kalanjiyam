@@ -40,7 +40,7 @@ class TextSection(Base):
     """Ordered divisions of text content. This represent divisions like kāṇḍas,
     sargas, etc.
 
-    A TextSection is the "unit of viewing." By default, Ambuda will display a
+    A TextSection is the "unit of viewing." By default, Kalanjiyam will display a
     text one section at a time.
 
     NOTE: sections are not nested.

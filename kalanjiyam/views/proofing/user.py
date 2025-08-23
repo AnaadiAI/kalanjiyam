@@ -36,7 +36,7 @@ def summary(username):
 
 @bp.route("/<username>/activity")
 def activity(username):
-    """Summarize the user's public activity on Ambuda."""
+    """Summarize the user's public activity on Kalanjiyam."""
     user_ = q.user(username)
     if not user_:
         abort(404)

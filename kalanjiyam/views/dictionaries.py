@@ -76,13 +76,13 @@ def _handle_form_submission(
     If a user with JavaScript disabled clicks the Search button, the user's query
     will be encoded as URL parameters. Some examples:
 
-    - https://ambuda.org/tools/dictionaries?source=mw&q=deva
-    - https://ambuda.org/tools/dictionaries/apte/svarga?source=mw&q=deva
+    - https://siddhasagaram.in/tools/dictionaries?source=mw&q=deva
+    - https://siddhasagaram.in/tools/dictionaries/apte/svarga?source=mw&q=deva
 
     This function makes a reasonable effort to rewrite such URLs into a
     standard form:
 
-        https://ambuda.org/tools/dictionaries/mw/deva
+        https://siddhasagaram.in/tools/dictionaries/mw/deva
 
     :param sources: sources already encoded in the URL
     :param url_query: query already encoded in the URL

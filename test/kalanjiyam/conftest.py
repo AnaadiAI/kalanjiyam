@@ -68,35 +68,35 @@ def initialize_test_db():
     _add_dictionaries(session)
 
     # Bot
-    bot = db.User(username=BOT_USERNAME, email="ambuda-bot@ambuda.org")
+    bot = db.User(username=BOT_USERNAME, email="kalanjiyam-bot@siddhasagaram.in")
     bot.set_password("pass_bod")
     session.add(bot)
     session.flush()
 
     # Auth
-    u_basic = db.User(username="u-basic", email="u_basic@ambuda.org")
+    u_basic = db.User(username="u-basic", email="u_basic@siddhasagaram.in")
     u_basic.set_password("pass_basic")
     session.add(u_basic)
     session.flush()
 
     # Moderator
-    moderator = db.User(username="u-moderator", email="u_moderator@ambuda.org")
+    moderator = db.User(username="u-moderator", email="u_moderator@siddhasagaram.in")
     moderator.set_password("pass_moderator")
     session.add(moderator)
     session.flush()
 
     # Admin
-    admin = db.User(username="u-admin", email="u_admin@ambuda.org")
+    admin = db.User(username="u-admin", email="u_admin@siddhasagaram.in")
     admin.set_password("pass_admin")
     session.add(admin)
     session.flush()
 
     # Deleted and Banned
-    deleted_admin = db.User(username="u-deleted", email="u_deleted@ambuda.org")
+    deleted_admin = db.User(username="u-deleted", email="u_deleted@siddhasagaram.in")
     deleted_admin.set_password("pass_deleted")
     deleted_admin.set_is_deleted(True)
 
-    banned = db.User(username="u-banned", email="u_banned@ambuda.org")
+    banned = db.User(username="u-banned", email="u_banned@siddhasagaram.in")
     banned.set_password("pass_banned")
     banned.set_is_banned(True)
 

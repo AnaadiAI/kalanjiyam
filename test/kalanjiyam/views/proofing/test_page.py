@@ -3,7 +3,7 @@ import kalanjiyam.utils.assets
 
 def test_get_image_filesystem_path(flask_app):
     with flask_app.app_context():
-        path = ambuda.utils.assets.get_page_image_filepath("project", "1")
+        path = kalanjiyam.utils.assets.get_page_image_filepath("project", "1")
     assert path.match("**/project/pages/1.jpg")
 
 

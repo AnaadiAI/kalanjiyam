@@ -6,7 +6,7 @@ graph LR
     subgraph Environment
     os(Ubuntu/MacOS) 
     os --> db
-    db -->|db| ambuda   
+    db -->|db| kalanjiyam   
     
     subgraph Setup
     db[("SQLite")]
@@ -16,13 +16,13 @@ graph LR
 
     
     subgraph Deploy
-    ambuda(Ambuda container) & celerey[Celery] & redis[Redis]
+    kalanjiyam(Kalanjiyam container) & celerey[Celery] & redis[Redis]
     end 
     style Deploy fill:#f3cf26, stroke:#fff, stroke-width:4px
     end
     style Environment fill:#edf7f6
 
-    ambuda --> browser(https://www.ambuda.org)
+    kalanjiyam --> browser(https://www.siddhasagaram.in)
 ```
 
 ## What is the PR process?

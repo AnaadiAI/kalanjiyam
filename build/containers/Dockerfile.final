@@ -66,22 +66,22 @@ WORKDIR /app
 COPY package.json package-lock.json tailwind.config.js /app/
 RUN npm ci
 
-# Copy source to temporary directory. This stage is a disposal layer. Removing /tmp/ambuda is non-issue
-COPY ./ambuda/ /app/ambuda/
+# Copy source to temporary directory. This stage is a disposal layer. Removing /tmp/kalanjiyam is non-issue
+COPY ./kalanjiyam/ /app/kalanjiyam/
 
 # Copy css
-RUN npx tailwindcss -i /app/ambuda/static/css/style.css -o /app/ambuda/static/gen/style.css --minify
+RUN npx tailwindcss -i /app/kalanjiyam/static/css/style.css -o /app/kalanjiyam/static/gen/style.css --minify
 
 # Copy js
-RUN npx esbuild /app/ambuda/static/js/main.js --outfile=/app/ambuda/static/gen/main.js --bundle --minify
+RUN npx esbuild /app/kalanjiyam/static/js/main.js --outfile=/app/kalanjiyam/static/gen/main.js --bundle --minify
 
 RUN echo "************* JS code build succeeded! *****************"
 
 # ####################################
-## 4. Copy Ambuda codes
+## 4. Copy Kalanjiyam codes
 # ####################################
 
-FROM base as build-ambuda 
+FROM base as build-kalanjiyam 
 
 ARG BUILD_TYPE=release
 
@@ -105,7 +105,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git
 
 ### TODO: Move Translations to the bottom image
 # Install all i18n files
-RUN . /venv/bin/activate && python /app/ambuda/scripts/fetch_i18n_files.py && pybabel compile -d /app/ambuda/translations -f
+RUN . /venv/bin/activate && python /app/kalanjiyam/scripts/fetch_i18n_files.py && pybabel compile -d /app/kalanjiyam/translations -f
 
 # specific files
 COPY config.py /app/
@@ -114,7 +114,7 @@ COPY alembic.ini /app/
 COPY migrations/ /app/migrations/
 COPY scripts/ /app/scripts/
 COPY cli.py /app/scripts/
-RUN echo "************* Ambuda application build succeeded! ****************"
+RUN echo "************* Kalanjiyam application build succeeded! ****************"
 
 # ####################################
 ## 5. Finalize the image
@@ -126,7 +126,7 @@ ARG BUILD_TYPE=release
 WORKDIR /app
 
 RUN echo "************* Building FINAL ${BUILD_TYPE}*****************"
-COPY --from=build-ambuda /venv /venv
-COPY --from=build-ambuda /app /app
+COPY --from=build-kalanjiyam /venv /venv
+COPY --from=build-kalanjiyam /app /app
 CMD ["/app/scripts/start_server.sh"]
-RUN echo "************* Ambuda deploy succeeded! *****************"
+RUN echo "************* Kalanjiyam deploy succeeded! *****************"

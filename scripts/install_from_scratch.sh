@@ -27,7 +27,7 @@ EOF
 fi
 
 
-echo "Beginning clean install of Ambuda."
+echo "Beginning clean install of Kalanjiyam."
 
 make install-frontend
 make install-python
@@ -52,7 +52,7 @@ SECRET_KEY="insecure development secret key"
 SQLALCHEMY_DATABASE_URI="sqlite:///$(pwd)/deploy/data/database/database.db"
 
 # OCR and BOT credentials
-AMBUDA_BOT_PASSWORD="insecure bot password"
+KALANJIYAM_BOT_PASSWORD="insecure bot password"
 GOOGLE_APPLICATION_CREDENTIALS="<Google API credentials>"
 EOF
 
@@ -87,7 +87,7 @@ cat << "EOF"
 SUCCESS SUCCESS SUCCESS SUCCESS SUCCESS SUCCESS SUCCESS SUCCESS SUCCESS SUCCESS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You have successfully installed Ambuda!
+You have successfully installed Kalanjiyam!
 
 We've added some sample data to start you off. To load all of our texts,
 dictionaries, and parse data into the development environment, you can run:

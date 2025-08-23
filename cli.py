@@ -58,7 +58,7 @@ def add_role(username, role):
     """Add the given role to the given user.
 
     In particular, `add-role <user> admin` will give a user administrator
-    privileges and grant them full access to Ambuda's data and content.
+    privileges and grant them full access to Kalanjiyam's data and content.
     """
     with Session(engine) as session:
         u = session.query(db.User).where(db.User.username == username).first()

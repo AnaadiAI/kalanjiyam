@@ -3,15 +3,15 @@ Internationalization and Localization
 
 .. note::
     This doc is for software engineers who want to add new translation files to
-    the Ambuda application. If you want to help translate but aren't interested
+    the Kalanjiyam application. If you want to help translate but aren't interested
     in the technical details, join our translation effort here:
 
-    https://www.transifex.com/ambuda/ambuda
+    https://www.transifex.com/kalanjiyam/kalanjiyam
 
 
 Internationalization and localization, or **i18n and l10n** for short, are how
 we prepare a website for multiple regions and languages. We use i18n and l10n
-to present Ambuda's interface in multiple languages. 
+to present Kalanjiyam's interface in multiple languages. 
 
 This doc describes our i18n and l10n process so that you can maintain existing
 i18n/l10n logic and add a new locale to the site.
@@ -32,7 +32,7 @@ We manage i18n and l10n through the `Flask-Babel`_ extension, which we
 initialize
 when creating our Flask app::
 
-    # ambuda/__init__.py:create_app
+    # kalanjiyam/__init__.py:create_app
     babel = Babel(app)
 
 Once we load this extension, we then annotate all of the text we wish to
@@ -96,7 +96,7 @@ We do our translation work through `Transifex`_, a user-friendly UI for
 managing translation projects. You can find our translation project `here`_.
 
 .. _`Transifex`: https://www.transifex.com/
-.. _`here`: https://www.transifex.com/ambuda/ambuda
+.. _`here`: https://www.transifex.com/kalanjiyam/kalanjiyam
 
 
 On Transifex, you can upload a `.pot` file as a template for the entire
@@ -107,7 +107,7 @@ project, and you can also upload `.po` files per locale.
 ------------------------------
 
 Next, we download the `.po` files created by Transifex, add them to the
-`ambuda` repo, and compile them into the `.mo` files that Flask-Babel uses.
+`kalanjiyam` repo, and compile them into the `.mo` files that Flask-Babel uses.
 
 We can do all of this with the following command::
 
@@ -119,5 +119,5 @@ We can do all of this with the following command::
 --------------------
 
 Finally, we update the app UI so that our new locale is available to the end
-user. To do so, just update the list in `ambuda.consts.LOCALES` then verify
+user. To do so, just update the list in `kalanjiyam.consts.LOCALES` then verify
 that everything works on your dev server.

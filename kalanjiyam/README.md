@@ -12,4 +12,4 @@ Generally, you will need to work with files in all four of these directories to
 implement a new feature.
 
 For detailed documentation, run `make docs` or use our pre-built documentation
-at: https://ambuda.readthedocs.io/en/latest/project-layout.html#core-code
+at: https://kalanjiyam.readthedocs.io/en/latest/project-layout.html#core-code

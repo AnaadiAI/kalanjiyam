@@ -6,7 +6,7 @@ representation that we can more easily load into a database.
 
 For a basic introduction to TEI XML, see:
 
-https://ambuda.readthedocs.io/en/latest/tei-xml.html
+https://kalanjiyam.readthedocs.io/en/latest/tei-xml.html
 
 NOTE: we assume that all documents are in Sanskrit and run transliteration over
 each document with `_to_devanagari`. Once we start supporting translations, we

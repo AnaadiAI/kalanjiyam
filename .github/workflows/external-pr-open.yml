@@ -1,10 +1,10 @@
-# Ambuda workflow to build and publish docker image
+# Kalanjiyam workflow to build and publish docker image
 
 name: Basic image build and test
 env:
-  AMBUDA_VERSION: v0.1
-  AMBUDA_HOST_IP: 127.0.0.1
-  AMBUDA_HOST_PORT: 5000
+  KALANJIYAM_VERSION: v0.1
+  KALANJIYAM_HOST_IP: 127.0.0.1
+  KALANJIYAM_HOST_PORT: 5000
   REGISTRY: ghcr.io
   
 on:
@@ -47,19 +47,19 @@ jobs:
       - name: Run SQL db setup
         id: dbsetup
         run: |
-          echo "AMBUDA_IMAGE=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> $GITHUB_ENV
+          echo "KALANJIYAM_IMAGE=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> $GITHUB_ENV
           docker compose -f deploy/local/docker-compose-dbsetup.yml up
         env:
-          AMBUDA_IMAGE: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          KALANJIYAM_IMAGE: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           
       - name: Run Docker images
         id: deploy
         run: docker compose -f deploy/local/docker-compose.yml up --detach
         env:
-          AMBUDA_HOST_IP: 0.0.0.0
+          KALANJIYAM_HOST_IP: 0.0.0.0
           
       - name: Check that site is running
-        run: timeout 2m bash -c "until curl --fail-with-body $AMBUDA_HOST_IP:$AMBUDA_HOST_PORT; do sleep 1; done"
+        run: timeout 2m bash -c "until curl --fail-with-body $KALANJIYAM_HOST_IP:$KALANJIYAM_HOST_PORT; do sleep 1; done"
         
       - name: Show logs on fail
         if: ${{ failure() }}

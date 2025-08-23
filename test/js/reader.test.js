@@ -124,7 +124,7 @@ test('transliterateStr transliterates with the current script', () => {
 // Ajax calls
 
 test('fetchBlocks sets properties correctly', async () => {
-  window.location = new URL('https://ambuda.org/texts/sample-text/1');
+  window.location = new URL('https://siddhasagaram.in/texts/sample-text/1');
 
   const r = Reader();
   await r.fetchBlocks();
@@ -141,7 +141,7 @@ test('fetchBlocks sets properties correctly', async () => {
 });
 
 test("fetchBlocks doesn't throw an error on a bad URL", async () => {
-  window.location = new URL('https://ambuda.org/texts/sample-text/error');
+  window.location = new URL('https://siddhasagaram.in/texts/sample-text/error');
 
   const r = Reader();
   await r.fetchBlocks();
@@ -174,7 +174,7 @@ test("searchDictionary is a no-op otherwise", async () => {
 });
 
 test("fetchBlockParse works on a normal case", async () => {
-  window.location = new URL('https://ambuda.org/texts/sample-text/1');
+  window.location = new URL('https://siddhasagaram.in/texts/sample-text/1');
 
   const r = Reader();
   await r.fetchBlocks();
@@ -185,7 +185,7 @@ test("fetchBlockParse works on a normal case", async () => {
 });
 
 test("fetchBlockParse shows an error if the word can't be found", async () => {
-  window.location = new URL('https://ambuda.org/texts/sample-text/1');
+  window.location = new URL('https://siddhasagaram.in/texts/sample-text/1');
 
   const r = Reader();
   await r.fetchBlocks();
@@ -226,7 +226,7 @@ test('CSS for parse layout is as expected', () => {
 // Click handlers
 
 test('onClickBlock fetches and displays parse data', async () => {
-  window.location = new URL('https://ambuda.org/texts/sample-text/1');
+  window.location = new URL('https://siddhasagaram.in/texts/sample-text/1');
 
   const r = Reader();
   await r.fetchBlocks();
@@ -238,7 +238,7 @@ test('onClickBlock fetches and displays parse data', async () => {
 
 
 test('onClickBlock toggles if parse data already exists', async () => {
-  window.location = new URL('https://ambuda.org/texts/sample-text/1');
+  window.location = new URL('https://siddhasagaram.in/texts/sample-text/1');
 
   const r = Reader();
   await r.fetchBlocks();

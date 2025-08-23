@@ -2,9 +2,9 @@
 
 name: Release image build & publish
 env:
-  AMBUDA_VERSION: v0.1
-  AMBUDA_HOST_IP: 127.0.0.1
-  AMBUDA_HOST_PORT: 5090
+  KALANJIYAM_VERSION: v0.1
+  KALANJIYAM_HOST_IP: 127.0.0.1
+  KALANJIYAM_HOST_PORT: 5090
   REGISTRY: ghcr.io
   
 on:
@@ -16,7 +16,7 @@ on:
 
 jobs:
   push_to_registries:
-    name: Push Ambuda image to GH container registry
+    name: Push Kalanjiyam image to GH container registry
     runs-on: ubuntu-22.04
     environment: staging
     permissions:
@@ -48,10 +48,10 @@ jobs:
         id: image_id
         shell: bash
         run: |
-          echo "AMBUDA_IMAGE=${{ env.AMBUDA_IMAGE }}" >> $GITHUB_ENV
-          echo "${{ env.AMBUDA_IMAGE }}" >> image-name
+          echo "KALANJIYAM_IMAGE=${{ env.KALANJIYAM_IMAGE }}" >> $GITHUB_ENV
+          echo "${{ env.KALANJIYAM_IMAGE }}" >> image-name
         env:
-          AMBUDA_IMAGE: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          KALANJIYAM_IMAGE: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
       
       - uses: actions/upload-artifact@v3
         with:
@@ -76,10 +76,10 @@ jobs:
         id: deploy
         run: docker compose -f deploy/local/docker-compose.yml up --detach
         env:
-          AMBUDA_HOST_IP: 0.0.0.0
+          KALANJIYAM_HOST_IP: 0.0.0.0
           
       - name: Check that site is running
-        run: timeout 2m bash -c "until curl --fail-with-body $AMBUDA_HOST_IP:$AMBUDA_HOST_PORT; do sleep 1; done"
+        run: timeout 2m bash -c "until curl --fail-with-body $KALANJIYAM_HOST_IP:$KALANJIYAM_HOST_PORT; do sleep 1; done"
         
       - name: Show logs on fail
         if: ${{ failure() }}
@@ -113,11 +113,11 @@ jobs:
       - name: extract_image_details
         shell: bash
         run: |
-          echo "AMBUDA_IMAGE=`cat image-name`" >> $GITHUB_ENV
-          echo "AMBUDA_IMAGE_TAG=${AMBUDA_IMAGE#ghcr.io/ambuda-org/ambuda:}" >> $GITHUB_ENV
+          echo "KALANJIYAM_IMAGE=`cat image-name`" >> $GITHUB_ENV
+          echo "KALANJIYAM_IMAGE_TAG=${KALANJIYAM_IMAGE#ghcr.io/AnaadiAI/kalanjiyam:}" >> $GITHUB_ENV
           cat image-name
 
       - name: Start the deploy job
         id: stagingdeploy
-        run: bash /home/ambuda-devbot/bin/ambuda-runner -i ${{ env.AMBUDA_IMAGE }} -s
+        run: bash /home/kalanjiyam-devbot/bin/kalanjiyam-runner -i ${{ env.KALANJIYAM_IMAGE }} -s
       

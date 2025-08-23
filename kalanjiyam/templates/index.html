@@ -42,9 +42,15 @@
     <a class="p-4 transition rounded btn bg-white text-peacock-primary hover:bg-peacock-light hover:text-peacock-primary peacock-shadow" href="{{ url_for("public.books.index") }}">
         {{ _('Browse Books') }}
     </a>
+    {% if current_user.is_admin %}
     <a class="p-4 transition rounded btn bg-white text-peacock-primary hover:bg-peacock-light hover:text-peacock-primary peacock-shadow" href="{{ url_for("proofing.index") }}">
         {{ _('Start Proofing') }}
     </a>
+    {% else %}
+    <a class="p-4 transition rounded btn bg-white text-peacock-primary hover:bg-peacock-light hover:text-peacock-primary peacock-shadow" href="{{ url_for("auth.sign_in") }}">
+        {{ _('Sign In') }}
+    </a>
+    {% endif %}
   </div>
 
   </div>

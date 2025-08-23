@@ -9,7 +9,6 @@
   .page-image {
     max-width: 100%;
     height: auto;
-    border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
   }
   
@@ -18,6 +17,64 @@
     line-height: 1.8;
     white-space: pre-wrap;
     word-wrap: break-word;
+    max-height: 100%;
+    overflow-y: auto;
+  }
+  
+  .content-container {
+    height: 600px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .content-header {
+    flex-shrink: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .content-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: white;
+  }
+  
+  .image-controls {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 10;
+    display: flex;
+    gap: 0.25rem;
+  }
+  
+  .image-controls button {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .image-controls button:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: #d1d5db;
+  }
+  
+  .image-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
   }
   
   .translation-toggle {
@@ -104,47 +161,74 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-20">
     <!-- Page Image -->
     <div class="lg:col-span-1">
-      <div class="bg-white rounded-lg shadow-md p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Original Page</h2>
-        <img src="{{ url_for('site.page_image', project_slug=project.slug, page_slug=page.slug) }}" 
-             alt="Page {{ page.slug }}" 
-             class="page-image"
-             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-        <div class="hidden text-center py-8 text-gray-500">
-          <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-          </svg>
-          <p>Page image not available</p>
+      <div class="content-container">
+        <div class="content-header">
+          <h2 class="text-lg font-semibold text-gray-900">Original Page</h2>
+        </div>
+        <div class="content-body">
+          <div class="scrollable-content">
+            <div class="image-container">
+              <div id="osd-image" class="w-full h-full"></div>
+              <div class="image-controls">
+                <button type="button" id="osd-zoom-in" title="Zoom in">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                  </svg>
+                </button>
+                <button type="button" id="osd-zoom-out" title="Zoom out">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"></path>
+                  </svg>
+                </button>
+                <button type="button" id="osd-home" title="Reset view">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="hidden text-center py-8 text-gray-500" id="image-error">
+              <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              <p>Page image not available</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- OCR Text -->
     <div class="lg:col-span-1">
-      <div class="bg-white rounded-lg shadow-md p-4">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Text Content</h2>
-        
-        <!-- Original Text -->
-        <div id="original-text" class="text-content">
-          {{ revision.content }}
+      <div class="content-container">
+        <div class="content-header">
+          <h2 class="text-lg font-semibold text-gray-900">Text Content</h2>
         </div>
-        
-        <!-- Translation Text (hidden by default) -->
-        {% if selected_translation %}
-          <div id="translation-text" class="text-content hidden">
-            {{ selected_translation.content }}
+        <div class="content-body">
+          <div class="scrollable-content">
+            <!-- Original Text -->
+            <div id="original-text" class="text-content">
+              {{ revision.content }}
+            </div>
+            
+            <!-- Translation Text (hidden by default) -->
+            {% if selected_translation %}
+              <div id="translation-text" class="text-content hidden">
+                {{ selected_translation.content }}
+              </div>
+            {% endif %}
+            
+            <!-- No translation available -->
+            {% if not translations %}
+              <div class="text-center py-8 text-gray-500">
+                <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+                </svg>
+                <p>No translation available for this page</p>
+              </div>
+            {% endif %}
           </div>
-        {% endif %}
-        
-        <!-- No translation available -->
-        {% if not translations %}
-          <div class="text-center py-8 text-gray-500">
-            <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
-            </svg>
-            <p>No translation available for this page</p>
-          </div>
-        {% endif %}
+        </div>
       </div>
     </div>
   </div>
@@ -243,6 +327,67 @@ document.addEventListener('DOMContentLoaded', function() {
       translationSelect.dispatchEvent(new Event('change'));
     }
   });
+});
+</script>
+
+<!-- OpenSeadragon Image Viewer -->
+<script src="https://cdn.jsdelivr.net/npm/openseadragon@3.1/build/openseadragon/openseadragon.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize OpenSeadragon image viewer
+  const imageURL = "{{ url_for('site.page_image', project_slug=project.slug, page_slug=page.slug) }}";
+  
+  try {
+    const viewer = OpenSeadragon({
+      id: 'osd-image',
+      tileSources: {
+        type: 'image',
+        url: imageURL,
+        buildPyramid: false,
+      },
+      
+      // Buttons
+      showZoomControl: false,
+      showHomeControl: false,
+      showRotationControl: false,
+      showFullPageControl: false,
+      
+      // Animations
+      gestureSettingsMouse: {
+        flickEnabled: true,
+      },
+      animationTime: 0.5,
+      
+      // Zoom settings
+      zoomPerClick: 1.1,
+      maxZoomPixelRatio: 2.5,
+      
+      // Error handling
+      errorHandler: function(event) {
+        console.error('OpenSeadragon error:', event);
+        document.getElementById('osd-image').style.display = 'none';
+        document.getElementById('image-error').style.display = 'block';
+      }
+    });
+    
+    // Connect zoom buttons
+    document.getElementById('osd-zoom-in').addEventListener('click', function() {
+      viewer.viewport.zoomBy(1.1);
+    });
+    
+    document.getElementById('osd-zoom-out').addEventListener('click', function() {
+      viewer.viewport.zoomBy(0.9);
+    });
+    
+    document.getElementById('osd-home').addEventListener('click', function() {
+      viewer.viewport.goHome();
+    });
+    
+  } catch (error) {
+    console.error('Failed to initialize OpenSeadragon:', error);
+    document.getElementById('osd-image').style.display = 'none';
+    document.getElementById('image-error').style.display = 'block';
+  }
 });
 </script>
 {% endblock %}

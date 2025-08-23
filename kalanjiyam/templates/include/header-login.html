@@ -24,7 +24,6 @@
     </li>
     {% else %}
     <li class="p-4 py-2">
-      <a href="{{ url_for("auth.register") }}">{{ _('Register') }}</a> |
       <a href="{{ url_for("auth.sign_in") }}">{{ _('Sign in') }}</a>
     </li>
     {% endif %}

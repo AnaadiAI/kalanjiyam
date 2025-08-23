@@ -29,8 +29,8 @@
   {{ mf.auth_submit(_("Sign in")) }}
 </form>
 
-<p class="text-center text-md mt-4 a-hover-underline text-peacock-secondary">
-  <a href="{{ url_for('auth.register') }}">{{ _("Don't have an account? Click here to register.") }}</a>
+<p class="text-center text-md mt-4 text-peacock-secondary">
+  {{ _("Contact the site administrator to create an account.") }}
 </p>
 </div>
 {% endblock %}

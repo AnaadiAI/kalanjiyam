@@ -20,11 +20,10 @@
 {% block main %}
 <article class="p-4">
   {% if not current_user.is_authenticated -%}
-  {% set url = url_for('auth.register') %}
   {% call mc.p_warning() %}{% trans %}
   Since you are not logged in, some functions (such as the OCR button) have
-  been disabled. To use all website features, please <a class="underline"
-  href="{{ url }}">create an account</a>.
+  been disabled. To use all website features, please contact the site administrator
+  to create an account.
   {% endtrans %}{% endcall %}
   {%- endif %}
 
@@ -109,11 +108,10 @@
   </form>
 
   {% if not current_user.is_authenticated %}
-  {% set create = url_for("auth.register") %}
   {% set log_in = url_for("auth.sign_in") %}
   {% call mc.p_warning() %}
-  Only registered users can save changes. <a href="{{ create }}">Create an
-      account</a> or <a href="{{ log_in }}">sign in</a> to save your
+  Only registered users can save changes. Contact the site administrator to create an
+      account or <a href="{{ log_in }}">sign in</a> to save your
   changes.
   {% endcall %}
   {% endif %}

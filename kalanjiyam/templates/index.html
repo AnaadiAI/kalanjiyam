@@ -15,7 +15,7 @@
 {% set mobile_only = ["proofing.index", "site.support"] %}
 
 
-{% block title %}{{ _('Kalanjiyam - Siddha Knowledge Systems') }}{% endblock %}
+{% block title %}{{ _('Kalanjiyam - Indian Knowledge Digital Repo') }}{% endblock %}
 
 
 {% block header %}
@@ -30,11 +30,10 @@
     <div class="flex justify-center mb-6">
       <img src="{{ url_for('static', filename='images/siddha-logo.svg') }}" alt="Siddha Logo" class="w-24 h-24">
     </div>
-    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold">{{ _('Unveiling Siddha Wisdom') }}</h1>
+    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold">{{ _('Digital Library') }}</h1>
     <p class="mx-auto text-lg mt-4 mb-4 max-w-2xl text-teal-100">{% trans %}
-    Discover the ancient Siddha knowledge systems through traditional texts, 
-    alchemy, medicine, and spiritual practices. All in a free online library 
-    dedicated to preserving and sharing Siddha wisdom.
+    All free online library 
+    dedicated to preserving and sharing  wisdom.
     {% endtrans %}</p>
   </div>
 
@@ -68,7 +67,7 @@
 {% block main %}
 <article>
 
-
+  {#
 {% call section("text-peacock-primary") %}
 <h2 class="!mt-0">{{ _("Preserving Ancient Siddha Knowledge") }}</h2>
 
@@ -138,7 +137,7 @@ contribute to this sacred work.
 {% endtrans %}</p>
 {% endcall %}
 
-<section class="text-center text-peacock-primary shrink-0 pt-4 pb-32">
+ <section class="text-center text-peacock-primary shrink-0 pt-4 pb-32">
   <div class="max-w-4xl mx-auto mt-28 mb-4 p-4">
     <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold peacock-text-gradient">
       {{ _('Siddha Wisdom at Your Fingertips') }}
@@ -152,7 +151,7 @@ contribute to this sacred work.
       {{ _('Start Proofing') }}
     </a>
   </div>
-</section>
+</section> #}
 
 </article>
 {% endblock %}

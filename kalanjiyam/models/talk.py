@@ -26,11 +26,11 @@ class Board(Base):
 
     #: Threads, newest first.
     threads = relationship(
-        "Thread", order_by=lambda: Thread.created_at.desc(), backref="board"
+        "Thread", order_by=lambda: Thread.created_at.desc(), backref="board", cascade="delete"
     )
     #: Posts, newest first.
     posts = relationship(
-        "Post", order_by=lambda: Post.created_at.desc(), backref="board"
+        "Post", order_by=lambda: Post.created_at.desc(), backref="board", cascade="delete"
     )
 
 
@@ -56,7 +56,7 @@ class Thread(Base):
     #: The author of this thread.
     author = relationship("User", backref="threads")
     #: Posts, oldest first.
-    posts = relationship("Post", order_by=lambda: Post.created_at, backref="thread")
+    posts = relationship("Post", order_by=lambda: Post.created_at, backref="thread", cascade="delete")
 
 
 class Post(Base):

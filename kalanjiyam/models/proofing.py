@@ -140,6 +140,9 @@ class Page(Base):
         backref="page",
         cascade="delete",
     )
+    
+    #: Translations for this page.
+    translations = relationship("Translation", backref="page", cascade="delete")
 
 
 class PageStatus(Base):
@@ -192,6 +195,9 @@ class Revision(Base):
     project = relationship("Project")
     #: The status of this page.
     status = relationship("PageStatus", backref="revisions")
+    
+    #: Translations for this revision.
+    translations = relationship("Translation", backref="revision", cascade="delete")
 
 
 class Translation(Base):
@@ -231,6 +237,4 @@ class Translation(Base):
     updated_at = Column(DateTime, default=same_as("created_at"), nullable=False)
 
     #: Relationships.
-    page = relationship("Page", backref="translations")
-    revision = relationship("Revision", backref="translations")
     author = relationship("User", backref="translations")

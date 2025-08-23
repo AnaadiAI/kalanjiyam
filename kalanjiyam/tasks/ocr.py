@@ -20,6 +20,7 @@ def _run_ocr_for_page_inner(
     project_slug: str,
     page_slug: str,
     engine: str = 'google',
+    language: str = 'sa',
 ) -> int:
     """Must run in the application context."""
 
@@ -33,7 +34,7 @@ def _run_ocr_for_page_inner(
         image_path = get_page_image_filepath(project_slug, page_slug)
         
         from kalanjiyam.utils.ocr_engine import run_ocr
-        ocr_response = run_ocr(image_path, engine_name=engine)
+        ocr_response = run_ocr(image_path, engine_name=engine, language=language)
 
         session = q.get_session()
         project = q.project(project_slug)
@@ -58,7 +59,7 @@ def _run_ocr_for_page_inner(
         session.add(page)
         session.commit()
 
-        summary = f"Run OCR ({engine})"
+        summary = f"Run OCR ({engine}, {language})"
         try:
             return add_revision(
                 page=page,
@@ -70,7 +71,7 @@ def _run_ocr_for_page_inner(
             )
         except Exception as e:
             raise ValueError(
-                f'OCR failed for page "{project.slug}/{page.slug}" with engine {engine}.'
+                f'OCR failed for page "{project.slug}/{page.slug}" with engine {engine} and language {language}.'
             ) from e
 
 
@@ -82,12 +83,14 @@ def run_ocr_for_page(
     project_slug: str,
     page_slug: str,
     engine: str = 'google',
+    language: str = 'sa',
 ):
     _run_ocr_for_page_inner(
         app_env,
         project_slug,
         page_slug,
         engine,
+        language,
     )
 
 
@@ -95,6 +98,7 @@ def run_ocr_for_project(
     app_env: str,
     project: db.Project,
     engine: str = 'google',
+    language: str = 'sa',
 ) -> GroupResult | None:
     """Create a `group` task to run OCR on a project.
 
@@ -106,6 +110,7 @@ def run_ocr_for_project(
     :param app_env: Application environment
     :param project: Project to run OCR on
     :param engine: OCR engine to use ('google' or 'tesseract')
+    :param language: Language code for OCR (default: 'sa' for Sanskrit)
     :return: the Celery result, or ``None`` if no tasks were run.
     """
     flask_app = create_config_only_app(app_env)
@@ -119,6 +124,7 @@ def run_ocr_for_project(
                 project_slug=project.slug,
                 page_slug=p.slug,
                 engine=engine,
+                language=language,
             )
             for p in unedited_pages
         )

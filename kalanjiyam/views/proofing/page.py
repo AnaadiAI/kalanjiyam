@@ -313,8 +313,9 @@ def ocr(project_slug, page_slug):
     if not page_:
         abort(404)
 
-    # Get OCR engine from query parameter, default to 'google'
+    # Get OCR parameters from query parameters
     engine = request.args.get('engine', 'google')
+    language = request.args.get('language', 'sa')
     
     # Validate engine
     from kalanjiyam.utils.ocr_engine import OcrEngineFactory
@@ -325,10 +326,10 @@ def ocr(project_slug, page_slug):
     
     try:
         from kalanjiyam.utils.ocr_engine import run_ocr
-        ocr_response = run_ocr(image_path, engine_name=engine)
+        ocr_response = run_ocr(image_path, engine_name=engine, language=language)
         return ocr_response.text_content
     except Exception as e:
-        logging.error(f"OCR failed for {project_slug}/{page_slug} with engine {engine}: {e}")
+        logging.error(f"OCR failed for {project_slug}/{page_slug} with engine {engine} and language {language}: {e}")
         abort(500, description=f"OCR failed: {str(e)}")
 
 

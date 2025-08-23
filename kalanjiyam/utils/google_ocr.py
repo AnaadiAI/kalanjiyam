@@ -56,22 +56,50 @@ def debug_dump_response(response):
         f.write(AnnotateImageResponse.to_json(response))
 
 
-def run(file_path: Path) -> OcrResponse:
+def run(file_path: Path, language: str = 'sa') -> OcrResponse:
     """Run Google OCR over the given image.
 
     :param file_path: path to the image we'll process with OCR.
+    :param language: language code for OCR (default: 'sa' for Sanskrit).
     :return: an OCR response containing the image's text content and
         bounding boxes.
     """
-    logging.debug(f"Starting full text annotation: {file_path}")
+    logging.debug(f"Starting full text annotation: {file_path} with language {language}")
 
     client = vision.ImageAnnotatorClient()
     image = prepare_image(file_path)
 
-    # Disable the language hint. It produced identical Devanagari output while
-    # making English noticeably worse.
-    # context = vision.ImageContext(language_hints=['sa'])
-    response = client.document_text_detection(image=image)  # , image_context=context)
+    # Set language hints based on the language parameter
+    language_hints = []
+    if language == 'sa':
+        language_hints = ['sa']  # Sanskrit
+    elif language == 'hi':
+        language_hints = ['hi']  # Hindi
+    elif language == 'te':
+        language_hints = ['te']  # Telugu
+    elif language == 'mr':
+        language_hints = ['mr']  # Marathi
+    elif language == 'bn':
+        language_hints = ['bn']  # Bengali
+    elif language == 'gu':
+        language_hints = ['gu']  # Gujarati
+    elif language == 'kn':
+        language_hints = ['kn']  # Kannada
+    elif language == 'ml':
+        language_hints = ['ml']  # Malayalam
+    elif language == 'ta':
+        language_hints = ['ta']  # Tamil
+    elif language == 'pa':
+        language_hints = ['pa']  # Punjabi
+    elif language == 'or':
+        language_hints = ['or']  # Odia
+    elif language == 'ur':
+        language_hints = ['ur']  # Urdu
+    else:
+        language_hints = ['en']  # Default to English
+
+    context = vision.ImageContext(language_hints=language_hints)
+    response = client.document_text_detection(image=image, image_context=context)
     document = response.full_text_annotation
 
     buf = []
@@ -113,3 +141,33 @@ def run(file_path: Path) -> OcrResponse:
 
     text_content = post_process("".join(buf))
     return OcrResponse(text_content=text_content, bounding_boxes=bounding_boxes)
+
+
+def run_with_selection(file_path: Path, selection: dict, language: str = 'sa') -> OcrResponse:
+    """Run Google OCR on a specific selection of the image.
+
+    :param file_path: path to the image we'll process with OCR.
+    :param selection: dictionary with 'left', 'top', 'width', 'height' keys.
+    :param language: language code for OCR (default: 'sa' for Sanskrit).
+    :return: an OCR response containing the image's text content and
+        bounding boxes.
+    """
+    logging.debug(f"Starting Google OCR on selection: {file_path} with language {language}")
+    
+    # Google OCR doesn't have built-in selection support, so we'll crop the image
+    from PIL import Image
+    image = Image.open(file_path)
+    left, top, width, height = selection['left'], selection['top'], selection['width'], selection['height']
+    selection_image = image.crop((left, top, left + width, top + height))
+    
+    # Save the cropped image temporarily
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
+        selection_image.save(tmp_file.name, 'JPEG')
+        tmp_path = Path(tmp_file.name)
+    
+    try:
+        return run(tmp_path, language=language)
+    finally:
+        # Clean up temporary file
+        tmp_path.unlink(missing_ok=True)

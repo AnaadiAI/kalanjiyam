@@ -34,11 +34,11 @@ def serialize_bounding_boxes(boxes: List[Tuple[int, int, int, int, str]]) -> str
     return "\n".join("\t".join(str(x) for x in row) for row in boxes)
 
 
-def run(file_path: Path, language: str = 'eng') -> OcrResponse:
+def run(file_path: Path, language: str = 'san') -> OcrResponse:
     """Run Tesseract OCR over the given image.
 
     :param file_path: path to the image we'll process with OCR.
-    :param language: language code for Tesseract (default: 'eng' for English).
+    :param language: language code for Tesseract (default: 'san' for Sanskrit).
     :return: an OCR response containing the image's text content and
         bounding boxes.
     """
@@ -75,16 +75,16 @@ def run(file_path: Path, language: str = 'eng') -> OcrResponse:
     return OcrResponse(text_content=text_content, bounding_boxes=bounding_boxes)
 
 
-def run_with_selection(file_path: Path, selection: dict, language: str = 'eng') -> OcrResponse:
+def run_with_selection(file_path: Path, selection: dict, language: str = 'san') -> OcrResponse:
     """Run Tesseract OCR on a specific selection of the image.
 
     :param file_path: path to the image we'll process with OCR.
     :param selection: dictionary with 'left', 'top', 'width', 'height' keys.
-    :param language: language code for Tesseract (default: 'eng' for English).
+    :param language: language code for Tesseract (default: 'san' for Sanskrit).
     :return: an OCR response containing the image's text content and
         bounding boxes.
     """
-    logging.debug(f"Starting Tesseract OCR on selection: {file_path}")
+    logging.debug(f"Starting Tesseract OCR on selection: {file_path} with language {language}")
     
     # Open the image
     image = Image.open(file_path)

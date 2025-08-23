@@ -717,8 +717,9 @@ def batch_ocr(slug):
             redis_client.delete(task_key)
 
     if request.method == "POST":
-        # Get OCR engine from form, default to 'google'
+        # Get OCR parameters from form
         engine = request.form.get('engine', 'google')
+        language = request.form.get('language', 'sa')
         
         # Validate engine
         from kalanjiyam.utils.ocr_engine import OcrEngineFactory
@@ -733,12 +734,14 @@ def batch_ocr(slug):
             app_env=current_app.config["KALANJIYAM_ENVIRONMENT"],
             project=project_,
             engine=engine,
+            language=language,
         )
         if task:
             # Store task info in Redis with expiration (24 hours)
             task_info = {
                 'task_id': task.id,
                 'engine': engine,
+                'language': language,
                 'started_at': datetime.utcnow().isoformat(),
                 'project_slug': slug
             }
@@ -755,6 +758,8 @@ def batch_ocr(slug):
                 active_tasks=0,
                 pending_tasks=0,
                 failed_tasks=0,
+                engine=engine,
+                language=language,
             )
         else:
             flash(_l("All pages in this project have at least one edit already."))
@@ -785,6 +790,21 @@ def _clear_ocr_task_from_redis(task_id):
 def batch_ocr_status(task_id):
     r = GroupResult.restore(task_id, app=celery_app)
     assert r, task_id
+
+    # Get task info from Redis to include engine and language
+    engine = "google"
+    language = "sa"
+    try:
+        for key in redis_client.scan_iter(match="ocr_task:*"):
+            task_info = redis_client.get(key)
+            if task_info:
+                task_data = json.loads(task_info)
+                if task_data.get('task_id') == task_id:
+                    engine = task_data.get('engine', 'google')
+                    language = task_data.get('language', 'sa')
+                    break
+    except Exception as e:
+        LOG.warning(f"Error getting OCR task info from Redis: {e}")
 
     if r.results:
         current = r.completed_count()
@@ -817,6 +837,8 @@ def batch_ocr_status(task_id):
             "active_tasks": active_tasks,
             "pending_tasks": pending_tasks,
             "failed_tasks": failed_tasks,
+            "engine": engine,
+            "language": language,
         }
     else:
         data = {
@@ -827,6 +849,8 @@ def batch_ocr_status(task_id):
             "active_tasks": 0,
             "pending_tasks": 0,
             "failed_tasks": 0,
+            "engine": engine,
+            "language": language,
         }
 
     return render_template(

@@ -20,16 +20,114 @@
   <p>Click the button below to run OCR on every unedited page.</p>
 
   <form method="POST">
-    <div class="mb-4">
-      <label for="engine" class="block text-sm font-medium text-gray-700 mb-2">
-        {{ _('OCR Engine:') }}
-      </label>
-      <select name="engine" id="engine" class="block w-full p-2 border border-gray-300 rounded-md">
-        <option value="google">{{ _('Google OCR') }}</option>
-        <option value="tesseract">{{ _('Tesseract OCR') }}</option>
-      </select>
+    <div class="bg-white shadow rounded-lg p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">OCR Settings</h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label for="engine" class="block text-sm font-medium text-gray-700 mb-2">
+            {{ _('OCR Engine:') }}
+          </label>
+          <select name="engine" id="engine" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="google">{{ _('Google OCR') }}</option>
+            <option value="tesseract">{{ _('Tesseract OCR') }}</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="language" class="block text-sm font-medium text-gray-700 mb-2">
+            {{ _('Language:') }}
+          </label>
+          <select name="language" id="language" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="sa" selected>Sanskrit (sa)</option>
+            <option value="hi">Hindi (hi)</option>
+            <option value="te">Telugu (te)</option>
+            <option value="mr">Marathi (mr)</option>
+            <option value="bn">Bengali (bn)</option>
+            <option value="gu">Gujarati (gu)</option>
+            <option value="kn">Kannada (kn)</option>
+            <option value="ml">Malayalam (ml)</option>
+            <option value="ta">Tamil (ta)</option>
+            <option value="pa">Punjabi (pa)</option>
+            <option value="or">Odia (or)</option>
+            <option value="ur">Urdu (ur)</option>
+            <option value="en">English (en)</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="mt-6">
+        <input class="btn btn-submit" type="submit" value="{{ _('Run OCR') }}"></input>
+      </div>
     </div>
-    <input class="btn btn-submit" type="submit" value="{{ _('Run OCR') }}"></input>
   </form>
 </div>
+
+<script>
+// Language options for different OCR engines
+const languageOptions = {
+  google: [
+    { value: 'sa', text: 'Sanskrit (sa)' },
+    { value: 'hi', text: 'Hindi (hi)' },
+    { value: 'te', text: 'Telugu (te)' },
+    { value: 'mr', text: 'Marathi (mr)' },
+    { value: 'bn', text: 'Bengali (bn)' },
+    { value: 'gu', text: 'Gujarati (gu)' },
+    { value: 'kn', text: 'Kannada (kn)' },
+    { value: 'ml', text: 'Malayalam (ml)' },
+    { value: 'ta', text: 'Tamil (ta)' },
+    { value: 'pa', text: 'Punjabi (pa)' },
+    { value: 'or', text: 'Odia (or)' },
+    { value: 'ur', text: 'Urdu (ur)' },
+    { value: 'en', text: 'English (en)' }
+  ],
+  tesseract: [
+    { value: 'san', text: 'Sanskrit (san)' },
+    { value: 'eng', text: 'English (eng)' },
+    { value: 'hin', text: 'Hindi (hin)' },
+    { value: 'tel', text: 'Telugu (tel)' },
+    { value: 'mar', text: 'Marathi (mar)' },
+    { value: 'ben', text: 'Bengali (ben)' },
+    { value: 'guj', text: 'Gujarati (guj)' },
+    { value: 'kan', text: 'Kannada (kan)' },
+    { value: 'mal', text: 'Malayalam (mal)' },
+    { value: 'tam', text: 'Tamil (tam)' },
+    { value: 'pan', text: 'Punjabi (pan)' },
+    { value: 'ori', text: 'Odia (ori)' },
+    { value: 'urd', text: 'Urdu (urd)' }
+  ]
+};
+
+// Function to update language options based on selected engine
+function updateLanguageOptions() {
+  const engineSelect = document.getElementById('engine');
+  const languageSelect = document.getElementById('language');
+  const selectedEngine = engineSelect.value;
+  
+  // Clear current options
+  languageSelect.innerHTML = '';
+  
+  // Add new options based on selected engine
+  const options = languageOptions[selectedEngine] || languageOptions.google;
+  options.forEach(option => {
+    const optionElement = document.createElement('option');
+    optionElement.value = option.value;
+    optionElement.textContent = option.text;
+    // Set Sanskrit as default for both engines
+    if (option.value === 'sa' || option.value === 'san') {
+      optionElement.selected = true;
+    }
+    languageSelect.appendChild(optionElement);
+  });
+}
+
+// Add event listener to engine select
+document.addEventListener('DOMContentLoaded', function() {
+  const engineSelect = document.getElementById('engine');
+  engineSelect.addEventListener('change', updateLanguageOptions);
+  
+  // Initialize with current engine selection
+  updateLanguageOptions();
+});
+</script>
 {% endblock %}

@@ -145,7 +145,7 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
   <div class="flex items-center p-2 gap-1">
     
     <!-- Tools Dropdown -->
-    <div x-data="{open: false, selectedEngine: 'google'}" class="relative">
+    <div x-data="{open: false, selectedEngine: '1'}" class="relative">
       <button class="{{ button_css }}"
          @click.prevent="open=!open"
          @click.outside="open=false">
@@ -161,9 +161,9 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
             <div class="dropdown-item">
               <label class="block text-xs text-peacock-secondary mb-1">{{ _('OCR Engine:') }}</label>
               <select class="w-full p-2 text-sm border border-teal-200 rounded focus:border-peacock-primary" x-model="selectedEngine" @change="updateLanguageOptions()">
-                <option value="google">{{ _('Google OCR') }}</option>
-                <option value="tesseract">{{ _('Tesseract OCR') }}</option>
-                <option value="surya">{{ _('Surya OCR') }}</option>
+                <option value="1">{{ _('OCR 1') }}</option>
+                <option value="2">{{ _('OCR 2') }}</option>
+                <option value="3">{{ _('OCR 2') }}</option>
               </select>
             </div>
           </li>

@@ -57,7 +57,7 @@ export default () => ({
   content: '',
 
   // OCR settings
-  selectedEngine: 'google',
+  selectedEngine: '1', // Default to Google OCR (1)
   selectedLanguage: 'sa',
 
   // Internal-only
@@ -68,7 +68,7 @@ export default () => ({
 
   // OCR Engine configurations
   ocrEngines: {
-    google: {
+    '1': {
       name: 'Google OCR',
       languages: [
         { value: 'sa', text: 'Sanskrit (sa)' },
@@ -87,7 +87,7 @@ export default () => ({
       ],
       supportsBilingual: false
     },
-    tesseract: {
+    '2': {
       name: 'Tesseract OCR',
       languages: [
         { value: 'san', text: 'Sanskrit (san)' },
@@ -107,7 +107,7 @@ export default () => ({
       supportsBilingual: true,
       bilingualSeparator: '+'
     },
-    surya: {
+    '3': {
       name: 'Surya OCR',
       languages: [
         { value: 'sa', text: 'Sanskrit (sa)' },
@@ -353,11 +353,22 @@ export default () => ({
     this.handleBilingualLanguageSelection();
   },
 
-  async runOCR(engine = 'google', language = 'sa') {
+  // Decode numeric engine values to actual engine names
+  decodeEngine(engineValue) {
+    const engineMap = {
+      '1': 'google',
+      '2': 'tesseract', 
+      '3': 'surya'
+    };
+    return engineMap[engineValue] || 'google';
+  },
+
+  async runOCR(engine = '1', language = 'sa') {
     this.isRunningOCR = true;
 
+    const decodedEngine = this.decodeEngine(engine);
     const { pathname } = window.location;
-    const url = pathname.replace('/proofing/', '/api/ocr/') + `?engine=${engine}&language=${language}`;
+    const url = pathname.replace('/proofing/', '/api/ocr/') + `?engine=${decodedEngine}&language=${language}`;
 
     const content = await fetch(url)
       .then((response) => {

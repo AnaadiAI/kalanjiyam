@@ -25,6 +25,14 @@ def _run_ocr_for_page_inner(
     engine: str = 'google',
     language: str = 'sa',
 ) -> int:
+    # Decode numeric engine values to actual engine names
+    engine_map = {
+        '1': 'google',
+        '2': 'tesseract',
+        '3': 'surya'
+    }
+    if engine in engine_map:
+        engine = engine_map[engine]
     """Must run in the application context."""
 
     flask_app = create_config_only_app(app_env)
@@ -97,7 +105,7 @@ def run_ocr_for_page(
     app_env: str,
     project_slug: str,
     page_slug: str,
-    engine: str = 'google',
+    engine: str = '1',  # Default to Google OCR (1)
     language: str = 'sa',
 ):
     _run_ocr_for_page_inner(
@@ -115,7 +123,7 @@ def run_ocr_for_page(
 def run_ocr_for_project(
     app_env: str,
     project: db.Project,
-    engine: str = 'google',
+    engine: str = '1',  # Default to Google OCR (1)
     language: str = 'sa',
 ) -> GroupResult | None:
     """Create a `group` task to run OCR on a project.

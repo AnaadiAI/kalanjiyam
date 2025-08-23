@@ -319,6 +319,15 @@ def ocr(project_slug, page_slug):
     engine = request.args.get('engine', 'google')
     language = request.args.get('language', 'sa')
     
+    # Decode numeric engine values to actual engine names
+    engine_map = {
+        '1': 'google',
+        '2': 'tesseract',
+        '3': 'surya'
+    }
+    if engine in engine_map:
+        engine = engine_map[engine]
+    
     # Validate engine
     from kalanjiyam.utils.ocr_engine import OcrEngineFactory
     if engine not in OcrEngineFactory.get_supported_engines():

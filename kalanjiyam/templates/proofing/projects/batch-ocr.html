@@ -29,9 +29,9 @@
             {{ _('OCR Engine:') }}
           </label>
           <select name="engine" id="engine" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="google">{{ _('Google OCR') }}</option>
-            <option value="tesseract">{{ _('Tesseract OCR') }}</option>
-            <option value="surya">{{ _('Surya OCR') }}</option>
+            <option value="1">{{ _('Google OCR') }}</option>
+            <option value="2">{{ _('Tesseract OCR') }}</option>
+            <option value="3">{{ _('Surya OCR') }}</option>
           </select>
         </div>
         
@@ -67,7 +67,7 @@
 <script>
 // Language options for different OCR engines
 const languageOptions = {
-  google: [
+  '1': [ // Google OCR
     { value: 'sa', text: 'Sanskrit (sa)' },
     { value: 'hi', text: 'Hindi (hi)' },
     { value: 'te', text: 'Telugu (te)' },
@@ -82,7 +82,7 @@ const languageOptions = {
     { value: 'ur', text: 'Urdu (ur)' },
     { value: 'en', text: 'English (en)' }
   ],
-  tesseract: [
+  '2': [ // Tesseract OCR
     { value: 'san', text: 'Sanskrit (san)' },
     { value: 'eng', text: 'English (eng)' },
     { value: 'hin', text: 'Hindi (hin)' },
@@ -96,6 +96,39 @@ const languageOptions = {
     { value: 'pan', text: 'Punjabi (pan)' },
     { value: 'ori', text: 'Odia (ori)' },
     { value: 'urd', text: 'Urdu (urd)' }
+  ],
+  '3': [ // Surya OCR
+    { value: 'sa', text: 'Sanskrit (sa)' },
+    { value: 'hi', text: 'Hindi (hi)' },
+    { value: 'te', text: 'Telugu (te)' },
+    { value: 'mr', text: 'Marathi (mr)' },
+    { value: 'bn', text: 'Bengali (bn)' },
+    { value: 'gu', text: 'Gujarati (gu)' },
+    { value: 'kn', text: 'Kannada (kn)' },
+    { value: 'ml', text: 'Malayalam (ml)' },
+    { value: 'ta', text: 'Tamil (ta)' },
+    { value: 'pa', text: 'Punjabi (pa)' },
+    { value: 'or', text: 'Odia (or)' },
+    { value: 'ur', text: 'Urdu (ur)' },
+    { value: 'en', text: 'English (en)' },
+    { value: 'ar', text: 'Arabic (ar)' },
+    { value: 'fa', text: 'Persian (fa)' },
+    { value: 'th', text: 'Thai (th)' },
+    { value: 'ko', text: 'Korean (ko)' },
+    { value: 'ja', text: 'Japanese (ja)' },
+    { value: 'zh', text: 'Chinese (zh)' },
+    { value: 'ru', text: 'Russian (ru)' },
+    { value: 'es', text: 'Spanish (es)' },
+    { value: 'fr', text: 'French (fr)' },
+    { value: 'de', text: 'German (de)' },
+    { value: 'it', text: 'Italian (it)' },
+    { value: 'pt', text: 'Portuguese (pt)' },
+    { value: 'nl', text: 'Dutch (nl)' },
+    { value: 'pl', text: 'Polish (pl)' },
+    { value: 'tr', text: 'Turkish (tr)' },
+    { value: 'vi', text: 'Vietnamese (vi)' },
+    { value: 'id', text: 'Indonesian (id)' },
+    { value: 'ms', text: 'Malay (ms)' }
   ]
 };
 
@@ -109,7 +142,7 @@ function updateLanguageOptions() {
   languageSelect.innerHTML = '';
   
   // Add new options based on selected engine
-  const options = languageOptions[selectedEngine] || languageOptions.google;
+  const options = languageOptions[selectedEngine] || languageOptions['1'];
   options.forEach(option => {
     const optionElement = document.createElement('option');
     optionElement.value = option.value;

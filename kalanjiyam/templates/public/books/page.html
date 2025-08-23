@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block title %}Page {{ page.slug }} - {{ project.display_title }} | Kalanjiyam{% endblock %}
+
+{% block meta_description %}View page {{ page.slug }} of {{ project.display_title }} with OCR text and translations.{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-image {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+  }
+  
+  .text-content {
+    font-family: 'Noto Sans Devanagari', 'Arial', sans-serif;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  
+  .translation-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  .navigation-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+    padding: 1rem;
+    z-index: 1000;
+  }
+  
+  @media (max-width: 768px) {
+    .translation-toggle {
+      top: 10px;
+      right: 10px;
+    }
+    
+    .navigation-bar {
+      padding: 0.75rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block body_class %}bg-gray-50{% endblock %}
+
+{% block main %}
+<!-- Translation Toggle -->
+{% if translations %}
+<div class="translation-toggle">
+  <div class="flex items-center space-x-2">
+    <label class="text-sm font-medium text-gray-700">Translation:</label>
+    <select id="translation-select" class="text-sm border border-gray-300 rounded px-2 py-1">
+      <option value="none">Original</option>
+      {% for translation in translations %}
+        <option value="{{ translation.target_language }}" 
+                {% if selected_translation and selected_translation.id == translation.id %}selected{% endif %}>
+          {{ translation.target_language.upper() }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+{% endif %}
+
+<div class="max-w-6xl mx-auto p-4">
+  <!-- Header -->
+  <header class="mb-6">
+    <nav class="mb-4">
+      <a href="{{ url_for('public.books.book', project_slug=project.slug) }}" 
+         class="text-blue-600 hover:text-blue-800 transition-colors">
+        ← Back to {{ project.display_title }}
+      </a>
+    </nav>
+    
+    <div class="flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ project.display_title }}</h1>
+        <p class="text-gray-600">Page {{ page.slug }}</p>
+      </div>
+      
+      <div class="text-right">
+        <p class="text-sm text-gray-500">{{ current_index + 1 }} of {{ total_pages }}</p>
+        <p class="text-sm text-gray-500">{{ "%.1f"|format((current_index + 1) / total_pages * 100) }}% complete</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page Content -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-20">
+    <!-- Page Image -->
+    <div class="lg:col-span-1">
+      <div class="bg-white rounded-lg shadow-md p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Original Page</h2>
+        <img src="{{ url_for('site.page_image', project_slug=project.slug, page_slug=page.slug) }}" 
+             alt="Page {{ page.slug }}" 
+             class="page-image"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <div class="hidden text-center py-8 text-gray-500">
+          <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+          <p>Page image not available</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- OCR Text -->
+    <div class="lg:col-span-1">
+      <div class="bg-white rounded-lg shadow-md p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Text Content</h2>
+        
+        <!-- Original Text -->
+        <div id="original-text" class="text-content">
+          {{ revision.content }}
+        </div>
+        
+        <!-- Translation Text (hidden by default) -->
+        {% if selected_translation %}
+          <div id="translation-text" class="text-content hidden">
+            {{ selected_translation.content }}
+          </div>
+        {% endif %}
+        
+        <!-- No translation available -->
+        {% if not translations %}
+          <div class="text-center py-8 text-gray-500">
+            <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+            </svg>
+            <p>No translation available for this page</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation Bar -->
+<div class="navigation-bar">
+  <div class="max-w-6xl mx-auto flex justify-between items-center">
+    <div class="flex items-center space-x-4">
+      {% if prev_page %}
+        <a href="{{ url_for('public.books.page', project_slug=project.slug, page_slug=prev_page.slug) }}" 
+           class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+          Previous
+        </a>
+      {% endif %}
+      
+      <span class="text-sm text-gray-600">
+        Page {{ current_index + 1 }} of {{ total_pages }}
+      </span>
+    </div>
+    
+    <div class="flex items-center space-x-4">
+      <a href="{{ url_for('public.books.book', project_slug=project.slug) }}" 
+         class="text-sm text-gray-600 hover:text-gray-800 transition-colors">
+        Book Overview
+      </a>
+      
+      {% if next_page %}
+        <a href="{{ url_for('public.books.page', project_slug=project.slug, page_slug=next_page.slug) }}" 
+           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">
+          Next
+          <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const translationSelect = document.getElementById('translation-select');
+  const originalText = document.getElementById('original-text');
+  const translationText = document.getElementById('translation-text');
+  
+  if (translationSelect) {
+    translationSelect.addEventListener('change', function() {
+      const selectedValue = this.value;
+      
+      if (selectedValue === 'none') {
+        // Show original text
+        originalText.classList.remove('hidden');
+        if (translationText) {
+          translationText.classList.add('hidden');
+        }
+      } else {
+        // Show translation
+        originalText.classList.add('hidden');
+        if (translationText) {
+          translationText.classList.remove('hidden');
+        }
+        
+        // Update URL with translation parameter
+        const url = new URL(window.location);
+        url.searchParams.set('translation', selectedValue);
+        window.history.replaceState({}, '', url);
+      }
+    });
+  }
+  
+  // Handle keyboard navigation
+  document.addEventListener('keydown', function(e) {
+    {% if prev_page %}
+      if (e.key === 'ArrowLeft' || e.key === 'a') {
+        window.location.href = "{{ url_for('public.books.page', project_slug=project.slug, page_slug=prev_page.slug) }}";
+      }
+    {% endif %}
+    
+    {% if next_page %}
+      if (e.key === 'ArrowRight' || e.key === 'd') {
+        window.location.href = "{{ url_for('public.books.page', project_slug=project.slug, page_slug=next_page.slug) }}";
+      }
+    {% endif %}
+    
+    // Toggle translation with 't' key
+    if (e.key === 't' && translationSelect) {
+      const currentValue = translationSelect.value;
+      const options = Array.from(translationSelect.options);
+      const currentIndex = options.findIndex(option => option.value === currentValue);
+      const nextIndex = (currentIndex + 1) % options.length;
+      translationSelect.value = options[nextIndex].value;
+      translationSelect.dispatchEvent(new Event('change'));
+    }
+  });
+});
+</script>
+{% endblock %}

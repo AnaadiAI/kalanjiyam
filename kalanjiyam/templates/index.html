@@ -38,9 +38,14 @@
     {% endtrans %}</p>
   </div>
 
-  <a class="p-4 transition rounded btn bg-white text-peacock-primary hover:bg-peacock-light hover:text-peacock-primary peacock-shadow" href="{{ url_for("proofing.index") }}">
-      {{ _('Start Proofing') }}
-  </a>
+  <div class="flex flex-col sm:flex-row gap-4 justify-center">
+    <a class="p-4 transition rounded btn bg-white text-peacock-primary hover:bg-peacock-light hover:text-peacock-primary peacock-shadow" href="{{ url_for("public.books.index") }}">
+        {{ _('Browse Books') }}
+    </a>
+    <a class="p-4 transition rounded btn bg-white text-peacock-primary hover:bg-peacock-light hover:text-peacock-primary peacock-shadow" href="{{ url_for("proofing.index") }}">
+        {{ _('Start Proofing') }}
+    </a>
+  </div>
 
   </div>
 </header>

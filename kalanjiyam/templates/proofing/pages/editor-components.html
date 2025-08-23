@@ -160,15 +160,35 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
           <li>
             <div class="dropdown-item">
               <label class="block text-xs text-peacock-secondary mb-1">{{ _('OCR Engine:') }}</label>
-              <select class="w-full p-2 text-sm border border-teal-200 rounded focus:border-peacock-primary" x-model="selectedEngine">
+              <select class="w-full p-2 text-sm border border-teal-200 rounded focus:border-peacock-primary" x-model="selectedEngine" @change="updateLanguageOptions()">
                 <option value="google">{{ _('Google OCR') }}</option>
                 <option value="tesseract">{{ _('Tesseract OCR') }}</option>
               </select>
             </div>
           </li>
           <li>
+            <div class="dropdown-item">
+              <label class="block text-xs text-peacock-secondary mb-1">{{ _('Language:') }}</label>
+              <select class="w-full p-2 text-sm border border-teal-200 rounded focus:border-peacock-primary" x-model="selectedLanguage" id="language-select">
+                <option value="sa">Sanskrit (sa)</option>
+                <option value="hi">Hindi (hi)</option>
+                <option value="te">Telugu (te)</option>
+                <option value="mr">Marathi (mr)</option>
+                <option value="bn">Bengali (bn)</option>
+                <option value="gu">Gujarati (gu)</option>
+                <option value="kn">Kannada (kn)</option>
+                <option value="ml">Malayalam (ml)</option>
+                <option value="ta">Tamil (ta)</option>
+                <option value="pa">Punjabi (pa)</option>
+                <option value="or">Odia (or)</option>
+                <option value="ur">Urdu (ur)</option>
+                <option value="en">English (en)</option>
+              </select>
+            </div>
+          </li>
+          <li>
             <button type="button" class="dropdown-item flex items-center gap-2"
-                    @click.prevent="runOCR(selectedEngine)"
+                    @click.prevent="runOCR(selectedEngine, selectedLanguage)"
                     :disabled="isRunningOCR"
                     x-text="isRunningOCR ? '{{ _("Running OCR ...") }}' : '{{ _("Run OCR") }}'">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -57,11 +57,49 @@ export default () => ({
   // Content
   content: '',
 
+  // OCR settings
+  selectedEngine: 'google',
+  selectedLanguage: 'sa',
+
   // Internal-only
   layoutClasses: CLASSES_SIDE_BY_SIDE,
   isRunningOCR: false,
   hasUnsavedChanges: false,
   imageViewer: null,
+
+  // Language options for different OCR engines
+  languageOptions: {
+    google: [
+      { value: 'sa', text: 'Sanskrit (sa)' },
+      { value: 'hi', text: 'Hindi (hi)' },
+      { value: 'te', text: 'Telugu (te)' },
+      { value: 'mr', text: 'Marathi (mr)' },
+      { value: 'bn', text: 'Bengali (bn)' },
+      { value: 'gu', text: 'Gujarati (gu)' },
+      { value: 'kn', text: 'Kannada (kn)' },
+      { value: 'ml', text: 'Malayalam (ml)' },
+      { value: 'ta', text: 'Tamil (ta)' },
+      { value: 'pa', text: 'Punjabi (pa)' },
+      { value: 'or', text: 'Odia (or)' },
+      { value: 'ur', text: 'Urdu (ur)' },
+      { value: 'en', text: 'English (en)' }
+    ],
+    tesseract: [
+      { value: 'san', text: 'Sanskrit (san)' },
+      { value: 'eng', text: 'English (eng)' },
+      { value: 'hin', text: 'Hindi (hin)' },
+      { value: 'tel', text: 'Telugu (tel)' },
+      { value: 'mar', text: 'Marathi (mar)' },
+      { value: 'ben', text: 'Bengali (ben)' },
+      { value: 'guj', text: 'Gujarati (guj)' },
+      { value: 'kan', text: 'Kannada (kan)' },
+      { value: 'mal', text: 'Malayalam (mal)' },
+      { value: 'tam', text: 'Tamil (tam)' },
+      { value: 'pan', text: 'Punjabi (pan)' },
+      { value: 'ori', text: 'Odia (ori)' },
+      { value: 'urd', text: 'Urdu (urd)' }
+    ]
+  },
 
   init() {
     this.loadSettings();
@@ -83,6 +121,9 @@ export default () => ({
     // Use `.bind(this)` so that `this` in the function refers to this app and
     // not `window`.
     window.onbeforeunload = this.onBeforeUnload.bind(this);
+    
+    // Initialize language options
+    this.updateLanguageOptions();
   },
 
   // Settings IO
@@ -100,6 +141,10 @@ export default () => ({
 
         this.fromScript = settings.fromScript || this.fromScript;
         this.toScript = settings.toScript || this.toScript;
+        
+        // Load OCR settings
+        this.selectedEngine = settings.selectedEngine || this.selectedEngine;
+        this.selectedLanguage = settings.selectedLanguage || this.selectedLanguage;
       } catch (error) {
         // Old settings are invalid -- rewrite with valid values.
         this.saveSettings();
@@ -113,6 +158,8 @@ export default () => ({
       layout: this.layout,
       fromScript: this.fromScript,
       toScript: this.toScript,
+      selectedEngine: this.selectedEngine,
+      selectedLanguage: this.selectedLanguage,
     };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(settings));
   },
@@ -137,11 +184,35 @@ export default () => ({
 
   // OCR controls
 
-  async runOCR(engine = 'google') {
+  updateLanguageOptions() {
+    const languageSelect = document.getElementById('language-select');
+    if (!languageSelect) return;
+    
+    // Clear current options
+    languageSelect.innerHTML = '';
+    
+    // Add new options based on selected engine
+    const options = this.languageOptions[this.selectedEngine] || this.languageOptions.google;
+    options.forEach(option => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option.value;
+      optionElement.textContent = option.text;
+      // Set Sanskrit as default for both engines
+      if (option.value === 'sa' || option.value === 'san') {
+        optionElement.selected = true;
+        this.selectedLanguage = option.value;
+      }
+      languageSelect.appendChild(optionElement);
+    });
+    
+    this.saveSettings();
+  },
+
+  async runOCR(engine = 'google', language = 'sa') {
     this.isRunningOCR = true;
 
     const { pathname } = window.location;
-    const url = pathname.replace('/proofing/', '/api/ocr/') + `?engine=${engine}`;
+    const url = pathname.replace('/proofing/', '/api/ocr/') + `?engine=${engine}&language=${language}`;
 
     const content = await fetch(url)
       .then((response) => {

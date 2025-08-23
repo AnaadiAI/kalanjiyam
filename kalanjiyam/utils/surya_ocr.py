@@ -1,72 +1,74 @@
 """Surya OCR utilities for proofing projects."""
-
 import logging
+import subprocess
 import tempfile
+import json
+import os
 from pathlib import Path
-from typing import List, Tuple, Dict, Any
-
+from typing import List, Tuple, Dict, Any, Optional
 from PIL import Image
 
 from kalanjiyam.utils import google_ocr
-
-# Use the OcrResponse from google_ocr as the common interface
 OcrResponse = google_ocr.OcrResponse
 
 
 def post_process(text: str) -> str:
-    """Post process OCR text."""
-    return (
-        text
-        # Danda and double danda
-        .replace("||", "॥")
-        .replace("|", "।")
-        .replace("।।", "॥")
-        # Remove curly quotes
-        .replace("'", "'")
-        .replace("'", "'")
-        .replace(""", '"')
-        .replace(""", '"')
-    )
+    """Post-process OCR text."""
+    if not text:
+        return ""
+    
+    # Clean up common OCR artifacts
+    text = text.strip()
+    # Remove excessive whitespace
+    text = ' '.join(text.split())
+    return text
 
 
 def serialize_bounding_boxes(boxes: List[Tuple[int, int, int, int, str]]) -> str:
-    """Serialize bounding boxes to string format."""
-    return "\n".join("\t".join(str(x) for x in row) for row in boxes)
+    """Serialize bounding boxes to JSON string."""
+    return json.dumps([{
+        'x1': box[0], 'y1': box[1], 'x2': box[2], 'y2': box[3], 'text': box[4]
+    } for box in boxes])
 
 
-def run(file_path: Path, language: str = 'sa') -> OcrResponse:
-    """Run Surya OCR over the given image.
-
-    :param file_path: path to the image we'll process with OCR.
-    :param language: language code for OCR (default: 'sa' for Sanskrit).
-    :return: an OCR response containing the image's text content and
-        bounding boxes.
+def run(file_path: Path, language: str = 'sa', additional_languages: Optional[List[str]] = None) -> OcrResponse:
+    """
+    Run Surya OCR on the given image file.
+    
+    Args:
+        file_path: Path to the image file
+        language: Primary language code (e.g., 'sa', 'en', 'hi')
+        additional_languages: Optional list of additional language codes for bilingual/multilingual OCR
+    
+    Returns:
+        OcrResponse with text content and bounding boxes
     """
     logging.debug(f"Starting Surya OCR: {file_path} with language {language}")
-
-    # Check if file exists and is readable
+    
     if not file_path.exists():
-        raise RuntimeError(f"Image file does not exist: {file_path}")
+        raise RuntimeError(f"File does not exist: {file_path}")
     
     if not file_path.is_file():
         raise RuntimeError(f"Path is not a file: {file_path}")
     
-    # Check file size
     file_size = file_path.stat().st_size
     if file_size == 0:
-        raise RuntimeError(f"Image file is empty: {file_path}")
+        raise RuntimeError(f"File is empty: {file_path}")
     
     logging.info(f"Processing image file: {file_path}, size: {file_size} bytes")
-
+    
     try:
         # Import Surya modules
         from surya.common.surya.schema import TaskNames
         from surya.detection import DetectionPredictor
+        from surya.debug.text import draw_text_on_image
         from surya.foundation import FoundationPredictor
         from surya.recognition import RecognitionPredictor
         from surya.scripts.config import CLILoader
         
-        logging.info("Surya modules imported successfully")
+        # Load image
+        image = Image.open(file_path)
+        image = image.convert('RGB')
         
         # Set up the loader
         loader_kwargs = {
@@ -76,37 +78,60 @@ def run(file_path: Path, language: str = 'sa') -> OcrResponse:
         }
         loader = CLILoader(str(file_path), loader_kwargs, highres=True)
         
-        # Set up task names
-        task_names = [TaskNames.ocr_with_boxes] * len(loader.images)
-        
         # Initialize predictors
-        logging.info("Initializing Surya predictors...")
         foundation_predictor = FoundationPredictor()
         det_predictor = DetectionPredictor()
         rec_predictor = RecognitionPredictor(foundation_predictor)
         
+        # Set task names for OCR with bounding boxes
+        task_names = [TaskNames.ocr_with_boxes] * len(loader.images)
+        
         # Run OCR
-        logging.info("Running Surya OCR...")
+        logging.info("Running Surya OCR with automatic language detection")
         predictions_by_image = rec_predictor(
             loader.images,
             task_names=task_names,
             det_predictor=det_predictor,
             highres_images=loader.highres_images,
-            math_mode=False,  # Disable math recognition for text OCR
+            math_mode=True,  # Enable math recognition
         )
         
+        # Extract text and bounding boxes from the first image result
         if not predictions_by_image:
-            raise RuntimeError("No OCR predictions returned")
+            raise RuntimeError("No OCR results generated")
         
         prediction = predictions_by_image[0]
-        logging.info("Surya OCR completed successfully")
+        text_content = ""
+        bounding_boxes = []
+        
+        # Extract text lines and their bounding boxes
+        for line in prediction.text_lines:
+            line_text = post_process(line.text)
+            if line_text:
+                text_content += line_text + "\n"
+                
+                # Convert polygon to bounding box format (x1, y1, x2, y2)
+                if hasattr(line, 'bbox') and line.bbox:
+                    bbox = line.bbox
+                    if len(bbox) >= 4:
+                        # Convert from polygon format to bounding box
+                        x_coords = [p[0] for p in bbox]
+                        y_coords = [p[1] for p in bbox]
+                        x1, x2 = min(x_coords), max(x_coords)
+                        y1, y2 = min(y_coords), max(y_coords)
+                        bounding_boxes.append((x1, y1, x2, y2, line_text))
+        
+        text_content = text_content.strip()
+        logging.info(f"Surya OCR completed successfully. Extracted {len(bounding_boxes)} text lines")
         
     except ImportError as e:
-        logging.error(f"Failed to import Surya modules: {e}")
+        import sys
         raise RuntimeError(
             f"Surya OCR is not installed in the current Python environment.\n"
+            f"Python executable: {sys.executable}\n"
             f"Please install it with: pip install surya-ocr\n"
-            f"For more information, see: https://github.com/datalab-to/surya"
+            f"For more information, see: https://github.com/datalab-to/surya\n"
+            f"Import error: {e}"
         )
     except Exception as e:
         logging.error(f"Surya OCR failed: {e}")
@@ -115,96 +140,83 @@ def run(file_path: Path, language: str = 'sa') -> OcrResponse:
         # Fallback to Tesseract OCR
         try:
             from kalanjiyam.utils import tesseract_ocr
-            # Convert language code from Google format to Tesseract format
-            tesseract_lang = language
-            if language == 'sa':
-                tesseract_lang = 'san'
-            elif language == 'en':
-                tesseract_lang = 'eng'
-            elif language == 'hi':
-                tesseract_lang = 'hin'
-            elif language == 'te':
-                tesseract_lang = 'tel'
-            elif language == 'mr':
-                tesseract_lang = 'mar'
-            elif language == 'bn':
-                tesseract_lang = 'ben'
-            elif language == 'gu':
-                tesseract_lang = 'guj'
-            elif language == 'kn':
-                tesseract_lang = 'kan'
-            elif language == 'ml':
-                tesseract_lang = 'mal'
-            elif language == 'ta':
-                tesseract_lang = 'tam'
-            elif language == 'pa':
-                tesseract_lang = 'pan'
-            elif language == 'or':
-                tesseract_lang = 'ori'
-            elif language == 'ur':
-                tesseract_lang = 'urd'
-            
-            return tesseract_ocr.run(file_path, language=tesseract_lang)
-        except Exception as tesseract_error:
-            logging.error(f"Tesseract OCR fallback also failed: {tesseract_error}")
-            raise RuntimeError(f"Surya OCR failed: {e}. Tesseract OCR fallback also failed: {tesseract_error}")
-    
-    # Extract text content and bounding boxes from Surya prediction
-    text_content = ""
-    bounding_boxes = []
-    
-    try:
-        # Extract text from text lines
-        if hasattr(prediction, 'text_lines') and prediction.text_lines:
-            text_lines = []
-            for line in prediction.text_lines:
-                if hasattr(line, 'text') and line.text:
-                    text_lines.append(line.text)
-                    # Extract bounding box for each line
-                    if hasattr(line, 'bbox') and line.bbox:
-                        bbox = line.bbox
-                        if len(bbox) >= 4:
-                            x1, y1, x2, y2 = bbox[:4]
-                            bounding_boxes.append((x1, y1, x2, y2, line.text))
-            
-            text_content = "\n".join(text_lines)
-            text_content = post_process(text_content)
-        
-        logging.info(f"Extracted text content: {len(text_content)} characters")
-        logging.info(f"Extracted {len(bounding_boxes)} bounding boxes")
-        
-    except Exception as e:
-        logging.error(f"Failed to extract text from Surya prediction: {e}")
-        # Return empty result if extraction fails
-        text_content = ""
-        bounding_boxes = []
+            return tesseract_ocr.run(file_path, language=language)
+        except Exception as fallback_error:
+            logging.error(f"Tesseract fallback also failed: {fallback_error}")
+            raise RuntimeError(f"Surya OCR failed: {e}. Fallback to Tesseract also failed: {fallback_error}")
     
     return OcrResponse(text_content=text_content, bounding_boxes=bounding_boxes)
 
 
-def run_with_selection(file_path: Path, selection: dict, language: str = 'sa') -> OcrResponse:
-    """Run Surya OCR on a specific selection of the image.
-
-    :param file_path: path to the image we'll process with OCR.
-    :param selection: dictionary with 'left', 'top', 'width', 'height' keys.
-    :param language: language code for OCR (default: 'sa' for Sanskrit).
-    :return: an OCR response containing the image's text content and
-        bounding boxes.
+def run_with_selection(file_path: Path, selection: dict, language: str = 'sa', additional_languages: Optional[List[str]] = None) -> OcrResponse:
     """
-    logging.debug(f"Starting Surya OCR on selection: {file_path} with language {language}")
+    Run Surya OCR on a specific selection of the image.
     
-    # Crop the image to the selection
-    image = Image.open(file_path)
-    left, top, width, height = selection['left'], selection['top'], selection['width'], selection['height']
-    selection_image = image.crop((left, top, left + width, top + height))
+    Args:
+        file_path: Path to the image file
+        selection: Dictionary with 'x1', 'y1', 'x2', 'y2' coordinates
+        language: Primary language code
+        additional_languages: Optional list of additional language codes
     
-    # Save the cropped image temporarily
-    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
-        selection_image.save(tmp_file.name, 'JPEG')
-        tmp_path = Path(tmp_file.name)
+    Returns:
+        OcrResponse with text content and bounding boxes
+    """
+    logging.debug(f"Starting Surya OCR with selection: {file_path}")
+    
+    if not file_path.exists():
+        raise RuntimeError(f"File does not exist: {file_path}")
     
     try:
-        return run(tmp_path, language=language)
-    finally:
-        # Clean up temporary file
-        tmp_path.unlink(missing_ok=True)
+        # Load image and crop to selection
+        image = Image.open(file_path)
+        image = image.convert('RGB')
+        
+        # Crop to selection area
+        x1 = selection.get('x1', 0)
+        y1 = selection.get('y1', 0)
+        x2 = selection.get('x2', image.width)
+        y2 = selection.get('y2', image.height)
+        
+        cropped_image = image.crop((x1, y1, x2, y2))
+        
+        # Save cropped image to temporary file
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
+            cropped_image.save(temp_file.name)
+            temp_path = Path(temp_file.name)
+        
+        try:
+            # Run OCR on cropped image
+            result = run(temp_path, language=language, additional_languages=additional_languages)
+            
+            # Adjust bounding box coordinates back to original image
+            adjusted_boxes = []
+            for box in result.bounding_boxes:
+                adjusted_boxes.append((
+                    box[0] + x1,  # x1
+                    box[1] + y1,  # y1
+                    box[2] + x1,  # x2
+                    box[3] + y1,  # y2
+                    box[4]        # text
+                ))
+            
+            return OcrResponse(text_content=result.text_content, bounding_boxes=adjusted_boxes)
+            
+        finally:
+            # Clean up temporary file
+            if temp_path.exists():
+                temp_path.unlink()
+                
+    except Exception as e:
+        logging.error(f"Surya OCR with selection failed: {e}")
+        raise RuntimeError(f"Surya OCR with selection failed: {e}")
+
+
+def get_supported_languages() -> List[str]:
+    """Get supported language codes for Surya OCR."""
+    # Surya supports 90+ languages automatically
+    # Return common language codes that users might want to specify
+    return [
+        'sa', 'en', 'hi', 'te', 'mr', 'bn', 'gu', 'kn', 'ml', 'ta', 'pa', 'or', 'ur',
+        'ar', 'fa', 'th', 'ko', 'ja', 'zh', 'ru', 'es', 'fr', 'de', 'it', 'pt', 'nl',
+        'pl', 'tr', 'vi', 'id', 'ms'
+    ]

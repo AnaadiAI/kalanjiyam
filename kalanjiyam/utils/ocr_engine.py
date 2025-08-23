@@ -80,8 +80,6 @@ class SuryaOcrEngine(OcrEngine):
         """Check if Surya OCR is available."""
         try:
             import surya
-            import sys
-            logging.info(f"Surya OCR available. Python executable: {sys.executable}")
         except ImportError as e:
             import sys
             logging.error(f"Surya OCR import failed. Python executable: {sys.executable}")
@@ -96,12 +94,14 @@ class SuryaOcrEngine(OcrEngine):
     def run(self, file_path: Path, **kwargs) -> OcrResponse:
         """Run Surya OCR on the given image file."""
         language = kwargs.get('language', 'sa')  # Default to Sanskrit
-        return surya_ocr.run(file_path, language=language)
+        additional_languages = kwargs.get('additional_languages', None)
+        return surya_ocr.run(file_path, language=language, additional_languages=additional_languages)
     
     def run_with_selection(self, file_path: Path, selection: Dict[str, int], **kwargs) -> OcrResponse:
         """Run Surya OCR on a specific selection of the image."""
         language = kwargs.get('language', 'sa')  # Default to Sanskrit
-        return surya_ocr.run_with_selection(file_path, selection, language=language)
+        additional_languages = kwargs.get('additional_languages', None)
+        return surya_ocr.run_with_selection(file_path, selection, language=language, additional_languages=additional_languages)
     
     def get_supported_languages(self) -> List[str]:
         """Get supported language codes for Surya OCR."""

@@ -67,72 +67,182 @@ export default () => ({
   hasUnsavedChanges: false,
   imageViewer: null,
 
-  // Language options for different OCR engines
-  languageOptions: {
-    google: [
-      { value: 'sa', text: 'Sanskrit (sa)' },
-      { value: 'hi', text: 'Hindi (hi)' },
-      { value: 'te', text: 'Telugu (te)' },
-      { value: 'mr', text: 'Marathi (mr)' },
-      { value: 'bn', text: 'Bengali (bn)' },
-      { value: 'gu', text: 'Gujarati (gu)' },
-      { value: 'kn', text: 'Kannada (kn)' },
-      { value: 'ml', text: 'Malayalam (ml)' },
-      { value: 'ta', text: 'Tamil (ta)' },
-      { value: 'pa', text: 'Punjabi (pa)' },
-      { value: 'or', text: 'Odia (or)' },
-      { value: 'ur', text: 'Urdu (ur)' },
-      { value: 'en', text: 'English (en)' }
-    ],
-    tesseract: [
-      { value: 'san', text: 'Sanskrit (san)' },
-      { value: 'eng', text: 'English (eng)' },
-      { value: 'hin', text: 'Hindi (hin)' },
-      { value: 'tel', text: 'Telugu (tel)' },
-      { value: 'mar', text: 'Marathi (mar)' },
-      { value: 'ben', text: 'Bengali (ben)' },
-      { value: 'guj', text: 'Gujarati (guj)' },
-      { value: 'kan', text: 'Kannada (kan)' },
-      { value: 'mal', text: 'Malayalam (mal)' },
-      { value: 'tam', text: 'Tamil (tam)' },
-      { value: 'pan', text: 'Punjabi (pan)' },
-      { value: 'ori', text: 'Odia (ori)' },
-      { value: 'urd', text: 'Urdu (urd)' }
-    ],
-    surya: [
-      { value: 'sa', text: 'Sanskrit (sa)' },
-      { value: 'hi', text: 'Hindi (hi)' },
-      { value: 'te', text: 'Telugu (te)' },
-      { value: 'mr', text: 'Marathi (mr)' },
-      { value: 'bn', text: 'Bengali (bn)' },
-      { value: 'gu', text: 'Gujarati (gu)' },
-      { value: 'kn', text: 'Kannada (kn)' },
-      { value: 'ml', text: 'Malayalam (ml)' },
-      { value: 'ta', text: 'Tamil (ta)' },
-      { value: 'pa', text: 'Punjabi (pa)' },
-      { value: 'or', text: 'Odia (or)' },
-      { value: 'ur', text: 'Urdu (ur)' },
-      { value: 'en', text: 'English (en)' },
-      { value: 'ar', text: 'Arabic (ar)' },
-      { value: 'fa', text: 'Persian (fa)' },
-      { value: 'th', text: 'Thai (th)' },
-      { value: 'ko', text: 'Korean (ko)' },
-      { value: 'ja', text: 'Japanese (ja)' },
-      { value: 'zh', text: 'Chinese (zh)' },
-      { value: 'ru', text: 'Russian (ru)' },
-      { value: 'es', text: 'Spanish (es)' },
-      { value: 'fr', text: 'French (fr)' },
-      { value: 'de', text: 'German (de)' },
-      { value: 'it', text: 'Italian (it)' },
-      { value: 'pt', text: 'Portuguese (pt)' },
-      { value: 'nl', text: 'Dutch (nl)' },
-      { value: 'pl', text: 'Polish (pl)' },
-      { value: 'tr', text: 'Turkish (tr)' },
-      { value: 'vi', text: 'Vietnamese (vi)' },
-      { value: 'id', text: 'Indonesian (id)' },
-      { value: 'ms', text: 'Malay (ms)' }
-    ]
-  },
+  // OCR Engine configurations
+  const ocrEngines = {
+    google: {
+      name: 'Google OCR',
+      languages: [
+        { value: 'sa', text: 'Sanskrit (sa)' },
+        { value: 'en', text: 'English (en)' },
+        { value: 'hi', text: 'Hindi (hi)' },
+        { value: 'te', text: 'Telugu (te)' },
+        { value: 'mr', text: 'Marathi (mr)' },
+        { value: 'bn', text: 'Bengali (bn)' },
+        { value: 'gu', text: 'Gujarati (gu)' },
+        { value: 'kn', text: 'Kannada (kn)' },
+        { value: 'ml', text: 'Malayalam (ml)' },
+        { value: 'ta', text: 'Tamil (ta)' },
+        { value: 'pa', text: 'Punjabi (pa)' },
+        { value: 'or', text: 'Odia (or)' },
+        { value: 'ur', text: 'Urdu (ur)' }
+      ],
+      supportsBilingual: false
+    },
+    tesseract: {
+      name: 'Tesseract OCR',
+      languages: [
+        { value: 'san', text: 'Sanskrit (san)' },
+        { value: 'eng', text: 'English (eng)' },
+        { value: 'hin', text: 'Hindi (hin)' },
+        { value: 'tel', text: 'Telugu (tel)' },
+        { value: 'mar', text: 'Marathi (mar)' },
+        { value: 'ben', text: 'Bengali (ben)' },
+        { value: 'guj', text: 'Gujarati (guj)' },
+        { value: 'kan', text: 'Kannada (kan)' },
+        { value: 'mal', text: 'Malayalam (mal)' },
+        { value: 'tam', text: 'Tamil (tam)' },
+        { value: 'pan', text: 'Punjabi (pan)' },
+        { value: 'ori', text: 'Odia (ori)' },
+        { value: 'urd', text: 'Urdu (urd)' }
+      ],
+      supportsBilingual: true,
+      bilingualSeparator: '+'
+    },
+    surya: {
+      name: 'Surya OCR',
+      languages: [
+        { value: 'sa', text: 'Sanskrit (sa)' },
+        { value: 'hi', text: 'Hindi (hi)' },
+        { value: 'te', text: 'Telugu (te)' },
+        { value: 'mr', text: 'Marathi (mr)' },
+        { value: 'bn', text: 'Bengali (bn)' },
+        { value: 'gu', text: 'Gujarati (gu)' },
+        { value: 'kn', text: 'Kannada (kn)' },
+        { value: 'ml', text: 'Malayalam (ml)' },
+        { value: 'ta', text: 'Tamil (ta)' },
+        { value: 'pa', text: 'Punjabi (pa)' },
+        { value: 'or', text: 'Odia (or)' },
+        { value: 'ur', text: 'Urdu (ur)' },
+        { value: 'en', text: 'English (en)' },
+        { value: 'ar', text: 'Arabic (ar)' },
+        { value: 'fa', text: 'Persian (fa)' },
+        { value: 'th', text: 'Thai (th)' },
+        { value: 'ko', text: 'Korean (ko)' },
+        { value: 'ja', text: 'Japanese (ja)' },
+        { value: 'zh', text: 'Chinese (zh)' },
+        { value: 'ru', text: 'Russian (ru)' },
+        { value: 'es', text: 'Spanish (es)' },
+        { value: 'fr', text: 'French (fr)' },
+        { value: 'de', text: 'German (de)' },
+        { value: 'it', text: 'Italian (it)' },
+        { value: 'pt', text: 'Portuguese (pt)' },
+        { value: 'nl', text: 'Dutch (nl)' },
+        { value: 'pl', text: 'Polish (pl)' },
+        { value: 'tr', text: 'Turkish (tr)' },
+        { value: 'vi', text: 'Vietnamese (vi)' },
+        { value: 'id', text: 'Indonesian (id)' },
+        { value: 'ms', text: 'Malay (ms)' }
+      ],
+      supportsBilingual: true,
+      bilingualSeparator: ',',
+      autoDetect: true
+    }
+  };
+
+  // Function to handle bilingual language selection
+  function handleBilingualLanguageSelection() {
+    const engine = selectedEngine;
+    const engineConfig = ocrEngines[engine];
+    
+    if (!engineConfig || !engineConfig.supportsBilingual) {
+      return;
+    }
+    
+    const languageSelect = document.getElementById('language');
+    const additionalLanguageSelect = document.getElementById('additional-language');
+    
+    if (!additionalLanguageSelect) {
+      // Create additional language select if it doesn't exist
+      const additionalLanguageDiv = document.createElement('div');
+      additionalLanguageDiv.className = 'mb-4';
+      additionalLanguageDiv.innerHTML = `
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          Additional Language (Optional)
+        </label>
+        <select id="additional-language" class="w-full p-2 text-sm border border-teal-200 rounded focus:border-peacock-primary">
+          <option value="">None</option>
+        </select>
+        <p class="text-xs text-gray-500 mt-1">
+          For bilingual/multilingual documents. Surya auto-detects languages.
+        </p>
+      `;
+      
+      languageSelect.parentNode.parentNode.appendChild(additionalLanguageDiv);
+      
+      // Populate additional language options
+      updateAdditionalLanguageOptions();
+    }
+    
+    // Show/hide additional language select based on engine
+    const additionalLanguageDiv = document.getElementById('additional-language').parentNode;
+    additionalLanguageDiv.style.display = engineConfig.supportsBilingual ? 'block' : 'none';
+  }
+
+  // Function to update additional language options
+  function updateAdditionalLanguageOptions() {
+    const engine = selectedEngine;
+    const engineConfig = ocrEngines[engine];
+    const additionalLanguageSelect = document.getElementById('additional-language');
+    
+    if (!additionalLanguageSelect || !engineConfig) {
+      return;
+    }
+    
+    // Clear existing options
+    additionalLanguageSelect.innerHTML = '<option value="">None</option>';
+    
+    // Add language options
+    engineConfig.languages.forEach(lang => {
+      const option = document.createElement('option');
+      option.value = lang.value;
+      option.textContent = lang.text;
+      additionalLanguageSelect.appendChild(option);
+    });
+  }
+
+  // Function to get combined language parameter
+  function getLanguageParameter() {
+    const engine = selectedEngine;
+    const engineConfig = ocrEngines[engine];
+    const primaryLanguage = document.getElementById('language').value;
+    const additionalLanguage = document.getElementById('additional-language')?.value;
+    
+    if (!engineConfig || !engineConfig.supportsBilingual || !additionalLanguage) {
+      return primaryLanguage;
+    }
+    
+    if (engine === 'tesseract') {
+      // Tesseract uses + separator
+      return `${primaryLanguage}+${additionalLanguage}`;
+    } else if (engine === 'surya') {
+      // Surya uses comma separator and supports additional_languages parameter
+      return primaryLanguage;
+    }
+    
+    return primaryLanguage;
+  }
+
+  // Function to get additional languages for Surya
+  function getAdditionalLanguages() {
+    const engine = selectedEngine;
+    const additionalLanguage = document.getElementById('additional-language')?.value;
+    
+    if (engine === 'surya' && additionalLanguage) {
+      return [additionalLanguage];
+    }
+    
+    return null;
+  }
 
   init() {
     this.loadSettings();
@@ -218,27 +328,27 @@ export default () => ({
   // OCR controls
 
   updateLanguageOptions() {
-    const languageSelect = document.getElementById('language-select');
-    if (!languageSelect) return;
+    const engine = selectedEngine;
+    const engineConfig = ocrEngines[engine];
+    const languageSelect = document.getElementById('language');
     
-    // Clear current options
+    if (!languageSelect || !engineConfig) {
+      return;
+    }
+    
+    // Clear existing options
     languageSelect.innerHTML = '';
     
-    // Add new options based on selected engine
-    const options = this.languageOptions[this.selectedEngine] || this.languageOptions.google;
-    options.forEach(option => {
-      const optionElement = document.createElement('option');
-      optionElement.value = option.value;
-      optionElement.textContent = option.text;
-      // Set Sanskrit as default for both engines
-      if (option.value === 'sa' || option.value === 'san') {
-        optionElement.selected = true;
-        this.selectedLanguage = option.value;
-      }
-      languageSelect.appendChild(optionElement);
+    // Add language options
+    engineConfig.languages.forEach(lang => {
+      const option = document.createElement('option');
+      option.value = lang.value;
+      option.textContent = lang.text;
+      languageSelect.appendChild(option);
     });
     
-    this.saveSettings();
+    // Handle bilingual language selection
+    handleBilingualLanguageSelection();
   },
 
   async runOCR(engine = 'google', language = 'sa') {

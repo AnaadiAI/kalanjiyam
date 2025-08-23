@@ -44,6 +44,20 @@ def run(file_path: Path, language: str = 'sa') -> OcrResponse:
     """
     logging.debug(f"Starting Surya OCR: {file_path} with language {language}")
 
+    # Check if file exists and is readable
+    if not file_path.exists():
+        raise RuntimeError(f"Image file does not exist: {file_path}")
+    
+    if not file_path.is_file():
+        raise RuntimeError(f"Path is not a file: {file_path}")
+    
+    # Check file size
+    file_size = file_path.stat().st_size
+    if file_size == 0:
+        raise RuntimeError(f"Image file is empty: {file_path}")
+    
+    logging.info(f"Processing image file: {file_path}, size: {file_size} bytes")
+
     try:
         # Try to import Surya OCR
         try:
@@ -64,22 +78,103 @@ def run(file_path: Path, language: str = 'sa') -> OcrResponse:
             )
         
         # Initialize Surya predictors
-        foundation_predictor = FoundationPredictor()
-        detection_predictor = DetectionPredictor(foundation_predictor)
-        recognition_predictor = RecognitionPredictor(foundation_predictor)
+        try:
+            foundation_predictor = FoundationPredictor()
+            detection_predictor = DetectionPredictor(foundation_predictor)
+            recognition_predictor = RecognitionPredictor(foundation_predictor)
+        except Exception as e:
+            logging.error(f"Surya model initialization failed: {e}")
+            logging.warning("Falling back to Google OCR due to Surya model failure")
+            
+            # Fallback to Google OCR first, then Tesseract
+            try:
+                from kalanjiyam.utils import google_ocr
+                return google_ocr.run(file_path, language=language)
+            except Exception as google_error:
+                logging.warning(f"Google OCR fallback failed: {google_error}")
+                logging.warning("Falling back to Tesseract OCR")
+                
+                try:
+                    from kalanjiyam.utils import tesseract_ocr
+                    # Convert language code from Google format to Tesseract format
+                    tesseract_lang = language
+                    if language == 'sa':
+                        tesseract_lang = 'san'
+                    elif language == 'en':
+                        tesseract_lang = 'eng'
+                    elif language == 'hi':
+                        tesseract_lang = 'hin'
+                    elif language == 'te':
+                        tesseract_lang = 'tel'
+                    elif language == 'mr':
+                        tesseract_lang = 'mar'
+                    elif language == 'bn':
+                        tesseract_lang = 'ben'
+                    elif language == 'gu':
+                        tesseract_lang = 'guj'
+                    elif language == 'kn':
+                        tesseract_lang = 'kan'
+                    elif language == 'ml':
+                        tesseract_lang = 'mal'
+                    elif language == 'ta':
+                        tesseract_lang = 'tam'
+                    elif language == 'pa':
+                        tesseract_lang = 'pan'
+                    elif language == 'or':
+                        tesseract_lang = 'ori'
+                    elif language == 'ur':
+                        tesseract_lang = 'urd'
+                    
+                    return tesseract_ocr.run(file_path, language=tesseract_lang)
+                except Exception as tesseract_error:
+                    logging.error(f"Tesseract OCR fallback also failed: {tesseract_error}")
+                    raise RuntimeError(
+                        f"Surya model initialization failed: {e}. "
+                        f"Google OCR fallback failed: {google_error}. "
+                        f"Tesseract OCR fallback failed: {tesseract_error}"
+                    )
         
         # Load and process the image
         from PIL import Image
-        image = Image.open(file_path)
+        import numpy as np
+        
+        try:
+            image = Image.open(file_path)
+            
+            # Convert to RGB if necessary (Surya expects RGB images)
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            # Ensure the image is properly loaded
+            if image.size[0] == 0 or image.size[1] == 0:
+                raise ValueError("Image has zero dimensions")
+            
+            logging.info(f"Loaded image: {image.size}, mode: {image.mode}")
+            
+        except Exception as e:
+            logging.error(f"Failed to load image {file_path}: {e}")
+            raise RuntimeError(f"Failed to load image: {e}")
         
         # Run OCR using Surya's Python API
         # Note: Surya automatically detects languages, so we don't need to specify language
-        ocr_results = recognition_predictor(
-            [image],
-            task_names=['recognition'],
-            det_predictor=detection_predictor,
-            return_words=True
-        )
+        try:
+            ocr_results = recognition_predictor(
+                [image],
+                task_names=['recognition'],
+                det_predictor=detection_predictor,
+                return_words=True
+            )
+        except Exception as e:
+            logging.error(f"Surya OCR processing failed: {e}")
+            logging.warning("Falling back to Google OCR due to Surya failure")
+            
+            # Fallback to Google OCR
+            try:
+                from kalanjiyam.utils import google_ocr
+                return google_ocr.run(file_path, language=language)
+            except Exception as fallback_error:
+                logging.error(f"Google OCR fallback also failed: {fallback_error}")
+                raise RuntimeError(f"Surya OCR failed: {e}. Google OCR fallback also failed: {fallback_error}")
         
         # Extract text content and bounding boxes
         text_content = ""
@@ -92,6 +187,7 @@ def run(file_path: Path, language: str = 'sa') -> OcrResponse:
             if hasattr(ocr_result, 'text') and ocr_result.text:
                 text_content = ocr_result.text
                 text_content = post_process(text_content)
+                logging.info(f"Extracted text content: {len(text_content)} characters")
             
             # Extract bounding boxes from words
             if hasattr(ocr_result, 'words') and ocr_result.words:
@@ -103,6 +199,10 @@ def run(file_path: Path, language: str = 'sa') -> OcrResponse:
                         if len(bbox) >= 4:
                             x1, y1, x2, y2 = bbox[:4]
                             bounding_boxes.append((x1, y1, x2, y2, text))
+                
+                logging.info(f"Extracted {len(bounding_boxes)} bounding boxes")
+        else:
+            logging.warning("No OCR results returned from Surya")
         
         return OcrResponse(text_content=text_content, bounding_boxes=bounding_boxes)
         

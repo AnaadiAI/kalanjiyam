@@ -37,7 +37,14 @@ def _run_ocr_for_page_inner(
         image_path = get_page_image_filepath(project_slug, page_slug)
         
         from kalanjiyam.utils.ocr_engine import run_ocr
-        ocr_response = run_ocr(image_path, engine_name=engine, language=language)
+        
+        # Get GPU configuration for Surya OCR
+        gpu_config = None
+        if engine == 'surya':
+            from kalanjiyam.utils.surya_gpu_config import get_gpu_config_from_env
+            gpu_config = get_gpu_config_from_env()
+        
+        ocr_response = run_ocr(image_path, engine_name=engine, language=language, gpu_config=gpu_config)
 
         session = q.get_session()
         project = q.project(project_slug)

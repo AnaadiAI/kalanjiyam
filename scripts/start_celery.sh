@@ -5,7 +5,7 @@
 
 set -e
 
-echo "Starting Kalanjiyam Celery worker..."
+echo "Starting Kalanjiyam Celery worker with conservative settings..."
 
 # Check if we're in a Docker container
 if [ -f /.dockerenv ]; then
@@ -15,10 +15,11 @@ if [ -f /.dockerenv ]; then
     . /venv/bin/activate
     export PATH=$PATH:/venv/bin/
     
-    celery -A kalanjiyam.tasks worker --loglevel=INFO
+    # Start with conservative settings to prevent memory issues
+    celery -A kalanjiyam.tasks worker --loglevel=INFO --concurrency=2 --prefetch-multiplier=1
 else
     echo "Running locally..."
     
-    # Start Celery worker locally
-    celery -A kalanjiyam.tasks worker --loglevel=INFO
+    # Start Celery worker locally with conservative settings
+    celery -A kalanjiyam.tasks worker --loglevel=INFO --concurrency=2 --prefetch-multiplier=1
 fi

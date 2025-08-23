@@ -127,6 +127,7 @@ def edit(project_slug, page_slug):
 
     has_edits = bool(cur.revisions)
     translation_content = None
+    translation_metadata = None
     if has_edits:
         latest_revision = cur.revisions[-1]
         form.content.data = latest_revision.content
@@ -209,6 +210,7 @@ def edit_post(project_slug, page_slug):
 
     # Get translation content for the latest revision (any available translation)
     translation_content = None
+    translation_metadata = None
     if cur.revisions:
         latest_revision = cur.revisions[-1]
         session = q.get_session()

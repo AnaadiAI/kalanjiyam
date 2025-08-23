@@ -25,11 +25,10 @@ function initializeImageViewer(imageURL) {
     // Buttons
     showZoomControl: false,
     showHomeControl: false,
-    showRotationControl: true,
+    showRotationControl: false,
     showFullPageControl: false,
     // Zoom buttons are defined in the `Editor` component below.
-    rotateLeftButton: 'osd-rotate-left',
-    rotateRightButton: 'osd-rotate-right',
+    // Custom rotation buttons are defined in the template
 
     // Animations
     gestureSettingsMouse: {
@@ -151,8 +150,8 @@ export default () => ({
 
   // Function to handle bilingual language selection
   handleBilingualLanguageSelection() {
-    const engine = selectedEngine;
-    const engineConfig = ocrEngines[engine];
+    const engine = this.selectedEngine;
+    const engineConfig = this.ocrEngines[engine];
     
     if (!engineConfig || !engineConfig.supportsBilingual) {
       return;
@@ -180,7 +179,7 @@ export default () => ({
       languageSelect.parentNode.parentNode.appendChild(additionalLanguageDiv);
       
       // Populate additional language options
-      updateAdditionalLanguageOptions();
+      this.updateAdditionalLanguageOptions();
     }
     
     // Show/hide additional language select based on engine
@@ -190,8 +189,8 @@ export default () => ({
 
   // Function to update additional language options
   updateAdditionalLanguageOptions() {
-    const engine = selectedEngine;
-    const engineConfig = ocrEngines[engine];
+    const engine = this.selectedEngine;
+    const engineConfig = this.ocrEngines[engine];
     const additionalLanguageSelect = document.getElementById('additional-language');
     
     if (!additionalLanguageSelect || !engineConfig) {
@@ -212,8 +211,8 @@ export default () => ({
 
   // Function to get combined language parameter
   getLanguageParameter() {
-    const engine = selectedEngine;
-    const engineConfig = ocrEngines[engine];
+    const engine = this.selectedEngine;
+    const engineConfig = this.ocrEngines[engine];
     const primaryLanguage = document.getElementById('language').value;
     const additionalLanguage = document.getElementById('additional-language')?.value;
     
@@ -234,7 +233,7 @@ export default () => ({
 
   // Function to get additional languages for Surya
   getAdditionalLanguages() {
-    const engine = selectedEngine;
+    const engine = this.selectedEngine;
     const additionalLanguage = document.getElementById('additional-language')?.value;
     
     if (engine === 'surya' && additionalLanguage) {
@@ -267,6 +266,9 @@ export default () => ({
     
     // Initialize language options
     this.updateLanguageOptions();
+    
+    // Add event listeners for rotation buttons
+    this.setupRotationButtons();
   },
 
   // Settings IO
@@ -328,8 +330,8 @@ export default () => ({
   // OCR controls
 
   updateLanguageOptions() {
-    const engine = selectedEngine;
-    const engineConfig = ocrEngines[engine];
+    const engine = this.selectedEngine;
+    const engineConfig = this.ocrEngines[engine];
     const languageSelect = document.getElementById('language');
     
     if (!languageSelect || !engineConfig) {
@@ -348,7 +350,7 @@ export default () => ({
     });
     
     // Handle bilingual language selection
-    handleBilingualLanguageSelection();
+    this.handleBilingualLanguageSelection();
   },
 
   async runOCR(engine = 'google', language = 'sa') {
@@ -393,6 +395,32 @@ export default () => ({
     this.imageZoom = this.imageViewer.viewport.getHomeZoom();
     this.imageViewer.viewport.zoomTo(this.imageZoom);
     this.saveSettings();
+  },
+
+  // Image rotation controls
+
+  rotateLeft() {
+    if (this.imageViewer) {
+      this.imageViewer.viewport.setRotation(this.imageViewer.viewport.getRotation() - 90);
+    }
+  },
+  rotateRight() {
+    if (this.imageViewer) {
+      this.imageViewer.viewport.setRotation(this.imageViewer.viewport.getRotation() + 90);
+    }
+  },
+
+  setupRotationButtons() {
+    const rotateLeftBtn = document.getElementById('osd-rotate-left');
+    const rotateRightBtn = document.getElementById('osd-rotate-right');
+    
+    if (rotateLeftBtn) {
+      rotateLeftBtn.addEventListener('click', () => this.rotateLeft());
+    }
+    
+    if (rotateRightBtn) {
+      rotateRightBtn.addEventListener('click', () => this.rotateRight());
+    }
   },
 
   // Text zoom controls

@@ -135,7 +135,7 @@ devserver: py-venv-check
 	
 # Run a local Celery instance for background tasks.
 celery: 
-	celery -A kalanjiyam.tasks worker --loglevel=INFO
+	celery -A kalanjiyam.tasks worker --loglevel=INFO --concurrency=2 --prefetch-multiplier=1
 
 # Start Redis server for Celery backend and broker.
 redis:
@@ -144,6 +144,22 @@ redis:
 # Stop Redis server.
 redis-stop:
 	redis-cli shutdown
+
+# Monitor memory usage of Celery workers and Surya OCR processes
+memory-monitor:
+	python scripts/monitor_memory.py
+
+# Stop all Celery workers (useful for memory issues)
+celery-stop:
+	python scripts/monitor_memory.py --kill-workers
+
+# Test Surya OCR GPU configuration
+test-surya-gpu:
+	python scripts/test_surya_gpu.py
+
+# List available GPUs
+list-gpus:
+	python scripts/test_surya_gpu.py --list-gpus
 
 
 # Docker commands

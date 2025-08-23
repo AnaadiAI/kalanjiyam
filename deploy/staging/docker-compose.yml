@@ -30,7 +30,7 @@ services:
 
   kalanjiyam-celery:
     image: ${KALANJIYAM_IMAGE}
-    command: celery -A kalanjiyam.tasks worker --loglevel=INFO
+    command: celery -A kalanjiyam.tasks worker --loglevel=INFO --concurrency=2 --prefetch-multiplier=1
     environment:
       - KALANJIYAM_BOT_PASSWORD=insecure bot password
     depends_on:

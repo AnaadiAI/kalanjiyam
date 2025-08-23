@@ -4,12 +4,51 @@ import subprocess
 import tempfile
 import json
 import os
+import gc
 from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional
 from PIL import Image
 
 from kalanjiyam.utils import google_ocr
 OcrResponse = google_ocr.OcrResponse
+
+
+def get_gpu_config() -> Dict[str, Any]:
+    """
+    Get GPU configuration from environment variables.
+    
+    Returns:
+        Dictionary with GPU configuration settings
+    """
+    config = {
+        'device': os.environ.get('SURYA_GPU_DEVICE', 'auto'),  # 'auto', 'cuda:0', 'cuda:1', 'cpu'
+        'memory_fraction': float(os.environ.get('SURYA_GPU_MEMORY_FRACTION', '0.8')),  # Use 80% of GPU memory by default
+        'max_memory_mb': int(os.environ.get('SURYA_GPU_MAX_MEMORY_MB', '0')),  # 0 = no limit
+        'allow_growth': os.environ.get('SURYA_GPU_ALLOW_GROWTH', 'true').lower() == 'true',
+    }
+    
+    # Auto-detect GPU if not specified
+    if config['device'] == 'auto':
+        if os.environ.get('CUDA_VISIBLE_DEVICES'):
+            # Use the first available GPU
+            gpu_id = os.environ.get('CUDA_VISIBLE_DEVICES').split(',')[0]
+            config['device'] = f'cuda:{gpu_id}'
+        else:
+            # Check if CUDA is available
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    config['device'] = 'cuda:0'
+                else:
+                    config['device'] = 'cpu'
+            except ImportError:
+                config['device'] = 'cpu'
+    
+    return config
+
+
+# Import the setup function from the config module
+from kalanjiyam.utils.surya_gpu_config import setup_gpu_environment
 
 
 def post_process(text: str) -> str:
@@ -31,7 +70,7 @@ def serialize_bounding_boxes(boxes: List[Tuple[int, int, int, int, str]]) -> str
     } for box in boxes])
 
 
-def run(file_path: Path, language: str = 'sa', additional_languages: Optional[List[str]] = None) -> OcrResponse:
+def run(file_path: Path, language: str = 'sa', additional_languages: Optional[List[str]] = None, gpu_config: Optional[Dict[str, Any]] = None) -> OcrResponse:
     """
     Run Surya OCR on the given image file.
     
@@ -39,6 +78,7 @@ def run(file_path: Path, language: str = 'sa', additional_languages: Optional[Li
         file_path: Path to the image file
         language: Primary language code (e.g., 'sa', 'en', 'hi')
         additional_languages: Optional list of additional language codes for bilingual/multilingual OCR
+        gpu_config: Optional GPU configuration dictionary
     
     Returns:
         OcrResponse with text content and bounding boxes
@@ -57,43 +97,48 @@ def run(file_path: Path, language: str = 'sa', additional_languages: Optional[Li
     
     logging.info(f"Processing image file: {file_path}, size: {file_size} bytes")
     
+    # Get and setup GPU configuration
+    if gpu_config is None:
+        gpu_config = get_gpu_config()
+    setup_gpu_environment(gpu_config)
+    
+    # Set conservative environment variables for Surya OCR
+    os.environ.setdefault('COMPILE_DETECTOR', 'false')  # Disable compilation to save memory
+    os.environ.setdefault('COMPILE_LAYOUT', 'false')    # Disable compilation to save memory
+    os.environ.setdefault('COMPILE_TABLE_REC', 'false') # Disable compilation to save memory
+    
     try:
         # Import Surya modules
         from surya.common.surya.schema import TaskNames
         from surya.detection import DetectionPredictor
-        from surya.debug.text import draw_text_on_image
         from surya.foundation import FoundationPredictor
         from surya.recognition import RecognitionPredictor
-        from surya.scripts.config import CLILoader
         
-        # Load image
+        # Load image with memory optimization
         image = Image.open(file_path)
         image = image.convert('RGB')
         
-        # Set up the loader
-        loader_kwargs = {
-            'output_dir': tempfile.mkdtemp(),
-            'images': False,
-            'debug': False
-        }
-        loader = CLILoader(str(file_path), loader_kwargs, highres=True)
+        # Resize large images to prevent memory issues (max 2048px on longest side)
+        max_size = int(os.environ.get('SURYA_MAX_IMAGE_SIZE', '2048'))
+        if max(image.size) > max_size:
+            ratio = max_size / max(image.size)
+            new_size = tuple(int(dim * ratio) for dim in image.size)
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+            logging.info(f"Resized image from {image.size} to {new_size} to save memory")
         
-        # Initialize predictors
+        # Initialize predictors with conservative settings
         foundation_predictor = FoundationPredictor()
         det_predictor = DetectionPredictor()
         rec_predictor = RecognitionPredictor(foundation_predictor)
         
-        # Set task names for OCR with bounding boxes
-        task_names = [TaskNames.ocr_with_boxes] * len(loader.images)
-        
-        # Run OCR
-        logging.info("Running Surya OCR with automatic language detection")
+        # Run OCR with the new API and conservative settings
+        logging.info(f"Running Surya OCR with automatic language detection on {gpu_config['device']}")
         predictions_by_image = rec_predictor(
-            loader.images,
-            task_names=task_names,
+            [image],
+            task_names=[TaskNames.ocr_with_boxes],
             det_predictor=det_predictor,
-            highres_images=loader.highres_images,
-            math_mode=True,  # Enable math recognition
+            highres_images=[image],
+            math_mode=os.environ.get('SURYA_MATH_MODE', 'false').lower() == 'true',  # Configurable math recognition
         )
         
         # Extract text and bounding boxes from the first image result
@@ -110,19 +155,30 @@ def run(file_path: Path, language: str = 'sa', additional_languages: Optional[Li
             if line_text:
                 text_content += line_text + "\n"
                 
-                # Convert polygon to bounding box format (x1, y1, x2, y2)
+                # Extract bounding box coordinates (already in x1, y1, x2, y2 format)
                 if hasattr(line, 'bbox') and line.bbox:
                     bbox = line.bbox
                     if len(bbox) >= 4:
-                        # Convert from polygon format to bounding box
-                        x_coords = [p[0] for p in bbox]
-                        y_coords = [p[1] for p in bbox]
-                        x1, x2 = min(x_coords), max(x_coords)
-                        y1, y2 = min(y_coords), max(y_coords)
+                        # bbox is already in [x1, y1, x2, y2] format
+                        x1, y1, x2, y2 = bbox[0], bbox[1], bbox[2], bbox[3]
                         bounding_boxes.append((x1, y1, x2, y2, line_text))
         
         text_content = text_content.strip()
         logging.info(f"Surya OCR completed successfully. Extracted {len(bounding_boxes)} text lines")
+        
+        # Clean up memory
+        del predictions_by_image, prediction, foundation_predictor, det_predictor, rec_predictor
+        gc.collect()
+        
+        # Clear GPU cache if using CUDA
+        if gpu_config['device'].startswith('cuda'):
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    logging.debug("Cleared GPU cache")
+            except ImportError:
+                pass
         
     except ImportError as e:
         import sys

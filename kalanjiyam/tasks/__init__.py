@@ -33,4 +33,18 @@ app.conf.update(
     task_always_eager=False,
     # Force arguments to be plain data by requiring them to be JSON-compatible.
     task_serializer="json",
+    # Conservative worker configuration to prevent memory issues
+    worker_concurrency=2,  # Limit to 2 worker processes instead of default (CPU cores)
+    worker_prefetch_multiplier=1,  # Don't prefetch too many tasks
+    task_acks_late=True,  # Only acknowledge tasks after completion
+    worker_max_tasks_per_child=50,  # Restart workers after 50 tasks to prevent memory leaks
+    worker_max_memory_per_child=200000,  # Restart workers if they exceed 200MB memory
+    # Task routing for OCR tasks to prevent overwhelming the system
+    task_routes={
+        'kalanjiyam.tasks.ocr.*': {'queue': 'ocr', 'routing_key': 'ocr'},
+    },
+    # Queue configuration
+    task_default_queue='default',
+    task_default_exchange='default',
+    task_default_routing_key='default',
 )

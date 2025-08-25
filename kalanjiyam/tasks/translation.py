@@ -69,6 +69,8 @@ def _run_translation_for_page_inner(
         
         # Translate each segment
         translated_segments = []
+        translation_failed = False
+        
         for segment in text_segments:
             if segment.strip():
                 try:
@@ -81,31 +83,36 @@ def _run_translation_for_page_inner(
                     translated_segments.append(translation_response.translated_text)
                 except Exception as e:
                     LOG.error(f"Translation failed for segment: {e}")
-                    # Add original text if translation fails
-                    translated_segments.append(segment)
+                    translation_failed = True
+                    break  # Stop translation if any segment fails
             else:
                 translated_segments.append(segment)
 
-        # Combine translated segments
-        translated_content = '\n\n'.join(translated_segments)
+        # Only create translation record if translation was successful
+        if not translation_failed:
+            # Combine translated segments
+            translated_content = '\n\n'.join(translated_segments)
 
-        # Create translation record
-        translation = db.Translation(
-            page_id=page.id,
-            revision_id=revision.id,
-            author_id=bot_user.id,
-            content=translated_content,
-            source_language=source_lang,
-            target_language=target_lang,
-            translation_engine=engine,
-            status='completed'
-        )
-        
-        session.add(translation)
-        session.commit()
-        
-        LOG.info(f"Translation completed for {project_slug}/{page_slug} ({source_lang}->{target_lang})")
-        return translation.id
+            # Create translation record
+            translation = db.Translation(
+                page_id=page.id,
+                revision_id=revision.id,
+                author_id=bot_user.id,
+                content=translated_content,
+                source_language=source_lang,
+                target_language=target_lang,
+                translation_engine=engine,
+                status='completed'
+            )
+            
+            session.add(translation)
+            session.commit()
+            
+            LOG.info(f"Translation completed for {project_slug}/{page_slug} ({source_lang}->{target_lang})")
+            return translation.id
+        else:
+            LOG.warning(f"Translation failed for {project_slug}/{page_slug} ({source_lang}->{target_lang}) - no translation record created")
+            return None
 
 
 @app.task(bind=True)

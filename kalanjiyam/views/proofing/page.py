@@ -128,24 +128,38 @@ def edit(project_slug, page_slug):
     has_edits = bool(cur.revisions)
     translation_content = None
     translation_metadata = None
+    available_translations = []
     if has_edits:
         latest_revision = cur.revisions[-1]
         form.content.data = latest_revision.content
         
-        # Get translation for the latest revision (any available translation)
+        # Get all available translations for the latest revision
         session = q.get_session()
-        translation = session.query(db.Translation).filter_by(
+        translations = session.query(db.Translation).filter_by(
             page_id=cur.id,
             revision_id=latest_revision.id
-        ).first()
+        ).all()
         
-        if translation:
-            translation_content = translation.content
-            # Add translation metadata for display
+        available_translations = [
+            {
+                'id': t.id,
+                'content': t.content,
+                'source_language': t.source_language,
+                'target_language': t.target_language,
+                'engine': t.translation_engine,
+                'created_at': t.created_at
+            }
+            for t in translations
+        ]
+        
+        # Use the first translation as default (if any exist)
+        if available_translations:
+            first_translation = available_translations[0]
+            translation_content = first_translation['content']
             translation_metadata = {
-                'source_language': translation.source_language,
-                'target_language': translation.target_language,
-                'engine': translation.translation_engine
+                'source_language': first_translation['source_language'],
+                'target_language': first_translation['target_language'],
+                'engine': first_translation['engine']
             }
         else:
             translation_metadata = None
@@ -167,6 +181,7 @@ def edit(project_slug, page_slug):
         project=ctx.project,
         translation_content=translation_content,
         translation_metadata=translation_metadata,
+        available_translations=available_translations,
     )
 
 
@@ -208,24 +223,38 @@ def edit_post(project_slug, page_slug):
     image_number = cur.slug
     page_number = _get_page_number(ctx.project, cur)
 
-    # Get translation content for the latest revision (any available translation)
+    # Get all available translations for the latest revision
     translation_content = None
     translation_metadata = None
+    available_translations = []
     if cur.revisions:
         latest_revision = cur.revisions[-1]
         session = q.get_session()
-        translation = session.query(db.Translation).filter_by(
+        translations = session.query(db.Translation).filter_by(
             page_id=cur.id,
             revision_id=latest_revision.id
-        ).first()
+        ).all()
         
-        if translation:
-            translation_content = translation.content
-            # Add translation metadata for display
+        available_translations = [
+            {
+                'id': t.id,
+                'content': t.content,
+                'source_language': t.source_language,
+                'target_language': t.target_language,
+                'engine': t.translation_engine,
+                'created_at': t.created_at
+            }
+            for t in translations
+        ]
+        
+        # Use the first translation as default (if any exist)
+        if available_translations:
+            first_translation = available_translations[0]
+            translation_content = first_translation['content']
             translation_metadata = {
-                'source_language': translation.source_language,
-                'target_language': translation.target_language,
-                'engine': translation.translation_engine
+                'source_language': first_translation['source_language'],
+                'target_language': first_translation['target_language'],
+                'engine': first_translation['engine']
             }
         else:
             translation_metadata = None
@@ -246,6 +275,7 @@ def edit_post(project_slug, page_slug):
         project=ctx.project,
         translation_content=translation_content,
         translation_metadata=translation_metadata,
+        available_translations=available_translations,
     )
 
 

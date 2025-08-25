@@ -182,6 +182,9 @@ export default () => ({
     
     // Add event listeners for rotation buttons
     this.setupRotationButtons();
+    
+    // Initialize translation selector
+    this.initTranslationSelector();
   },
 
   // Settings IO
@@ -429,6 +432,13 @@ export default () => ({
 
     this.isRunningTranslation = false;
     console.log('=== TRANSLATION DEBUG END ===');
+  },
+
+  // Initialize translation language selector (now handled by Alpine.js)
+  initTranslationSelector() {
+    console.log('=== TRANSLATION SELECTOR INITIALIZED (Alpine.js) ===');
+    // The translation selector is now handled directly by Alpine.js
+    // No additional JavaScript needed
   },
 
   // Show translation in the image box

@@ -431,7 +431,7 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
 
 
 {# Image viewing area with toggle for translation. #}
-{% macro image_box(translation_content=None, translation_metadata=None) %}
+{% macro image_box(translation_content=None, translation_metadata=None, available_translations=None) %}
 <div class="bg-white border border-teal-200 rounded-lg p-4 peacock-shadow" x-data="{ 
   showTranslation: false, 
   dynamicTranslation: null, 
@@ -439,11 +439,48 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
   getTranslationSourceLang() { return this.dynamicTranslation && this.dynamicTranslation.sourceLang ? this.dynamicTranslation.sourceLang.toUpperCase() : ''; },
   getTranslationTargetLang() { return this.dynamicTranslation && this.dynamicTranslation.targetLang ? this.dynamicTranslation.targetLang.toUpperCase() : ''; },
   getTranslationEngine() { return this.dynamicTranslation && this.dynamicTranslation.engine ? this.dynamicTranslation.engine : ''; },
-  getTranslationContent() { return this.dynamicTranslation && this.dynamicTranslation.content ? this.dynamicTranslation.content : ''; }
+  getTranslationContent() { return this.dynamicTranslation && this.dynamicTranslation.content ? this.dynamicTranslation.content : ''; },
+  switchTranslation(event) {
+    const selectedOption = event.target.options[event.target.selectedIndex];
+    const translationData = {
+      content: selectedOption.dataset.content,
+      sourceLang: selectedOption.dataset.sourceLang,
+      targetLang: selectedOption.dataset.targetLang,
+      engine: selectedOption.dataset.engine
+    };
+    
+    console.log('Alpine.js switching to translation:', translationData);
+    this.dynamicTranslation = translationData;
+  }
 }">
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-lg font-semibold text-peacock-primary" x-text="showTranslation ? '{{ _('Translation') }}' : '{{ _('Original Image') }}'"></h3>
     <div class="flex items-center gap-2">
+      <!-- Translation Language Selector -->
+      {% if available_translations and available_translations|length > 1 %}
+      <div class="flex items-center gap-2 mr-4">
+        <label class="text-sm font-medium text-peacock-secondary">Language:</label>
+        <select id="translation-language-select" 
+                class="text-sm border border-teal-200 rounded px-2 py-1 bg-white text-peacock-secondary" 
+                x-show="showTranslation"
+                @change="switchTranslation($event)">
+          {% for translation in available_translations %}
+            <option value="{{ translation.id }}" 
+                    data-content="{{ translation.content|e }}"
+                    data-source-lang="{{ translation.source_language }}"
+                    data-target-lang="{{ translation.target_language }}"
+                    data-engine="{{ translation.engine }}">
+              {{ translation.target_language.upper() }} ({{ translation.engine }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <!-- Debug: No translations available -->
+      <div class="text-xs text-gray-500" x-show="showTranslation">
+        Available translations: {{ available_translations|length if available_translations else 0 }}
+      </div>
+      {% endif %}
       <button type="button" 
               @click="showTranslation = !showTranslation"
               class="flex items-center gap-2 p-2 hover:bg-peacock-light rounded transition-colors"

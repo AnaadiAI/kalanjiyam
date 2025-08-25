@@ -51,18 +51,63 @@ class GoogleTranslateEngine(TranslationEngine):
     def translate(self, text: str, source_lang: str, target_lang: str, **kwargs) -> TranslationResponse:
         """Translate text using Google Translate."""
         try:
+            # Map language codes to Google Translate format
+            # Note: Sanskrit ('sa') is not supported by Google Translate
+            language_map = {
+                'sa': 'hi',  # Sanskrit -> Hindi (closest available)
+                'hi': 'hi',  # Hindi
+                'te': 'te',  # Telugu
+                'mr': 'mr',  # Marathi
+                'bn': 'bn',  # Bengali
+                'gu': 'gu',  # Gujarati
+                'kn': 'kn',  # Kannada
+                'ml': 'ml',  # Malayalam
+                'ta': 'ta',  # Tamil
+                'pa': 'pa',  # Punjabi
+                'or': 'or',  # Odia
+                'ur': 'ur',  # Urdu
+                'en': 'en',  # English
+                'fr': 'fr',  # French
+                'de': 'de',  # German
+                'es': 'es',  # Spanish
+                'ja': 'ja',  # Japanese
+                'ko': 'ko',  # Korean
+                'zh': 'zh',  # Chinese
+                'ru': 'ru',  # Russian
+                'ar': 'ar',  # Arabic
+                'fa': 'fa',  # Persian
+                'th': 'th',  # Thai
+            }
+            
+            # Use mapped language codes or original if not in map
+            mapped_source = language_map.get(source_lang, source_lang)
+            mapped_target = language_map.get(target_lang, target_lang)
+            
+            # Warn if Sanskrit is being used (not supported by Google Translate)
+            if source_lang == 'sa':
+                logging.warning(f"Sanskrit ('sa') is not supported by Google Translate. Using Hindi ('hi') as fallback.")
+            
+            logging.info(f"Translating from {source_lang} ({mapped_source}) to {target_lang} ({mapped_target})")
+            
             # Clean and segment text
             segments = self._segment_text(text)
             translated_segments = []
+            last_result = None
             
             for segment in segments:
                 if segment.strip():
-                    result = self.translator.translate(
-                        segment, 
-                        src=source_lang, 
-                        dest=target_lang
-                    )
-                    translated_segments.append(result.text)
+                    try:
+                        result = self.translator.translate(
+                            segment, 
+                            src=mapped_source, 
+                            dest=mapped_target
+                        )
+                        translated_segments.append(result.text)
+                        last_result = result
+                    except Exception as segment_error:
+                        logging.error(f"Failed to translate segment '{segment[:50]}...': {segment_error}")
+                        # Add original text if translation fails
+                        translated_segments.append(segment)
                 else:
                     translated_segments.append(segment)
             
@@ -73,7 +118,7 @@ class GoogleTranslateEngine(TranslationEngine):
                 source_language=source_lang,
                 target_language=target_lang,
                 engine='google',
-                metadata={'confidence': getattr(result, 'confidence', None)}
+                metadata={'confidence': getattr(last_result, 'confidence', None) if last_result else None}
             )
         except Exception as e:
             logging.error(f"Google Translate failed: {e}")
@@ -83,10 +128,11 @@ class GoogleTranslateEngine(TranslationEngine):
         """Get supported language codes."""
         if self._supported_languages is None:
             try:
-                self._supported_languages = list(self.translator.get_supported_languages().keys())
+                from googletrans import LANGUAGES
+                self._supported_languages = list(LANGUAGES.keys())
             except:
-                # Fallback to common languages
-                self._supported_languages = ['en', 'hi', 'sa', 'te', 'mr', 'fr', 'de', 'es']
+                # Fallback to common languages (excluding Sanskrit as it's not supported by Google)
+                self._supported_languages = ['en', 'hi', 'te', 'mr', 'bn', 'gu', 'kn', 'ml', 'ta', 'pa', 'or', 'ur', 'fr', 'de', 'es', 'ja', 'ko', 'zh', 'ru', 'ar', 'fa', 'th']
         return self._supported_languages
     
     def _segment_text(self, text: str) -> List[str]:
@@ -202,8 +248,21 @@ def translate_text(text: str, source_lang: str, target_lang: str, engine_name: s
     :param kwargs: Additional arguments for the engine
     :return: Translation response
     """
-    engine = TranslationEngineFactory.create(engine_name, **kwargs)
-    return engine.translate(text, source_lang, target_lang, **kwargs)
+    try:
+        # Validate input
+        if not text or not text.strip():
+            raise ValueError("Text to translate cannot be empty")
+        
+        if not source_lang or not target_lang:
+            raise ValueError("Source and target language codes are required")
+        
+        logging.info(f"Starting translation: {source_lang} -> {target_lang} using {engine_name}")
+        
+        engine = TranslationEngineFactory.create(engine_name, **kwargs)
+        return engine.translate(text, source_lang, target_lang, **kwargs)
+    except Exception as e:
+        logging.error(f"Translation failed: {e}")
+        raise
 
 
 def segment_text_for_translation(text: str, max_length: int = 1000) -> List[str]:

@@ -379,6 +379,21 @@ def translate(project_slug, page_slug):
             abort(400, description=f"Revision {revision_id} not found for this page")
     
     try:
+        # Check if translation already exists
+        session = q.get_session()
+        existing_translation = session.query(db.Translation).filter_by(
+            page_id=page_.id,
+            revision_id=revision.id,
+            source_language=source_lang,
+            target_language=target_lang,
+            translation_engine=engine
+        ).first()
+
+        if existing_translation:
+            # Return existing translation
+            return existing_translation.content
+
+        # Perform translation
         from kalanjiyam.utils.translation_engine import translate_text
         translation_response = translate_text(
             revision.content, 
@@ -386,6 +401,27 @@ def translate(project_slug, page_slug):
             target_lang, 
             engine
         )
+
+        # Save translation to database
+        from kalanjiyam import consts
+        bot_user = q.user(consts.BOT_USERNAME)
+        if bot_user is None:
+            abort(500, description="Bot user not found")
+
+        new_translation = db.Translation(
+            page_id=page_.id,
+            revision_id=revision.id,
+            author_id=bot_user.id,
+            content=translation_response.translated_text,
+            source_language=source_lang,
+            target_language=target_lang,
+            translation_engine=engine,
+            status='completed'
+        )
+        
+        session.add(new_translation)
+        session.commit()
+
         return translation_response.translated_text
     except Exception as e:
         logging.error(f"Translation failed for {project_slug}/{page_slug} with engine {engine}: {e}")

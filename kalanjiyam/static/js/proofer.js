@@ -60,9 +60,15 @@ export default () => ({
   selectedEngine: '1', // Default to Google OCR (1)
   selectedLanguage: 'sa',
 
+  // Translation settings
+  selectedTranslationEngine: 'google',
+  sourceLanguage: 'hi',
+  targetLanguage: 'en',
+
   // Internal-only
   layoutClasses: CLASSES_SIDE_BY_SIDE,
   isRunningOCR: false,
+  isRunningTranslation: false,
   hasUnsavedChanges: false,
   imageViewer: null,
 
@@ -197,6 +203,11 @@ export default () => ({
         // Load OCR settings
         this.selectedEngine = settings.selectedEngine || this.selectedEngine;
         this.selectedLanguage = settings.selectedLanguage || this.selectedLanguage;
+        
+        // Load Translation settings
+        this.selectedTranslationEngine = settings.selectedTranslationEngine || this.selectedTranslationEngine;
+        this.sourceLanguage = settings.sourceLanguage || this.sourceLanguage;
+        this.targetLanguage = settings.targetLanguage || this.targetLanguage;
       } catch (error) {
         // Old settings are invalid -- rewrite with valid values.
         this.saveSettings();
@@ -212,6 +223,9 @@ export default () => ({
       toScript: this.toScript,
       selectedEngine: this.selectedEngine,
       selectedLanguage: this.selectedLanguage,
+      selectedTranslationEngine: this.selectedTranslationEngine,
+      sourceLanguage: this.sourceLanguage,
+      targetLanguage: this.targetLanguage,
     };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(settings));
   },
@@ -353,6 +367,198 @@ export default () => ({
     }
 
     this.isRunningOCR = false;
+  },
+
+  // Translation controls
+  async runTranslation(engine = 'google', sourceLang = 'sa', targetLang = 'en') {
+    console.log('=== TRANSLATION DEBUG START ===');
+    
+    // Check if there's content to translate
+    if (!this.content || this.content.trim() === '') {
+      console.log('No content to translate');
+      this.showNotification('No content to translate. Please add some text to the editor first.', 'error');
+      return;
+    }
+
+    this.isRunningTranslation = true;
+
+    console.log('Starting translation:', { engine, sourceLang, targetLang });
+    console.log('Content to translate:', this.content);
+    console.log('Current pathname:', window.location.pathname);
+
+    const { pathname } = window.location;
+    const url = pathname.replace('/proofing/', '/api/translate/') + `?engine=${engine}&source_lang=${sourceLang}&target_lang=${targetLang}`;
+    
+    console.log('Translation URL:', url);
+
+    try {
+      console.log('Making fetch request...');
+      const response = await fetch(url);
+      console.log('Translation response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (response.ok) {
+        const translation = await response.text();
+        console.log('Translation result:', translation);
+        console.log('Translation result length:', translation.length);
+        
+        // Check if translation is empty or just whitespace
+        if (!translation || translation.trim() === '') {
+          console.warn('Translation result is empty');
+          this.showNotification('Translation result is empty. Please ensure there is content to translate.', 'error');
+          return;
+        }
+        
+        // Show success feedback
+        this.showNotification('Translation completed successfully!', 'success');
+        
+        // Store translation in a variable that can be accessed by the image box
+        this.currentTranslation = translation;
+        
+        // Trigger translation display in the image box
+        this.showTranslationInImageBox(translation, sourceLang, targetLang, engine);
+      } else {
+        const errorText = await response.text();
+        console.error('Translation API error:', errorText);
+        this.showNotification(`Translation failed: ${errorText}`, 'error');
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      this.showNotification('Translation failed: Network error', 'error');
+    }
+
+    this.isRunningTranslation = false;
+    console.log('=== TRANSLATION DEBUG END ===');
+  },
+
+  // Show translation in the image box
+  showTranslationInImageBox(translation, sourceLang, targetLang, engine) {
+    console.log('=== DISPLAY DEBUG START ===');
+    console.log('Attempting to display translation:', { translation, sourceLang, targetLang, engine });
+    
+    // Store translation data globally so Alpine.js can access it
+    window.currentTranslationData = {
+      content: translation,
+      sourceLang: sourceLang,
+      targetLang: targetLang,
+      engine: engine
+    };
+    console.log('Stored translation data globally:', window.currentTranslationData);
+    
+    // Find the image box - be more specific to avoid dropdown elements
+    let imageBox = document.querySelector('.bg-white.border.border-teal-200.rounded-lg.p-4.peacock-shadow[x-data*="showTranslation"]');
+    if (!imageBox) {
+      // Fallback: look for any element with showTranslation in x-data that's not a dropdown
+      const allElements = document.querySelectorAll('[x-data*="showTranslation"]');
+      for (const element of allElements) {
+        if (!element.classList.contains('relative') && element.classList.contains('bg-white')) {
+          imageBox = element;
+          break;
+        }
+      }
+    }
+    if (!imageBox) {
+      console.error('Image box not found');
+      return;
+    }
+    console.log('Found image box:', imageBox);
+
+    // Find the translation content area
+    let translationArea = imageBox.querySelector('[x-show="showTranslation"]');
+    if (!translationArea) {
+      // Fallback: look for the div that contains the translation content
+      translationArea = imageBox.querySelector('.w-full.h-\\[500px\\].bg-peacock-subtle.rounded-lg.border.border-teal-100.p-4.overflow-y-auto');
+    }
+    if (!translationArea) {
+      console.error('Translation area not found');
+      console.log('Available elements in imageBox:', imageBox.innerHTML);
+      return;
+    }
+    console.log('Found translation area:', translationArea);
+
+    // Remove the "no translation available" content first
+    const noTranslationDiv = translationArea.querySelector('.flex.items-center.justify-center');
+    if (noTranslationDiv) {
+      console.log('Removing no translation div');
+      noTranslationDiv.remove();
+    }
+
+    // Check if there's already a prose div, if not create one
+    let proseDiv = translationArea.querySelector('.prose');
+    if (!proseDiv) {
+      console.log('Creating new prose div');
+      proseDiv = document.createElement('div');
+      proseDiv.className = 'prose max-w-none';
+      translationArea.appendChild(proseDiv);
+    }
+    console.log('Prose div:', proseDiv);
+
+    // Update the translation content
+    const translationHTML = `
+      <h4 class="text-lg font-semibold text-peacock-primary mb-3">
+        Translation (${sourceLang.toUpperCase()} → ${targetLang.toUpperCase()})
+        <span class="text-sm font-normal text-peacock-secondary">via ${engine}</span>
+      </h4>
+      <div class="text-sm leading-relaxed whitespace-pre-wrap">${translation}</div>
+    `;
+    
+    console.log('Setting translation HTML:', translationHTML);
+    proseDiv.innerHTML = translationHTML;
+
+    // Show the translation view by setting Alpine.js data
+    try {
+      console.log('Attempting to set Alpine.js data...');
+      // Try multiple ways to access Alpine.js data
+      let alpineData = null;
+      
+      if (imageBox.__x && imageBox.__x.$data) {
+        console.log('Using __x.$data');
+        alpineData = imageBox.__x.$data;
+      } else if (imageBox._x_dataStack && imageBox._x_dataStack[0]) {
+        console.log('Using _x_dataStack[0]');
+        alpineData = imageBox._x_dataStack[0];
+      } else if (window.Alpine && imageBox._x_dataStack) {
+        console.log('Using window.Alpine.$data');
+        alpineData = window.Alpine.$data(imageBox);
+      }
+      
+      console.log('Alpine data found:', alpineData);
+      
+      if (alpineData) {
+        console.log('Setting Alpine.js data for translation');
+        // Ensure dynamicTranslation is properly structured
+        alpineData.dynamicTranslation = {
+          content: window.currentTranslationData.content,
+          sourceLang: window.currentTranslationData.sourceLang,
+          targetLang: window.currentTranslationData.targetLang,
+          engine: window.currentTranslationData.engine
+        };
+        alpineData.showTranslation = true;
+        console.log('Alpine data after setting:', {
+          dynamicTranslation: alpineData.dynamicTranslation,
+          showTranslation: alpineData.showTranslation
+        });
+      } else {
+        console.log('Alpine.js data not found, trying fallback');
+        // Fallback: try to click the toggle button
+        const toggleButton = imageBox.querySelector('button[title*="Toggle"]');
+        if (toggleButton) {
+          console.log('Clicking toggle button');
+          toggleButton.click();
+        } else {
+          console.error('Toggle button not found');
+        }
+      }
+    } catch (error) {
+      console.error('Error setting Alpine.js data:', error);
+      // Try clicking the toggle button as fallback
+      const toggleButton = imageBox.querySelector('button[title*="Toggle"]');
+      if (toggleButton) {
+        toggleButton.click();
+      }
+    }
+
+    console.log('=== DISPLAY DEBUG END ===');
   },
 
   // Simple notification system

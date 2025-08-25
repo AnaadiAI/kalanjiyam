@@ -144,7 +144,7 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
 <nav class="bg-white border border-teal-200 rounded-lg mb-4 peacock-shadow">
   <div class="flex items-center p-2 gap-1">
     
-    <!-- Tools Dropdown -->
+    <!-- OCR Dropdown -->
     <div x-data="{open: false, selectedEngine: '1', selectedLanguage: 'sa', showEngineInfo: false}" class="relative">
       <button class="{{ button_css }}"
          @click.prevent="open=!open"
@@ -267,6 +267,142 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
       </div>
     </div>
 
+    <!-- Translation Dropdown -->
+    <div x-data="{open: false, selectedTranslationEngine: 'google', sourceLanguage: 'sa', targetLanguage: 'en', showTranslationInfo: false}" class="relative">
+      <button class="{{ button_css }}"
+         @click.prevent="open=!open"
+         @click.outside="open=false">
+        <svg class="w-5 h-5 text-peacock-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+        </svg>
+        {{ _('Translation') }}
+      </button>
+      <div x-show="open" x-cloak class="dropdown-pane w-80">
+        <ul class="text-sm" @click.prevent="open=false">
+          
+          <!-- Translation Section Header -->
+          <li class="border-b border-teal-100 pb-2 mb-2">
+            <div class="dropdown-item">
+              <div class="flex items-center gap-2 mb-2">
+                <svg class="w-4 h-4 text-peacock-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+                </svg>
+                <span class="font-semibold text-peacock-primary">{{ _('Translation Engine') }}</span>
+                <button @click.prevent.stop="showTranslationInfo = !showTranslationInfo" 
+                        class="ml-auto p-1 hover:bg-peacock-light rounded transition-colors"
+                        title="{{ _('Engine Information') }}">
+                  <svg class="w-4 h-4 text-peacock-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Translation Engine Information Panel -->
+              <div x-show="showTranslationInfo" x-transition class="engine-info-panel mb-3">
+                <div class="space-y-2">
+                  <div class="engine-item">
+                    <span class="engine-name">Google:</span>
+                    <span class="engine-desc">{{ _('Free, reliable, supports many languages') }}</span>
+                  </div>
+                  <div class="engine-item">
+                    <span class="engine-name">OpenAI:</span>
+                    <span class="engine-desc">{{ _('High quality, requires API key, better context understanding') }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+          
+          <!-- Translation Engine Selection -->
+          <li class="mb-3">
+            <div class="dropdown-item-no-hover">
+              <label class="block text-xs text-peacock-secondary mb-2 font-medium">{{ _('Select Engine:') }}</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button @click.prevent.stop="selectedTranslationEngine = 'google'" 
+                        class="ocr-engine-btn"
+                        :class="selectedTranslationEngine === 'google' ? 'active' : ''">
+                  Google
+                </button>
+                <button @click.prevent.stop="selectedTranslationEngine = 'openai'" 
+                        class="ocr-engine-btn"
+                        :class="selectedTranslationEngine === 'openai' ? 'active' : ''">
+                  OpenAI
+                </button>
+              </div>
+            </div>
+          </li>
+          
+          <!-- Source Language Selection -->
+          <li class="mb-3">
+            <div class="dropdown-item-no-hover">
+              <label class="block text-xs text-peacock-secondary mb-2 font-medium">{{ _('Source Language:') }}</label>
+              <select class="form-select-enhanced" 
+                      x-model="sourceLanguage" 
+                      id="source-language-select"
+                      @click.stop>
+                <option value="hi">Hindi (hi)</option>
+                <option value="te">Telugu (te)</option>
+                <option value="mr">Marathi (mr)</option>
+                <option value="bn">Bengali (bn)</option>
+                <option value="gu">Gujarati (gu)</option>
+                <option value="kn">Kannada (kn)</option>
+                <option value="ml">Malayalam (ml)</option>
+                <option value="ta">Tamil (ta)</option>
+                <option value="pa">Punjabi (pa)</option>
+                <option value="or">Odia (or)</option>
+                <option value="ur">Urdu (ur)</option>
+                <option value="en">English (en)</option>
+              </select>
+            </div>
+          </li>
+          
+          <!-- Target Language Selection -->
+          <li class="mb-3">
+            <div class="dropdown-item-no-hover">
+              <label class="block text-xs text-peacock-secondary mb-2 font-medium">{{ _('Target Language:') }}</label>
+              <select class="form-select-enhanced" 
+                      x-model="targetLanguage" 
+                      id="target-language-select"
+                      @click.stop>
+                <option value="en">English (en)</option>
+                <option value="sa">Sanskrit (sa)</option>
+                <option value="hi">Hindi (hi)</option>
+                <option value="te">Telugu (te)</option>
+                <option value="mr">Marathi (mr)</option>
+                <option value="bn">Bengali (bn)</option>
+                <option value="gu">Gujarati (gu)</option>
+                <option value="kn">Kannada (kn)</option>
+                <option value="ml">Malayalam (ml)</option>
+                <option value="ta">Tamil (ta)</option>
+                <option value="pa">Punjabi (pa)</option>
+                <option value="or">Odia (or)</option>
+                <option value="ur">Urdu (ur)</option>
+                <option value="fr">French (fr)</option>
+                <option value="de">German (de)</option>
+                <option value="es">Spanish (es)</option>
+                <option value="ja">Japanese (ja)</option>
+                <option value="ko">Korean (ko)</option>
+                <option value="zh">Chinese (zh)</option>
+              </select>
+            </div>
+          </li>
+          
+          <!-- Run Translation Button -->
+          <li class="border-t border-teal-100 pt-2">
+            <button type="button" 
+                    class="dropdown-item flex items-center gap-2 w-full justify-center bg-peacock-primary text-white rounded-lg py-2 hover:bg-peacock-secondary transition-colors"
+                    @click.prevent.stop="runTranslation(selectedTranslationEngine, sourceLanguage, targetLanguage)"
+                    :disabled="isRunningTranslation"
+                    x-text="isRunningTranslation ? '{{ _("Translating...") }}' : '{{ _("Translate Page") }}'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+              </svg>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+
   </div>
 </nav>
 {% endmacro %}
@@ -296,7 +432,15 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
 
 {# Image viewing area with toggle for translation. #}
 {% macro image_box(translation_content=None, translation_metadata=None) %}
-<div class="bg-white border border-teal-200 rounded-lg p-4 peacock-shadow" x-data="{ showTranslation: false }">
+<div class="bg-white border border-teal-200 rounded-lg p-4 peacock-shadow" x-data="{ 
+  showTranslation: false, 
+  dynamicTranslation: null, 
+  translation_content: {{ 'true' if translation_content else 'false' }},
+  getTranslationSourceLang() { return this.dynamicTranslation && this.dynamicTranslation.sourceLang ? this.dynamicTranslation.sourceLang.toUpperCase() : ''; },
+  getTranslationTargetLang() { return this.dynamicTranslation && this.dynamicTranslation.targetLang ? this.dynamicTranslation.targetLang.toUpperCase() : ''; },
+  getTranslationEngine() { return this.dynamicTranslation && this.dynamicTranslation.engine ? this.dynamicTranslation.engine : ''; },
+  getTranslationContent() { return this.dynamicTranslation && this.dynamicTranslation.content ? this.dynamicTranslation.content : ''; }
+}">
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-lg font-semibold text-peacock-primary" x-text="showTranslation ? '{{ _('Translation') }}' : '{{ _('Original Image') }}'"></h3>
     <div class="flex items-center gap-2">
@@ -349,8 +493,17 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
   
   <!-- Translation content -->
   <div x-show="showTranslation" class="w-full h-[500px] bg-peacock-subtle rounded-lg border border-teal-100 p-4 overflow-y-auto">
-    {% if translation_content %}
-    <div class="prose max-w-none">
+    <!-- Dynamic translation content (set via JavaScript) -->
+    <div x-show="dynamicTranslation && dynamicTranslation.sourceLang && dynamicTranslation.targetLang && dynamicTranslation.engine && dynamicTranslation.content" class="prose max-w-none">
+      <h4 class="text-lg font-semibold text-peacock-primary mb-3">
+        Translation (<span x-text="getTranslationSourceLang()"></span> → <span x-text="getTranslationTargetLang()"></span>)
+        <span class="text-sm font-normal text-peacock-secondary">via <span x-text="getTranslationEngine()"></span></span>
+      </h4>
+      <div class="text-sm leading-relaxed whitespace-pre-wrap" x-text="getTranslationContent()"></div>
+    </div>
+    
+    <!-- Server-side translation content -->
+    <div x-show="!dynamicTranslation && translation_content" class="prose max-w-none">
       <h4 class="text-lg font-semibold text-peacock-primary mb-3">
         {% if translation_metadata %}
           {{ _('Translation') }} ({{ translation_metadata.source_language.upper() }} → {{ translation_metadata.target_language.upper() }})
@@ -361,8 +514,9 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
       </h4>
       <div class="text-sm leading-relaxed whitespace-pre-wrap">{{ translation_content }}</div>
     </div>
-    {% else %}
-    <div class="flex items-center justify-center h-full">
+    
+    <!-- No translation available -->
+    <div x-show="!dynamicTranslation && !translation_content" class="flex items-center justify-center h-full">
       <div class="text-center">
         <svg class="w-16 h-16 text-peacock-secondary mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
@@ -372,7 +526,6 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
         <p class="text-sm text-peacock-secondary mt-2">{{ _('Use the batch translation feature to generate translations for this project.') }}</p>
       </div>
     </div>
-    {% endif %}
   </div>
 </div>
 {% endmacro %}

@@ -79,6 +79,82 @@
   .dropdown-item {
     @apply block w-full text-left p-3 hover:bg-peacock-subtle transition-colors rounded;
   }
+  .dropdown-item-no-hover {
+    @apply block w-full text-left p-3 transition-colors rounded;
+  }
+
+  /* OCR Engine Selection Buttons */
+  .ocr-engine-btn {
+    @apply p-2 text-xs border rounded transition-all duration-200 font-medium;
+    @apply border-teal-200 bg-white text-peacock-secondary;
+  }
+  .ocr-engine-btn:hover:not(.active) {
+    @apply border-peacock-primary bg-peacock-subtle;
+  }
+  .ocr-engine-btn.active {
+    @apply border-peacock-primary bg-peacock-primary text-white shadow-sm;
+  }
+  .ocr-engine-btn.active:hover {
+    @apply border-peacock-secondary bg-peacock-secondary;
+  }
+
+  /* Notification System */
+  .notification {
+    @apply fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transition-all duration-300;
+    animation: slideInRight 0.3s ease-out;
+  }
+  .notification.success {
+    @apply bg-green-100 border border-green-300 text-green-800;
+  }
+  .notification.error {
+    @apply bg-red-100 border border-red-300 text-red-800;
+  }
+  .notification.info {
+    @apply bg-blue-100 border border-blue-300 text-blue-800;
+  }
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  @keyframes slideOutRight {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  /* Enhanced Form Controls */
+  .form-select-enhanced {
+    @apply w-full p-2 text-sm border border-teal-200 rounded transition-colors;
+    @apply focus:border-peacock-primary focus:ring-1 focus:ring-peacock-primary focus:outline-none;
+  }
+  .form-select-enhanced:hover {
+    @apply border-peacock-secondary;
+  }
+
+  /* Engine Info Panel */
+  .engine-info-panel {
+    @apply bg-peacock-subtle rounded p-3 text-xs border border-teal-100;
+  }
+  .engine-info-panel .engine-item {
+    @apply flex items-start gap-2 mb-2 last:mb-0;
+  }
+  .engine-info-panel .engine-name {
+    @apply font-medium text-peacock-primary min-w-0 flex-shrink-0;
+  }
+  .engine-info-panel .engine-desc {
+    @apply text-peacock-secondary leading-relaxed;
+  }
 
   /* Sidebar */
   .h-full-minus-nav {

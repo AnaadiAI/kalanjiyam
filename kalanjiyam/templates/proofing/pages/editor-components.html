@@ -145,7 +145,7 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
   <div class="flex items-center p-2 gap-1">
     
     <!-- Tools Dropdown -->
-    <div x-data="{open: false, selectedEngine: '1'}" class="relative">
+    <div x-data="{open: false, selectedEngine: '1', selectedLanguage: 'sa', showEngineInfo: false}" class="relative">
       <button class="{{ button_css }}"
          @click.prevent="open=!open"
          @click.outside="open=false">
@@ -153,43 +153,107 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
         </svg>
-        {{ _('Tools') }}
+        {{ _('OCR') }}
       </button>
-      <div x-show="open" x-cloak class="dropdown-pane w-64">
+      <div x-show="open" x-cloak class="dropdown-pane w-80">
         <ul class="text-sm" @click.prevent="open=false">
-          <li>
+          
+          <!-- OCR Section Header -->
+          <li class="border-b border-teal-100 pb-2 mb-2">
             <div class="dropdown-item">
-              <label class="block text-xs text-peacock-secondary mb-1">{{ _('OCR Engine:') }}</label>
-              <select class="w-full p-2 text-sm border border-teal-200 rounded focus:border-peacock-primary" x-model="selectedEngine" @change="updateLanguageOptions()">
-                <option value="1">{{ _('OCR 1') }}</option>
-                <option value="2">{{ _('OCR 2') }}</option>
-                <option value="3">{{ _('OCR 2') }}</option>
+              <div class="flex items-center gap-2 mb-2">
+                <svg class="w-4 h-4 text-peacock-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="font-semibold text-peacock-primary">{{ _('OCR Engine') }}</span>
+                <button @click.prevent.stop="showEngineInfo = !showEngineInfo" 
+                        class="ml-auto p-1 hover:bg-peacock-light rounded transition-colors"
+                        title="{{ _('Engine Information') }}">
+                  <svg class="w-4 h-4 text-peacock-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Engine Information Panel -->
+              <div x-show="showEngineInfo" x-transition class="engine-info-panel mb-3">
+                <div class="space-y-2">
+                  <div class="engine-item">
+                    <span class="engine-name">OCR 1:</span>
+                    <span class="engine-desc">{{ _('Cloud-based, high accuracy, requires internet') }}</span>
+                  </div>
+                  <div class="engine-item">
+                    <span class="engine-name">OCR 2:</span>
+                    <span class="engine-desc">{{ _('Local processing, fast, good for Latin scripts') }}</span>
+                  </div>
+                  <div class="engine-item">
+                    <span class="engine-name">OCR 3:</span>
+                    <span class="engine-desc">{{ _('AI-powered, multilingual, best for Indic scripts') }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+          
+          <!-- Engine Selection -->
+          <li class="mb-3">
+            <div class="dropdown-item-no-hover">
+              <label class="block text-xs text-peacock-secondary mb-2 font-medium">{{ _('Select Engine:') }}</label>
+              <div class="grid grid-cols-3 gap-2">
+                <button @click.prevent.stop="selectedEngine = '1'; updateLanguageOptions()" 
+                        class="ocr-engine-btn"
+                        :class="selectedEngine === '1' ? 'active' : ''">
+                  OCR 1
+                </button>
+                <button @click.prevent.stop="selectedEngine = '2'; updateLanguageOptions()" 
+                        class="ocr-engine-btn"
+                        :class="selectedEngine === '2' ? 'active' : ''">
+                  OCR 2
+                </button>
+                <button @click.prevent.stop="selectedEngine = '3'; updateLanguageOptions()" 
+                        class="ocr-engine-btn"
+                        :class="selectedEngine === '3' ? 'active' : ''">
+                  OCR 3
+                </button>
+              </div>
+            </div>
+          </li>
+          
+          <!-- Language Selection -->
+          <li class="mb-3">
+            <div class="dropdown-item-no-hover">
+              <label class="block text-xs text-peacock-secondary mb-2 font-medium">{{ _('Primary Language:') }}</label>
+              <select class="form-select-enhanced" 
+                      x-model="selectedLanguage" 
+                      id="language-select"
+                      @click.stop>
+                <!-- Options will be populated by JavaScript -->
               </select>
             </div>
           </li>
-          <li>
-            <div class="dropdown-item">
-              <label class="block text-xs text-peacock-secondary mb-1">{{ _('Language:') }}</label>
-              <select class="w-full p-2 text-sm border border-teal-200 rounded focus:border-peacock-primary" x-model="selectedLanguage" id="language-select">
-                <option value="sa">Sanskrit (sa)</option>
-                <option value="hi">Hindi (hi)</option>
-                <option value="te">Telugu (te)</option>
-                <option value="mr">Marathi (mr)</option>
-                <option value="bn">Bengali (bn)</option>
-                <option value="gu">Gujarati (gu)</option>
-                <option value="kn">Kannada (kn)</option>
-                <option value="ml">Malayalam (ml)</option>
-                <option value="ta">Tamil (ta)</option>
-                <option value="pa">Punjabi (pa)</option>
-                <option value="or">Odia (or)</option>
-                <option value="ur">Urdu (ur)</option>
-                <option value="en">English (en)</option>
+          
+          <!-- Additional Language for Bilingual Support -->
+          <li class="mb-3" x-show="selectedEngine === '2' || selectedEngine === '3'">
+            <div class="dropdown-item-no-hover">
+              <label class="block text-xs text-peacock-secondary mb-2 font-medium">{{ _('Additional Language (Optional):') }}</label>
+              <select class="form-select-enhanced" 
+                      id="additional-language-select"
+                      @click.stop>
+                <option value="">{{ _('None') }}</option>
+                <!-- Options will be populated by JavaScript -->
               </select>
+              <p class="text-xs text-peacock-secondary mt-1">
+                <span x-show="selectedEngine === '2'">{{ _('For bilingual documents (e.g., Sanskrit + English)') }}</span>
+                <span x-show="selectedEngine === '3'">{{ _('Engine auto-detects languages, but you can specify additional ones') }}</span>
+              </p>
             </div>
           </li>
-          <li>
-            <button type="button" class="dropdown-item flex items-center gap-2"
-                    @click.prevent="runOCR(selectedEngine, selectedLanguage)"
+          
+          <!-- Run OCR Button -->
+          <li class="border-t border-teal-100 pt-2">
+            <button type="button" 
+                    class="dropdown-item flex items-center gap-2 w-full justify-center bg-peacock-primary text-white rounded-lg py-2 hover:bg-peacock-secondary transition-colors"
+                    @click.prevent.stop="runOCR(selectedEngine, selectedLanguage)"
                     :disabled="isRunningOCR"
                     x-text="isRunningOCR ? '{{ _("Running OCR ...") }}' : '{{ _("Run OCR") }}'">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,8 +261,8 @@ Pass `class` explicitly so that Tailwind can regex-find it when it compiles. #}
               </svg>
             </button>
           </li>
-          {{ _dropdown_item('replaceColonVisarga', _(': (colon) → ः (visarga)'), '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>') }}
-          {{ _dropdown_item('replaceSAvagraha', _('S → ऽ (avagraha)'), '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>') }}
+          
+
         </ul>
       </div>
     </div>

@@ -148,100 +148,7 @@ export default () => ({
     }
   },
 
-  // Function to handle bilingual language selection
-  handleBilingualLanguageSelection() {
-    const engine = this.selectedEngine;
-    const engineConfig = this.ocrEngines[engine];
-    
-    if (!engineConfig || !engineConfig.supportsBilingual) {
-      return;
-    }
-    
-    const languageSelect = document.getElementById('language');
-    const additionalLanguageSelect = document.getElementById('additional-language');
-    
-    if (!additionalLanguageSelect) {
-      // Create additional language select if it doesn't exist
-      const additionalLanguageDiv = document.createElement('div');
-      additionalLanguageDiv.className = 'mb-4';
-      additionalLanguageDiv.innerHTML = `
-        <label class="block text-sm font-medium text-gray-700 mb-2">
-          Additional Language (Optional)
-        </label>
-        <select id="additional-language" class="w-full p-2 text-sm border border-teal-200 rounded focus:border-peacock-primary">
-          <option value="">None</option>
-        </select>
-        <p class="text-xs text-gray-500 mt-1">
-          For bilingual/multilingual documents. Surya auto-detects languages.
-        </p>
-      `;
-      
-      languageSelect.parentNode.parentNode.appendChild(additionalLanguageDiv);
-      
-      // Populate additional language options
-      this.updateAdditionalLanguageOptions();
-    }
-    
-    // Show/hide additional language select based on engine
-    const additionalLanguageDiv = document.getElementById('additional-language').parentNode;
-    additionalLanguageDiv.style.display = engineConfig.supportsBilingual ? 'block' : 'none';
-  },
 
-  // Function to update additional language options
-  updateAdditionalLanguageOptions() {
-    const engine = this.selectedEngine;
-    const engineConfig = this.ocrEngines[engine];
-    const additionalLanguageSelect = document.getElementById('additional-language');
-    
-    if (!additionalLanguageSelect || !engineConfig) {
-      return;
-    }
-    
-    // Clear existing options
-    additionalLanguageSelect.innerHTML = '<option value="">None</option>';
-    
-    // Add language options
-    engineConfig.languages.forEach(lang => {
-      const option = document.createElement('option');
-      option.value = lang.value;
-      option.textContent = lang.text;
-      additionalLanguageSelect.appendChild(option);
-    });
-  },
-
-  // Function to get combined language parameter
-  getLanguageParameter() {
-    const engine = this.selectedEngine;
-    const engineConfig = this.ocrEngines[engine];
-    const primaryLanguage = document.getElementById('language').value;
-    const additionalLanguage = document.getElementById('additional-language')?.value;
-    
-    if (!engineConfig || !engineConfig.supportsBilingual || !additionalLanguage) {
-      return primaryLanguage;
-    }
-    
-    if (engine === 'tesseract') {
-      // Tesseract uses + separator
-      return `${primaryLanguage}+${additionalLanguage}`;
-    } else if (engine === 'surya') {
-      // Surya uses comma separator and supports additional_languages parameter
-      return primaryLanguage;
-    }
-    
-    return primaryLanguage;
-  },
-
-  // Function to get additional languages for Surya
-  getAdditionalLanguages() {
-    const engine = this.selectedEngine;
-    const additionalLanguage = document.getElementById('additional-language')?.value;
-    
-    if (engine === 'surya' && additionalLanguage) {
-      return [additionalLanguage];
-    }
-    
-    return null;
-  },
 
   init() {
     this.loadSettings();
@@ -330,13 +237,16 @@ export default () => ({
   // OCR controls
 
   updateLanguageOptions() {
-    const engine = this.selectedEngine;
-    const engineConfig = this.ocrEngines[engine];
-    const languageSelect = document.getElementById('language');
-    
-    if (!languageSelect || !engineConfig) {
-      return;
-    }
+    // Small delay to ensure DOM is updated
+    setTimeout(() => {
+      const engine = this.selectedEngine;
+      const engineConfig = this.ocrEngines[engine];
+      const languageSelect = document.getElementById('language-select');
+      const additionalLanguageSelect = document.getElementById('additional-language-select');
+      
+      if (!languageSelect || !engineConfig) {
+        return;
+      }
     
     // Clear existing options
     languageSelect.innerHTML = '';
@@ -349,8 +259,39 @@ export default () => ({
       languageSelect.appendChild(option);
     });
     
-    // Handle bilingual language selection
-    this.handleBilingualLanguageSelection();
+    // Set default language if current selection is not available
+    if (!engineConfig.languages.find(lang => lang.value === this.selectedLanguage)) {
+      // Try to map the language to the new engine's equivalent
+      const languageMap = {
+        'sa': 'san',  // Google Sanskrit -> Tesseract Sanskrit
+        'san': 'sa',  // Tesseract Sanskrit -> Google Sanskrit
+        'en': 'eng',  // Google English -> Tesseract English
+        'eng': 'en',  // Tesseract English -> Google English
+        'hi': 'hin',  // Google Hindi -> Tesseract Hindi
+        'hin': 'hi',  // Tesseract Hindi -> Google Hindi
+        // Add more mappings as needed
+      };
+      
+      const mappedLanguage = languageMap[this.selectedLanguage];
+      if (mappedLanguage && engineConfig.languages.find(lang => lang.value === mappedLanguage)) {
+        this.selectedLanguage = mappedLanguage;
+      } else {
+        this.selectedLanguage = engineConfig.languages[0].value;
+      }
+    }
+    
+    // Update additional language options for bilingual support
+    if (additionalLanguageSelect && (engine === '2' || engine === '3')) {
+      additionalLanguageSelect.innerHTML = '<option value="">{{ _("None") }}</option>';
+      
+      engineConfig.languages.forEach(lang => {
+        const option = document.createElement('option');
+        option.value = lang.value;
+        option.textContent = lang.text;
+        additionalLanguageSelect.appendChild(option);
+      });
+    }
+    }, 10); // Small delay to ensure DOM is ready
   },
 
   // Decode numeric engine values to actual engine names
@@ -363,31 +304,87 @@ export default () => ({
     return engineMap[engineValue] || 'google';
   },
 
+  // Get combined language parameter for bilingual support
+  getCombinedLanguage() {
+    const engine = this.selectedEngine;
+    const primaryLanguage = this.selectedLanguage;
+    const additionalLanguageSelect = document.getElementById('additional-language-select');
+    const additionalLanguage = additionalLanguageSelect ? additionalLanguageSelect.value : '';
+    
+    if (engine === '2' && additionalLanguage) {
+      // Tesseract uses + separator
+      return `${primaryLanguage}+${additionalLanguage}`;
+    }
+    
+    return primaryLanguage;
+  },
+
   async runOCR(engine = '1', language = 'sa') {
     this.isRunningOCR = true;
 
     const decodedEngine = this.decodeEngine(engine);
+    const combinedLanguage = this.getCombinedLanguage();
     const { pathname } = window.location;
-    const url = pathname.replace('/proofing/', '/api/ocr/') + `?engine=${decodedEngine}&language=${language}`;
+    const url = pathname.replace('/proofing/', '/api/ocr/') + `?engine=${decodedEngine}&language=${combinedLanguage}`;
 
-    const content = await fetch(url)
-      .then((response) => {
-        if (response.ok) {
-          return response.text();
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const content = await response.text();
+        
+        // Update the Alpine.js data property directly
+        this.content = content;
+        
+        // Also update the DOM element for compatibility
+        const textarea = document.getElementById('content');
+        if (textarea) {
+          textarea.value = content;
         }
-        return '(server error)';
-      });
-    
-    // Update the Alpine.js data property directly
-    this.content = content;
-    
-    // Also update the DOM element for compatibility
-    const textarea = document.getElementById('content');
-    if (textarea) {
-      textarea.value = content;
+        
+        // Show success feedback
+        this.showNotification('OCR completed successfully!', 'success');
+      } else {
+        const errorText = await response.text();
+        this.showNotification(`OCR failed: ${errorText}`, 'error');
+      }
+    } catch (error) {
+      console.error('OCR error:', error);
+      this.showNotification('OCR failed: Network error', 'error');
     }
 
     this.isRunningOCR = false;
+  },
+
+  // Simple notification system
+  showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    
+    notification.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span>${message}</span>
+        <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-gray-500 hover:text-gray-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.style.animation = 'slideOutRight 0.3s ease-in forwards';
+        setTimeout(() => {
+          if (notification.parentElement) {
+            notification.remove();
+          }
+        }, 300);
+      }
+    }, 5000);
   },
 
   // Image zoom controls

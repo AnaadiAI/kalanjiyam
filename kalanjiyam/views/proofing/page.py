@@ -1906,6 +1906,9 @@ def preview_enhancement(project_slug, page_slug):
     except ValueError as e:
         abort(400, description=str(e))
 
+    line_segmentation_raw = request.args.get("line_segmentation", "false").lower()
+    line_segmentation = line_segmentation_raw in ("true", "1", "yes", "y")
+
     org_slug = get_project_org_slug(project_)
     storage = get_storage()
     master_key = page_master_image_key(project_slug, page_slug, org_slug=org_slug)
@@ -1923,6 +1926,11 @@ def preview_enhancement(project_slug, page_slug):
         else:
             with Image.open(image_path) as img:
                 processed = preprocess_image(img, valid_profile)
+
+        if line_segmentation:
+            from kalanjiyam.utils.line_segmentation import segment_and_reconstruct_image
+
+            processed, _ = segment_and_reconstruct_image(processed)
 
         if processed.mode not in ("RGB", "L"):
             processed = processed.convert("RGB")

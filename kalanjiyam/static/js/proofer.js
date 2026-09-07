@@ -146,6 +146,7 @@ export default () => ({
   enhancementPreviewLoading: false,
   enhancementPreviewUrl: '',
   enhancementPreviewProfile: 'hybrid_binarization',
+  enhancementPreviewLineSegmentation: false,
   enhancementPreviewViewMode: 'split', // 'split' | 'preprocessed' | 'original'
   originalImageUrl: (typeof IMAGE_URL !== 'undefined') ? IMAGE_URL : (typeof window !== 'undefined' && window.IMAGE_URL ? window.IMAGE_URL : ''),
   isReplacingPageImage: false,
@@ -2062,6 +2063,7 @@ export default () => ({
   async openEnhancementPreview(profile) {
     this.originalImageUrl = (typeof IMAGE_URL !== 'undefined' && IMAGE_URL) ? IMAGE_URL : (typeof window !== 'undefined' && window.IMAGE_URL ? window.IMAGE_URL : '');
     this.enhancementPreviewProfile = profile || this.selectedEnhancementProfile || 'hybrid_binarization';
+    this.enhancementPreviewLineSegmentation = !!this.lineSegmentation;
     this.resetPreviewZoom();
     this.enhancementPreviewModalOpen = true;
     this.enhancedOcrDropdownOpen = false;
@@ -2087,7 +2089,8 @@ export default () => ({
     this.enhancementPreviewLoading = true;
     const pathname = (window.location && window.location.pathname) || '';
     const profile = this.enhancementPreviewProfile || 'hybrid_binarization';
-    this.enhancementPreviewUrl = pathname.replace('/proofing/', '/api/preview-enhancement/') + `?profile=${profile}&t=${Date.now()}`;
+    const lineSeg = this.enhancementPreviewLineSegmentation ? '&line_segmentation=1' : '';
+    this.enhancementPreviewUrl = pathname.replace('/proofing/', '/api/preview-enhancement/') + `?profile=${profile}${lineSeg}&t=${Date.now()}`;
   },
 
   async replacePageImageWithPreprocessed() {

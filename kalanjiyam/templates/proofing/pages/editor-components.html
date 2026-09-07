@@ -559,33 +559,44 @@ these components in our help text and documentation.
         </div>
       </div>
 
-      <!-- Profile Selector Pills in Header -->
-      <div class="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl">
-        <button type="button" @click="enhancementPreviewProfile = 'hybrid_binarization'; loadEnhancementPreview()"
-                class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
-                :class="enhancementPreviewProfile === 'hybrid_binarization' || enhancementPreviewProfile === 'hybrid' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
-          {{ _('Hybrid Binarization') }}
-        </button>
-        <button type="button" @click="enhancementPreviewProfile = 'document_cleanup'; loadEnhancementPreview()"
-                class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
-                :class="enhancementPreviewProfile === 'document_cleanup' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
-          {{ _('Cleanup') }}
-        </button>
-        <button type="button" @click="enhancementPreviewProfile = 'bg_clahe'; loadEnhancementPreview()"
-                class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
-                :class="enhancementPreviewProfile === 'bg_clahe' || enhancementPreviewProfile === 'background_clahe' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
-          {{ _('BG+CLAHE') }}
-        </button>
-        <button type="button" @click="enhancementPreviewProfile = 'sharpen'; loadEnhancementPreview()"
-                class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
-                :class="enhancementPreviewProfile === 'sharpen' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
-          {{ _('Sharpen') }}
-        </button>
-        <button type="button" @click="enhancementPreviewProfile = 'text_enhancement'; loadEnhancementPreview()"
-                class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
-                :class="enhancementPreviewProfile === 'text_enhancement' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
-          {{ _('Text Boost') }}
-        </button>
+      <!-- Profile Selector Pills & Segmentation in Header -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl">
+          <button type="button" @click="enhancementPreviewProfile = 'hybrid_binarization'; loadEnhancementPreview()"
+                  class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
+                  :class="enhancementPreviewProfile === 'hybrid_binarization' || enhancementPreviewProfile === 'hybrid' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
+            {{ _('Hybrid Binarization') }}
+          </button>
+          <button type="button" @click="enhancementPreviewProfile = 'document_cleanup'; loadEnhancementPreview()"
+                  class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
+                  :class="enhancementPreviewProfile === 'document_cleanup' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
+            {{ _('Cleanup') }}
+          </button>
+          <button type="button" @click="enhancementPreviewProfile = 'bg_clahe'; loadEnhancementPreview()"
+                  class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
+                  :class="enhancementPreviewProfile === 'bg_clahe' || enhancementPreviewProfile === 'background_clahe' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
+            {{ _('BG+CLAHE') }}
+          </button>
+          <button type="button" @click="enhancementPreviewProfile = 'sharpen'; loadEnhancementPreview()"
+                  class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
+                  :class="enhancementPreviewProfile === 'sharpen' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
+            {{ _('Sharpen') }}
+          </button>
+          <button type="button" @click="enhancementPreviewProfile = 'text_enhancement'; loadEnhancementPreview()"
+                  class="px-2.5 py-1 text-xs rounded-lg font-medium transition cursor-pointer"
+                  :class="enhancementPreviewProfile === 'text_enhancement' ? 'bg-white text-royalblue shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'">
+            {{ _('Text Boost') }}
+          </button>
+        </div>
+
+        <!-- Line Segmentation Toggle in Modal -->
+        <label class="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-200/80 rounded-xl cursor-pointer hover:bg-amber-100/70 transition text-xs select-none">
+          <input type="checkbox"
+                 x-model="enhancementPreviewLineSegmentation"
+                 @change="loadEnhancementPreview()"
+                 class="w-3.5 h-3.5 text-amber-600 rounded border-amber-300 focus:ring-0 cursor-pointer">
+          <span class="font-medium text-amber-900">{{ _('Segment Lines') }}</span>
+        </label>
       </div>
 
       <!-- Close Button -->
@@ -704,7 +715,7 @@ these components in our help text and documentation.
         <!-- Preprocessed Side -->
         <div class="flex flex-col h-full bg-slate-900 rounded-xl overflow-hidden border border-slate-800 relative">
           <div class="px-3 py-1.5 bg-slate-900/90 text-blue-200 text-[11px] font-semibold flex items-center justify-between shrink-0 border-b border-blue-900/50 z-10">
-            <span x-text="'{{ _('Preprocessed:') }} ' + (enhancementPreviewProfile || '').replace('_', ' ').toUpperCase()"></span>
+            <span x-text="'{{ _('Preprocessed:') }} ' + (enhancementPreviewProfile || '').replace('_', ' ').toUpperCase() + (enhancementPreviewLineSegmentation ? ' (SEGMENTED)' : '')"></span>
             <span class="text-[10px] text-blue-300 font-mono" x-text="Math.round(previewZoom * 100) + '%'"></span>
           </div>
           <div class="flex-1 overflow-hidden p-2 flex items-center justify-center relative">
@@ -761,7 +772,7 @@ these components in our help text and documentation.
         </button>
         
         <button type="button"
-                @click="selectedEnhancementProfile = enhancementPreviewProfile; runEnhancedOCR(); enhancementPreviewModalOpen = false"
+                @click="selectedEnhancementProfile = enhancementPreviewProfile; lineSegmentation = enhancementPreviewLineSegmentation; runEnhancedOCR(); enhancementPreviewModalOpen = false"
                 class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-royalblue/10 text-royalblue hover:bg-royalblue/20 border border-royalblue/30 transition cursor-pointer flex items-center gap-1.5 shadow-xs">
           <svg class="w-3.5 h-3.5 text-royalblue" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"></path>

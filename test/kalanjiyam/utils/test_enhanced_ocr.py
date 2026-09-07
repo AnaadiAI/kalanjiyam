@@ -692,7 +692,15 @@ def test_preview_enhancement_endpoint(flask_app, tmp_path):
                 assert resp_doc.status_code == 200
                 assert resp_doc.content_type == "image/jpeg"
 
-                # 3. Invalid profile returns 400
+                # 3. Preview with line segmentation enabled
+                resp_seg = client.get(
+                    f"/api/preview-enhancement/{project.slug}/{page.slug}/?profile=hybrid_binarization&line_segmentation=1"
+                )
+                assert resp_seg.status_code == 200
+                assert resp_seg.content_type == "image/jpeg"
+                assert len(resp_seg.data) > 0
+
+                # 4. Invalid profile returns 400
                 resp_bad = client.get(
                     f"/api/preview-enhancement/{project.slug}/{page.slug}/?profile=bad_profile_xyz"
                 )

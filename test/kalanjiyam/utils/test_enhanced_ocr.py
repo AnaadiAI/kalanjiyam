@@ -1037,32 +1037,34 @@ def test_closely_spaced_lines_detection():
     assert y_starts == sorted(y_starts)
 
 
-# 5. Padding: detected line crops retain sufficient vertical context
-def test_line_padding_preserves_vertical_context():
+# 5. Valley-based line crop extraction and debug overlay generation
+def test_line_cropping_and_debug_overlay():
     from kalanjiyam.utils.line_segmentation import (
         LineSegmentationConfig,
         crop_text_lines,
+        generate_segmentation_debug_overlay,
     )
 
     w, h = 300, 100
     im = Image.new("RGB", (w, h), color=(255, 255, 255))
-    detected = [(30, 50, 20, 280)]  # line height = 20
+    detected = [(30, 50, 20, 280), (50, 70, 20, 280)]
 
-    config = LineSegmentationConfig(
-        top_padding_ratio=0.25,
-        bottom_padding_ratio=0.25,
-        min_padding_px=6,
-    )
-    crops = crop_text_lines(im, detected, config=config)
-    assert len(crops) == 1
-    # Line height = 20, padding top=6, bottom=6 -> total height >= 32
-    assert crops[0].size[1] >= 30
+    crops = crop_text_lines(im, detected)
+    assert len(crops) == 2
+    assert crops[0].size == (260, 20)
+    assert crops[1].size == (260, 20)
+
+    overlay = generate_segmentation_debug_overlay(im)
+    assert isinstance(overlay, Image.Image)
+    assert overlay.size == (w, h)
 
 
 # 6. OCR invocation count: mock OCR runner and assert EXACTLY ONE invocation
 def test_ocr_invocation_count_is_strictly_one(
     closely_written_manuscript_image, mock_ocr_response
 ):
+    from kalanjiyam.utils.line_segmentation import LINE_SEGMENTATION_VERSION
+
     with patch(
         "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
     ) as mock_remote:
@@ -1077,7 +1079,7 @@ def test_ocr_invocation_count_is_strictly_one(
         # Must be EXACTLY ONE call, NEVER N calls per line!
         assert mock_remote.call_count == 1
         assert resp.line_segmentation is True
-        assert resp.line_segmentation_version == "1.0"
+        assert resp.line_segmentation_version == LINE_SEGMENTATION_VERSION
 
 
 # 7. Cache/revision identity: segmented and non-segmented runs do not collide
@@ -1240,3 +1242,39 @@ def test_line_segmentation_api_and_batch_task(flask_app, mock_ocr_response, tmp_
                 assert data["line_segmentation"] is True
                 assert data["version_key"] == "ocr:enhanced:dots_ocr:hybrid_binarization:segmented"
                 assert mock_api_remote.call_count == 1
+
+
+# 10. Actual Manuscript Image line segmentation verification
+def test_actual_closely_written_manuscript_segmentation():
+    import os
+    from kalanjiyam.utils.line_segmentation import (
+        detect_text_lines,
+        detect_line_peaks_and_valleys,
+        segment_and_reconstruct_image,
+        generate_segmentation_debug_overlay,
+    )
+
+    manuscript_path = "/home/mrportable/Documents/kalanjiyam/test-data/00010 jpg images manuscripts.JPG"
+    if not os.path.exists(manuscript_path):
+        pytest.skip("Manuscript sample image not found at test-data path")
+
+    with Image.open(manuscript_path) as img:
+        peaks, boundaries, text_block = detect_line_peaks_and_valleys(img)
+        assert len(peaks) == 18
+        assert len(boundaries) == 19
+        assert text_block[2] > text_block[0]
+
+        detected_lines = detect_text_lines(img)
+        assert len(detected_lines) == 18
+        # Assert lines are strictly contiguous from valley to valley (no overlapping spans)
+        for i in range(len(detected_lines) - 1):
+            assert detected_lines[i][1] == detected_lines[i + 1][0]
+
+        reconstructed, stats = segment_and_reconstruct_image(img)
+        assert stats.fallback_used is False
+        assert stats.lines_detected == 18
+        assert reconstructed.size[1] >= (boundaries[-1] - boundaries[0])
+        assert reconstructed.size[0] > 0
+
+        overlay = generate_segmentation_debug_overlay(img)
+        assert overlay.size == img.size

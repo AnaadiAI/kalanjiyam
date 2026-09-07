@@ -1928,9 +1928,19 @@ def preview_enhancement(project_slug, page_slug):
                 processed = preprocess_image(img, valid_profile)
 
         if line_segmentation:
-            from kalanjiyam.utils.line_segmentation import segment_and_reconstruct_image
+            debug_mode = request.args.get("debug", "0").lower() in ("1", "true", "yes")
+            if debug_mode:
+                from kalanjiyam.utils.line_segmentation import (
+                    generate_segmentation_debug_overlay,
+                )
 
-            processed, _ = segment_and_reconstruct_image(processed)
+                processed = generate_segmentation_debug_overlay(processed)
+            else:
+                from kalanjiyam.utils.line_segmentation import (
+                    segment_and_reconstruct_image,
+                )
+
+                processed, _ = segment_and_reconstruct_image(processed)
 
         if processed.mode not in ("RGB", "L"):
             processed = processed.convert("RGB")

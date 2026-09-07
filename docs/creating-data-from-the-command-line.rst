@@ -80,11 +80,17 @@ Batch ingestion & bulk import
 
 Bulk ingest PDF or image directories into proofing projects with OCR::
 
-    ./cli.py batch-ocr --s3-uri s3://bucket/folder/ --org example-org --lang eng
+    # Process S3 bucket with Google OCR and automatic metadata extraction
+    ./cli.py batch-ocr --s3-uri s3://bucket/folder/ --org example-org --lang eng --engine google --extract-metadata
+
+    # Process local directory with PDF filter
+    ./cli.py batch-ocr --local-uri /data/uploads/batch/ --pdf --org example-org --lang ta
+
+    # Batch job tracking and control
     ./cli.py batch-list
     ./cli.py batch-status --job-id 1
     ./cli.py batch-cancel --job-id 1
-    ./cli.py batch-retry --job-id 1
+    ./cli.py batch-retry --job-id 1 --org example-org
 
 Import external JSONL OCR archives directly with associated PDFs::
 
@@ -95,13 +101,39 @@ Clean up old uploaded source documents older than N days::
     ./cli.py cleanup-uploads --days 30 --force
 
 
+Enhanced OCR on historical manuscripts
+--------------------------------------
+
+Run Enhanced OCR on a single page with image preprocessing, manuscript line segmentation, and upscaling::
+
+    # Run with default document_cleanup profile
+    ./cli.py enhanced-ocr --project project-slug --page 1 --engine dots_ocr
+
+    # Run with closely written manuscript line segmentation
+    ./cli.py enhanced-ocr --project project-slug --page 1 --engine dots_ocr --line-segmentation
+
+    # Run with line segmentation and 2x image upscaling
+    ./cli.py enhanced-ocr --project project-slug --page 1 --engine dots_ocr --line-segmentation --upscale --upscale-factor 2
+
+
 Archival metadata extraction
 ----------------------------
 
 Extract structured archival metadata descriptions across projects::
 
+    # Dry-run inspection across an organization
+    ./cli.py metadata-extract --org example-org --all --dry-run
+
+    # Enqueue extraction for all projects in an organization
+    ./cli.py metadata-extract --org example-org --all
+
+    # Run synchronously in local process for a specific project
     ./cli.py metadata-extract --project project-slug --local
-    ./cli.py metadata-extract --all
+
+    # Force re-extraction ignoring cached window hashes
+    ./cli.py metadata-extract --project project-slug --force
+
+    # Check extraction status and historical run metrics
     ./cli.py metadata-status --project project-slug
     ./cli.py metadata-runs --limit 20
 

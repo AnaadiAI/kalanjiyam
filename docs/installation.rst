@@ -27,7 +27,7 @@ Code dependencies
 
 Start by downloading Kalanjiyam's project code from GitHub::
 
-    $ git clone git@github.com/AnaadiAI/kalanjiyam.git
+    $ git clone git@github.com:Thogai-labs/kalanjiyam.git
 
 You can install all dependencies with a simple `make` call::
 
@@ -56,7 +56,7 @@ variables, which is the standard practice for Flask applications. To organize
 all of these settings, we keep environment variables in a `.env` file in the
 project root.
 
-`make install` creates an `.env` file for you. If you ever need to add more
+`make install` creates an `.env` file for you (or copy `.env.example`). If you ever need to add more
 variables in the future, just edit `.env`. All Kalanjiyam code will refer to
 `.env` by default.
 
@@ -73,13 +73,15 @@ Or the following commands for Python scripts:
     load_dotenv(".env")
 
 
-Docker setup (beta)
--------------------
+Docker setup (Recommended for Local Dev)
+----------------------------------------
 
-This feature is still under development and may change. You can alternatively
-run a local development environment using Docker by running:
+Kalanjiyam provides a complete Docker Compose environment for local development that boots
+PostgreSQL, Redis, Celery workers, OpenSearch, Versity Gateway (S3), and the Flask web application::
 
     make docker-start
+
+Once started, open http://localhost:5002 in your browser. To stop containers, run ``make docker-stop``.
 
 
 Data dependencies

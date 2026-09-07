@@ -202,6 +202,25 @@ Set ``STORAGE_BACKEND=local`` to write files directly under ``FLASK_UPLOAD_FOLDE
 (no gateway required; suitable for simple bare-metal setups).
 
 
+Prometheus Metrics & Monitoring
+-------------------------------
+
+Kalanjiyam includes native Prometheus metrics exporting via middleware (``kalanjiyam.utils.prometheus``).
+
+* **Scraping Endpoint**: ``GET /metrics``
+* **Exported Metrics**:
+  * ``http_requests_total``: Counter partitioned by HTTP method, matched endpoint/route, and status code.
+  * ``http_request_duration_seconds``: Latency histogram partitioned by method, endpoint, and status code.
+* **Gunicorn Multi-Process Configuration**:
+  Because Gunicorn runs multiple worker processes, configure a shared directory via ``PROMETHEUS_MULTIPROC_DIR`` in your ``.env``:
+
+  .. code-block:: bash
+
+     PROMETHEUS_MULTIPROC_DIR=/tmp/kalanjiyam-prometheus-metrics
+
+  When set, Gunicorn's ``child_exit`` hook in ``gunicorn.conf.py`` automatically coordinates and marks worker termination, enabling accurate cross-worker aggregation. Ensure the directory is created and writeable by the web application user.
+
+
 Docker deployment
 -----------------
 
@@ -240,7 +259,9 @@ Pre-go-live checklist
 - At least one organization and org admin; ``migrate_multi_tenant.py`` clean or fixes applied
 - ``MULTI_TENANT_MODE=true`` and related flags set **after** bootstrap, then app restarted
 - Admin UI reachable at ``/admin/platform/`` for super admin
-- Celery workers include all required queues (``default``, ``ocr``, ``low_priority``, ``s3_batch``, ``search_index``, ``metadata``)
+- Celery workers include all partitioned queues (``default``, ``pdf_processing``, ``ocr``, ``translation``, ``low_priority``, ``s3_batch``, ``search_index``, ``metadata``)
 - OpenSearch service online and indices initialized (``python cli.py search-index init``)
+- Prometheus metrics verified at ``/metrics``; ``PROMETHEUS_MULTIPROC_DIR`` set if multi-worker
+- Voice editing enabled via ``VOICE_EDIT_ENABLED=true`` if Yojaka voice microservice deployed
 - Static assets built (``make css js``) before Docker image build
 - nginx TLS terminating; OCR service ``/admin`` not publicly routable

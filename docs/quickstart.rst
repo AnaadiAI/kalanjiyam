@@ -27,12 +27,15 @@ Then bring up the development server::
 
     make devserver
 
-Then go to `localhost:5000` to see the local application.
+Go to `localhost:5000` to see the local application (or `localhost:5002` when running via Docker with `make docker-start`).
 
-Some parts of Kalanjiyam, such as PDF parsing and project uploads, need to run tasks in the background.
-To add support for these in your local setup, run the following::
+Some parts of Kalanjiyam, such as PDF parsing, OCR, and project uploads, run tasks in the background.
+To run the full stack locally with Docker (Postgres, Redis, Celery workers, OpenSearch, VersityGW)::
 
-    ./scripts/install_osx_dependencies.sh
+    make docker-start
+
+For bare-metal local development without Docker::
+
     make redis
     make celery
 

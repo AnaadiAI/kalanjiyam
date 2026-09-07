@@ -25,6 +25,8 @@ Kalanjiyam locally or contribute to Kalanjiyam's technical work.
    ocr-api
    ocr-service-contract
    ocr-editing
+   enhanced-ocr
+   voice-edit-service-contract
    metadata-extraction
    production-deploy
    i18n-and-l10n

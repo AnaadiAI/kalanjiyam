@@ -80,7 +80,7 @@ Kalanjiyam is deployed using Docker containers (orchestrated via Docker Compose)
 - **Web container** (`kalanjiyam-web`): Flask web app behind Gunicorn
 - **Database container** (`kalanjiyam-db`): PostgreSQL 15
 - **Redis container** (`kalanjiyam-redis`): Celery task broker and result backend
-- **Celery worker containers** (`kalanjiyam-celery`, `kalanjiyam-celery-batch`, `kalanjiyam-celery-metadata`): Background workers
+- **Celery worker containers** (`kalanjiyam-celery`, `kalanjiyam-celery-pdf`, `kalanjiyam-celery-ocr`, `kalanjiyam-celery-translation`, `kalanjiyam-celery-batch`, `kalanjiyam-celery-metadata`): Dedicated background workers partitioned across queues with autoscaling
 - **Search container** (`kalanjiyam-search`): OpenSearch with ICU analysis plugin
 - **Storage gateway** (`kalanjiyam-versitygw`): S3 POSIX storage adapter
 
@@ -95,12 +95,15 @@ We follow several security best practices:
 - **SQL injection protection**: We use parameterized queries
 - **XSS protection**: We escape all user-generated content
 
-Monitoring
-----------
+Monitoring & Observability
+--------------------------
 
-We use several tools for monitoring:
+We use several tools for telemetry and monitoring:
 
-- **Sentry**: Error tracking and performance monitoring
-- **Logs**: Structured logging for debugging and analysis
-- **Health checks**: Automated health checks for all services
-- **Metrics**: Basic metrics collection for performance analysis
+- **Prometheus Exporter**: Middleware (`kalanjiyam.utils.prometheus`) exposing standard application metrics on ``/metrics``:
+  - ``http_requests_total`` (labeled by method, endpoint/route, and status code)
+  - ``http_request_duration_seconds`` (latency histogram partitioned by method, endpoint, and status code)
+  - Supports multi-process Gunicorn environments via ``PROMETHEUS_MULTIPROC_DIR``.
+- **Sentry**: Application exception tracking and performance monitoring.
+- **Logs**: Structured logging for Celery tasks, OCR pipelines, and web requests.
+- **Health checks**: Automated health checks for database, Redis, OpenSearch, and storage gateways.

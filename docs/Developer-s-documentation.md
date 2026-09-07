@@ -40,6 +40,11 @@
      * If empty or not defined, this defaults to `~/kalanjiyam-data`.
      * **On servers with restricted home directory quotas**, point this to a spacious mount point (e.g., `KALANJIYAM_DATA_DIR=/home1/student/username/kalanjiyam-data`).
 
+   ##### D. Feature Flags & Observability
+   * **`VOICE_EDIT_ENABLED`** (`true` or `false`): Enable handsfree voice editing on the proofing page editor. When enabled, microphone audio is proxied to the Yojaka voice editing service (`POST /v1/voice-edit`). Defaults to `false`.
+   * **`PROMETHEUS_MULTIPROC_DIR`**: Path to shared directory for aggregating Prometheus metrics across Gunicorn worker processes (e.g. `/tmp/kalanjiyam-prometheus-metrics`). Exposes metrics at `/metrics`.
+   * **`SEARCH_ENABLED`** (`true` or `false`): Enables OpenSearch full-text search indexing across OCR page text. Defaults to `false`.
+
 4. Make sure in the `Makefile` (located at the root of the project) that `KALANJIYAM_DEPLOYMENT_ENV` is set to `local`.
 5. Start the Docker services by running the following command:
    ```bash
@@ -97,6 +102,30 @@ docker exec -it kalanjiyam-web python scripts/cli.py add-role --username "userna
 To change the password for any user account via the command line:
 ```bash
 docker exec -it kalanjiyam-web python scripts/cli.py change-password --username "username"
+```
+
+### 7. Run Enhanced OCR on Historical Manuscripts
+To run the enhanced OCR pipeline with image preprocessing, closely-written line segmentation, and optional upscaling on a specific page:
+```bash
+# Basic run with document cleanup
+docker exec -it kalanjiyam-web python scripts/cli.py enhanced-ocr --project "project-slug" --page "1" --engine "dots_ocr"
+
+# With closely-written manuscript line segmentation and 2x upscaling
+docker exec -it kalanjiyam-web python scripts/cli.py enhanced-ocr --project "project-slug" --page "1" --engine "dots_ocr" --line-segmentation --upscale --upscale-factor 2
+```
+
+### 8. Run Archival Metadata Extraction via CLI
+To dispatch or inspect automated whole-document archival metadata extractions:
+```bash
+# Dry-run inspection across an entire organization
+docker exec -it kalanjiyam-web python scripts/cli.py metadata-extract --org "my-org" --all --dry-run
+
+# Run synchronously inline for a single project
+docker exec -it kalanjiyam-web python scripts/cli.py metadata-extract --project "project-slug" --local
+
+# Check extraction status and historical run metrics
+docker exec -it kalanjiyam-web python scripts/cli.py metadata-status --project "project-slug"
+docker exec -it kalanjiyam-web python scripts/cli.py metadata-runs --limit 20
 ```
 
 ---
@@ -1137,6 +1166,28 @@ To log server exceptions in production:
    SENTRY_DSN=https://your_key@sentry.io/your_project_id
    ```
 
+### 3. Prometheus Metrics Setup (Observability)
+Kalanjiyam includes native Prometheus metrics exporting:
+* **Metrics Endpoint**: `/metrics`
+* **Tracked Metrics**:
+  * `http_requests_total`: Tracks requests partitioned by HTTP method, matched endpoint/route, and status code.
+  * `http_request_duration_seconds`: Histogram measuring latency across endpoints.
+* **Gunicorn Multi-Process Configuration**:
+  Define a writable shared directory in `.env` to allow cross-worker metric collation:
+  ```env
+  PROMETHEUS_MULTIPROC_DIR=/tmp/kalanjiyam-prometheus-metrics
+  ```
+  *(Gunicorn worker lifecycle cleanup is managed automatically via `gunicorn.conf.py`).*
+
+### 4. Yojaka Voice Editing Service Setup
+To enable handsfree voice editing in the proofreading editor:
+1. Ensure the Yojaka AI speech microservice is running and accessible.
+2. Add the following to your `.env` configuration:
+   ```env
+   VOICE_EDIT_ENABLED=true
+   ```
+   *(Voice requests route to `POST {OCR_SERVICE_URL}/v1/voice-edit`).*
+
 ---
 
 ## OCR Integration & Editing Mechanics
@@ -1159,10 +1210,51 @@ When proofreaders open a page, the editing interface supports two primary views 
   * **Interactivity:** Standard text-editing workflow for writing and editing text flow.
   * **Syncing:** Running OCR in Replica mode automatically parses, structure-clusters, and syncs the recognized text layout to Flow mode.
   * **Workflow:** Revise and proofread layout blocks in Replica, and use Flow mode for formatting adjustments or continuous plain text editing.
+* **Handsfree Voice Mode:**
+  * **Workflow:** Open microphone, select language, and speak corrections directly (e.g., *"change Rama to Lakshmana in line two"*).
+  * **Architecture:** Audio is streamed to the Yojaka AI service (`POST /v1/voice-edit`), returning block-anchored edit operations `{op, block_id, find, replace}`.
+  * **Verification:** The client verifies `find` against live block text before applying. Failures are reported with reason codes; audio is never stored.
+  * **Diff Console:** Docked bottom panel displays color-coded diffs (slate spoken words, rose strikethrough before, emerald after) with a dedicated undo stack.
+  * **Configuration:** Toggle via `VOICE_EDIT_ENABLED=true` in `.env`.
 
 ---
 
-### 2. OCR Service Response Contract (v2.2)
+### 2. Enhanced OCR Pipeline & Manuscript Line Segmentation
+
+For difficult historical manuscripts, palm leaves, and degraded scans, Kalanjiyam provides an integrated **Enhanced OCR Pipeline** (`kalanjiyam.utils.enhanced_ocr`):
+
+```
+Raw Manuscript Scan ──> [Image Preprocessing Profile] ──> [Closely-Written Line Segmentation]
+                              │                                         │
+                              ▼                                         ▼
+                     [Optional Upscaling (1x..4x)] ──> [Synthetic Single-Page Canvas]
+                                                                        │
+                                                                        ▼
+                                                       POST /v1/ocr (Exactly 1 API Call)
+```
+
+* **Enhancement Profiles (`kalanjiyam.utils.image_preprocessing`):**
+  * `document_cleanup` (default): Illumination normalization, background stain elimination, and CLAHE.
+  * `bg_clahe`: Background estimation subtraction followed by adaptive histogram equalization.
+  * `sharpen`: Controlled unsharp masking (USM) targeting blurred characters.
+  * `text_enhancement`: Gamma tone-curve correction (gamma 0.70) boosting faded handwriting.
+  * `hybrid_binarization`: Multi-stage adaptive binarization for severe ink bleed-through.
+* **Closely-Written Line Segmentation (`kalanjiyam.utils.line_segmentation`):**
+  * Identifies text regions and Devanagari headlines (*shirorekha*).
+  * Uses horizontal projection profiling (HPP) with valley detection to partition tightly packed or touching lines cleanly.
+  * Reconstructs segmented lines onto a single synthetic canvas with uniform spacing.
+  * **Single-Call Guarantee**: Regardless of the number of extracted lines, OCR executes with **exactly one** API call.
+* **Optional Image Upscaling:**
+  * Supports 1x, 2x, 3x, and 4x upscaling factors before OCR.
+  * Bypasses PIL pixel decompression limits (`MAX_IMAGE_PIXELS = None`) for massive upscaled historical canvases.
+* **Interactive Live Preview & Editor Sync:**
+  * The editor modal includes a **Live Preview** toggle to visually inspect the preprocessed image and line partitions before launching OCR.
+  * **Live Updates Without Refresh**: Background Celery task completion events dynamically push recognized blocks and canvas layers to the active editor tab without requiring a page reload.
+  * **Isolated Version Tracks**: Stamped with `:segmented` and profile names (e.g. `ocr:enhanced:dots_ocr:document_cleanup:segmented`) to protect baseline engine runs.
+
+---
+
+### 3. OCR Service Response Contract (v2.2)
 
 To ensure loose coupling, Kalanjiyam communicates with the external OCR service via a strict engine-agnostic API contract. The external OCR service MUST return a JSON payload with a `Content-Type: application/json` header. 
 
@@ -1549,3 +1641,15 @@ Located in `kalanjiyam/utils/ocr_cache.py`:
 
 * **Engine Skipping**: When batch OCR runs, `_run_ocr_for_page_inner` checks for existing bot revisions on the same engine (e.g. `ocr:google` or `ocr:enhanced:dots_ocr:document_cleanup`). If found and not forced, external OCR API execution and quota usage are bypassed.
 * **Multi-Engine Tracks**: Running a different engine creates a new isolated version track without overwriting existing transcriptions.
+
+### 5. Centralized User Task Tracking System (Redis)
+
+Located in `kalanjiyam/utils/user_tasks.py`:
+
+* **Actor Identification**: Resolves actors to `user:<user_id>` (authenticated) or `guest:<device_fingerprint>` (unregistered guests via cookie), ensuring task state survives browser navigation.
+* **Redis Hash Registry (`user_tasks:{identifier}`)**: Stores recent background tasks (`batch_ocr`, `enhanced_ocr`, `translation`, `project_create`) with a **7-day auto-expiry** TTL.
+* **Navbar Task Tray & Polling Endpoints**:
+  * `GET /proofing/tasks/active`: Provides active task counts driving the spinning animated header icon.
+  * `GET /proofing/tasks/user-tasks`: Streams JSON progress payloads (progress percentage, status, completed/total page counters) to the client task monitor dropdown.
+  * `POST /proofing/tasks/clear`: Clears completed tasks from the active UI view.
+* **Dual-Tier Synergy**: Redis handles ephemeral user-facing notifications, while relational models (`BatchJob`, `BatchItem`, `BatchOcrChunk`, `BatchOcrPage`) log full metrics permanently in PostgreSQL.

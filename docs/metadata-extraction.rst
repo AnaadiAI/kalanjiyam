@@ -247,3 +247,28 @@ The following metrics are tracked on ``MetadataExtractionRun`` and ``MetadataWin
   .. math::
 
      \text{fields\_fill\_rate} = \frac{\text{fields\_filled}}{\text{fields\_total}} \quad (\text{out of 22 standard taxonomy tags})
+
+CLI Batch Operations & Filtering
+--------------------------------
+
+Archival extraction batches are dispatched and inspected via the CLI:
+
+.. code-block:: bash
+
+   # Dry-run inspection across an entire organization
+   docker exec -it kalanjiyam-web python scripts/cli.py metadata-extract --org "udaan" --all --dry-run
+
+   # Queue extraction pass across an organization with limit
+   docker exec -it kalanjiyam-web python scripts/cli.py metadata-extract --org "udaan" --all --limit 10
+
+   # Run inline in the local process for a specific project
+   docker exec -it kalanjiyam-web python scripts/cli.py metadata-extract --project "kalat-1932-17" --local
+
+   # Force re-read every window, bypassing the SHA-256 window_hash cache
+   docker exec -it kalanjiyam-web python scripts/cli.py metadata-extract --project "kalat-1932-17" --force
+
+   # Inspect metadata status for a project
+   docker exec -it kalanjiyam-web python scripts/cli.py metadata-status --project "kalat-1932-17"
+
+   # List recent extraction runs across the platform
+   docker exec -it kalanjiyam-web python scripts/cli.py metadata-runs --limit 20

@@ -1,277 +1,136 @@
-Batch OCR Task Tracking
-=======================
+Background Task & Batch OCR Tracking
+======================================
 
-This document describes the Redis-based task tracking system for batch OCR operations in Kalanjiyam. This feature allows users to navigate away from the OCR progress page and return to see the current progress, providing a better user experience for long-running OCR operations.
+Kalanjiyam provides a centralized task tracking system that spans both interactive user-initiated background jobs (in Redis) and enterprise-scale bulk folder ingestions (in PostgreSQL).
 
-Overview
---------
+This architecture allows users to start long-running tasks—such as batch OCR, enhanced OCR, machine translations, or multi-page PDF ingestions—navigate across the application, and monitor live progress from any page via the navigation bar task tray.
 
-Batch OCR operations can take a significant amount of time, especially for large documents with hundreds of pages. The task tracking system ensures that users can:
-
-- Start a batch OCR operation
-- Navigate away from the progress page
-- Return later to see the current progress
-- Resume monitoring without losing track of the operation
-
-The system uses Redis to store task information temporarily, providing a stateless solution that doesn't require database schema changes.
-
-Architecture
------------
-
-The task tracking system consists of several components:
-
-1. **Redis Storage**: Task information is stored in Redis with a 24-hour expiration
-2. **Task Detection**: The system checks for ongoing tasks when users visit the batch OCR page
-3. **Progress Restoration**: Active tasks are restored and progress is displayed
-4. **Automatic Cleanup**: Completed or failed tasks are automatically removed from Redis
-
-Redis Key Format
----------------
-
-Tasks are stored in Redis using the following format:
-
-- **Key**: ``ocr_task:{project_slug}``
-- **Value**: JSON object containing:
-  - ``task_id``: The Celery task ID
-  - ``engine``: OCR engine being used (google/tesseract)
-  - ``started_at``: ISO timestamp when the task was started
-  - ``project_slug``: The project slug for reference
-- **Expiration**: 24 hours (86400 seconds)
-
-Example Redis entry:
-::
-
-    Key: ocr_task:my-project
-    Value: {
-        "task_id": "abc123-def456-ghi789",
-        "engine": "google",
-        "started_at": "2024-01-15T10:30:00.000000",
-        "project_slug": "my-project"
-    }
-
-Implementation Details
+Architecture Overview
 ---------------------
 
-Task Storage
-~~~~~~~~~~~
+Task tracking is split into two distinct tiers based on lifecycle and durability requirements:
 
-When a user starts a batch OCR operation, task information is stored in Redis:
+1. **User Task Tracking (Redis)**: Tracks active and recent operations launched by individual users or guests. Powers the live navbar notification tray, task progress meters, and client polling endpoints.
+2. **Archival Batch Tracking (PostgreSQL)**: Persists whole-corpus ingestions, per-item status, Celery chunk splits, OCR engine latencies, and bounding box summaries in the database.
 
-.. code-block:: python
+.. code-block:: text
 
-    # Store task info in Redis with expiration (24 hours)
-    task_info = {
-        'task_id': task.id,
-        'engine': engine,
-        'started_at': datetime.utcnow().isoformat(),
-        'project_slug': slug
-    }
-    redis_client.setex(task_key, 86400, json.dumps(task_info))
+   ┌────────────────────────────────────────────────────────┐
+   │                  User Triggered Action                 │
+   │      (Batch OCR / Enhanced OCR / Translation)          │
+   └───────────────────────────┬────────────────────────────┘
+                               │
+                ┌──────────────┴──────────────┐
+                ▼                             ▼
+   ┌───────────────────────────┐ ┌───────────────────────────┐
+   │ Redis User Task Registry  │ │ PostgreSQL Relational Log │
+   │ (user_tasks:{identifier}) │ │ (BatchJob / BatchItem)    │
+   ├───────────────────────────┤ ├───────────────────────────┤
+   │ • Fast in-memory state    │ │ • Permanent audit log     │
+   │ • 7-day auto-expiration   │ │ • Chunk & page metrics    │
+   │ • Per-user / guest scoped │ │ • Engine accuracy stats   │
+   │ • Live navbar polling     │ │ • Failure retry recovery  │
+   └───────────────────────────┘ └───────────────────────────┘
 
-Task Detection
-~~~~~~~~~~~~~
+Redis User Task System (``kalanjiyam.utils.user_tasks``)
+-------------------------------------------------------
 
-When a user visits the batch OCR page, the system checks for ongoing tasks:
+User Identifier Resolution
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: python
+Every task is associated with an actor via ``get_user_identifier(user, request)``:
 
-    # Check if there's an ongoing OCR task using Redis
-    task_key = f"ocr_task:{slug}"
-    task_info = redis_client.get(task_key)
-    
-    if task_info:
-        task_data = json.loads(task_info)
-        task_id = task_data.get('task_id')
-        
-        # Try to restore the task to check if it's still active
-        r = GroupResult.restore(task_id, app=celery_app)
-        if r and r.state in ['PENDING', 'PROGRESS']:
-            # Show progress page instead of OCR form
-            return render_template("proofing/projects/batch-ocr-post.html", ...)
+* **Authenticated Users**: ``user:<user_id>`` (e.g. ``user:42``).
+* **Guest / Unregistered Users**: ``guest:<device_fingerprint>`` (tracked via a cryptographic browser cookie so guest uploads and OCR tasks survive navigation).
 
-Automatic Cleanup
-~~~~~~~~~~~~~~~~
+Storage & Hash Structure
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-Tasks are automatically removed from Redis when they complete or fail:
+User tasks are stored in a Redis Hash at key:
 
-.. code-block:: python
+.. code-block:: text
 
-    def _clear_ocr_task_from_redis(task_id):
-        """Clear OCR task from Redis when it completes or fails."""
-        try:
-            # Find the task key by scanning Redis keys
-            for key in redis_client.scan_iter(match="ocr_task:*"):
-                task_info = redis_client.get(key)
-                if task_info:
-                    task_data = json.loads(task_info)
-                    if task_data.get('task_id') == task_id:
-                        redis_client.delete(key)
-                        break
-        except Exception as e:
-            LOG.warning(f"Error clearing OCR task from Redis: {e}")
+   user_tasks:{user_identifier}
 
-User Experience Flow
--------------------
+Inside the hash, each field key is the Celery ``task_id``, and the value is a serialized JSON object:
 
-1. **Start OCR**: User clicks "Run OCR" button
-   - Task is created and stored in Redis
-   - User is redirected to progress page
+.. code-block:: json
 
-2. **Navigate Away**: User can navigate to other pages
-   - Task continues running in background
-   - Task information remains in Redis
+   {
+     "task_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+     "type": "enhanced_ocr",
+     "project_slug": "shiva-purana-vol-1",
+     "project_title": "Shiva Purana Volume 1",
+     "started_at": "2026-09-07T10:15:30.123456",
+     "status": "in_progress",
+     "progress": 45.0,
+     "completed_count": 45,
+     "total_count": 100,
+     "extra_info": {
+       "engine": "dots_ocr",
+       "profile": "document_cleanup",
+       "line_segmentation": true,
+       "upscale": true,
+       "upscale_factor": 2
+     }
+   }
 
-3. **Return to OCR**: User visits batch OCR page again
-   - System detects ongoing task in Redis
-   - Shows progress page instead of OCR form
-   - Displays current progress
+Key Lifecycles & Retention
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-4. **Task Completion**: OCR operation finishes
-   - Task is automatically removed from Redis
-   - User sees completion status
+* **Expiration**: The Redis key TTL is set to **7 days** (604,800 seconds) on every task update.
+* **Auto-Discovery**: When visiting a project's batch OCR or translation view, the frontend queries the task registry to detect if an operation is already underway and automatically restores the live progress bar.
 
-5. **Server Restart**: If server restarts
-   - Redis data is preserved (if Redis is persistent)
-   - If Redis data is lost, user can start new OCR
-   - Clean slate approach is actually better UX
-
-Error Handling
--------------
-
-The system includes robust error handling for various scenarios:
-
-Redis Connection Issues
-~~~~~~~~~~~~~~~~~~~~~~
-
-If Redis is unavailable, the system gracefully falls back to normal behavior:
-
-.. code-block:: python
-
-    try:
-        task_info = redis_client.get(task_key)
-        # Process task info
-    except Exception as e:
-        LOG.warning(f"Error checking OCR task for {slug}: {e}")
-        # Fall back to normal behavior
-
-Invalid Task Data
-~~~~~~~~~~~~~~~~
-
-If task data in Redis is corrupted or invalid:
-
-.. code-block:: python
-
-    try:
-        task_data = json.loads(task_info)
-        task_id = task_data.get('task_id')
-    except Exception:
-        # Remove invalid data and continue
-        redis_client.delete(task_key)
-
-Task Not Found
-~~~~~~~~~~~~~
-
-If a task ID in Redis no longer exists in Celery:
-
-.. code-block:: python
-
-    try:
-        r = GroupResult.restore(task_id, app=celery_app)
-        if r and r.state in ['PENDING', 'PROGRESS']:
-            # Task is active
-        else:
-            # Task is complete/failed, remove from Redis
-            redis_client.delete(task_key)
-    except Exception:
-        # Task not found, remove from Redis
-        redis_client.delete(task_key)
-
-Configuration
-------------
-
-Redis Connection
-~~~~~~~~~~~~~~~
-
-The Redis client is configured using environment variables:
-
-.. code-block:: python
-
-    redis_client = redis.Redis.from_url(
-        os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    )
-
-Environment Variables
+Supported Task Types
 ~~~~~~~~~~~~~~~~~~~~
 
-- ``REDIS_URL``: Redis connection string (default: redis://localhost:6379/0)
+The centralized system monitors four primary task types:
 
-Task Expiration
-~~~~~~~~~~~~~~
+1. ``batch_ocr``: Standard batch OCR across all or selected pages of a project.
+2. ``enhanced_ocr``: Enhanced OCR tasks with preprocessing, line segmentation, and upscaling.
+3. ``translation``: Asynchronous machine translation of project revisions.
+4. ``project_create``: PDF splitting, DOCX extraction, and page rasterization.
 
-Tasks automatically expire after 24 hours (86400 seconds) to prevent Redis from filling up with stale data.
+Navbar Task Tray & Polling Endpoints
+------------------------------------
 
-Monitoring and Debugging
------------------------
+The application layout header includes an asynchronous task indicator:
 
-Logging
-~~~~~~~
+* ``GET /proofing/tasks/active``: Returns the count of currently running tasks for the active user/guest. If count > 0, an animated spinner appears in the top navigation bar.
+* ``GET /proofing/tasks/user-tasks``: Returns the full list of recent and active tasks for the current user, displaying status badges, percent progress, and direct links to the relevant project.
+* ``POST /proofing/tasks/clear``: Dismisses completed or failed tasks from the user's active view.
 
-The system logs various events for monitoring and debugging:
+PostgreSQL Archival Batch Ingestion
+-----------------------------------
 
-- Task storage: Debug level
-- Task detection: Info level
-- Task cleanup: Debug level
-- Errors: Warning level
+For bulk operations initiated via the CLI (``python cli.py batch-ocr``), progress is additionally mapped to relational database models defined in ``kalanjiyam.models.batch``:
 
-Redis Monitoring
-~~~~~~~~~~~~~~~
+1. **``BatchJob``**:
+   - High-level execution pass over an S3 bucket prefix or local folder.
+   - Records ``target_uri``, ``status`` (PENDING, RUNNING, COMPLETED, FAILED, CANCELLED), ``extract_metadata``, and total runtime duration.
+2. **``BatchItem``**:
+   - Document-level tracking (one per PDF file or image directory).
+   - Records file size, MIME type, target project ID, engine, average confidence, and processed character count.
+3. **``BatchOcrChunk``**:
+   - Parallelized Celery worker units. Large PDFs are partitioned into discrete chunks processed concurrently across the worker pool.
+4. **``BatchOcrPage``**:
+   - Per-page execution audit tracking OCR engine processing latency, page quality metrics (``confidence``, ``p05``), and foreign key link to ``ProofPage``.
 
-You can monitor Redis to see active tasks:
+CLI Batch Inspection
+--------------------
+
+Administrators can monitor and manage bulk batch jobs from the CLI:
 
 .. code-block:: bash
 
-    # List all OCR tasks
-    redis-cli keys "ocr_task:*"
-    
-    # Get details of a specific task
-    redis-cli get "ocr_task:my-project"
-    
-    # Check Redis memory usage
-    redis-cli info memory
+   # List recent batch jobs
+   docker exec -it kalanjiyam-web python scripts/cli.py batch-list
 
-Benefits
---------
+   # Check detailed status and item failure traces
+   docker exec -it kalanjiyam-web python scripts/cli.py batch-status --job-id 12
 
-1. **Better UX**: Users can navigate away and return to see progress
-2. **Stateless Design**: No database schema changes required
-3. **Automatic Cleanup**: Tasks are automatically removed when complete
-4. **Error Resilience**: Graceful handling of Redis issues
-5. **Server Restart Friendly**: Clean slate after restarts
-6. **Scalable**: Uses existing Redis infrastructure
+   # Cancel a running batch job
+   docker exec -it kalanjiyam-web python scripts/cli.py batch-cancel --job-id 12
 
-Limitations
------------
-
-1. **Redis Dependency**: Requires Redis to be running
-2. **Temporary Storage**: Task data is lost if Redis restarts (unless persistent)
-3. **Memory Usage**: Active tasks consume Redis memory
-4. **Network Dependency**: Requires network connectivity to Redis
-
-Future Enhancements
-------------------
-
-Potential improvements to consider:
-
-1. **Database Persistence**: Store task metadata in database for longer-term tracking
-2. **Task History**: Keep completed task history for audit purposes
-3. **User Notifications**: Send notifications when tasks complete
-4. **Task Cancellation**: Allow users to cancel running tasks
-5. **Progress Estimation**: Provide time estimates for remaining work
-6. **Batch Operations**: Support for multiple concurrent OCR tasks per user
-
-Related Documentation
---------------------
-
-- :doc:`background-tasks-with-celery` - General Celery setup and usage
-- :doc:`architecture` - Overall system architecture
-- :doc:`production-deploy` - Production deployment
+   # Retry failed or stuck items
+   docker exec -it kalanjiyam-web python scripts/cli.py batch-retry --job-id 12 --org "udaan"

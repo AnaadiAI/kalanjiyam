@@ -506,8 +506,9 @@ these components in our help text and documentation.
         <!-- Upscale Image -->
         <div class="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
              :class="upscaleImage ? 'border-royalblue bg-royalblue/5' : ''">
-          <label class="flex items-start gap-2 cursor-pointer">
+          <label for="enhanced-ocr-upscale-toggle" class="flex items-start gap-2 cursor-pointer">
             <input type="checkbox"
+                   id="enhanced-ocr-upscale-toggle"
                    x-model="upscaleImage"
                    class="mt-0.5 rounded border-slate-300 text-royalblue focus:ring-royalblue/20"
                    @click.stop />
@@ -521,9 +522,9 @@ these components in our help text and documentation.
               </span>
             </div>
           </label>
-          <div class="mt-1.5 flex items-center justify-between pl-5 pr-1" x-show="upscaleImage" x-cloak>
+          <div class="mt-1.5 flex items-center justify-between pl-5 pr-1" x-show="upscaleImage" x-cloak @click.stop @mousedown.stop @touchstart.stop>
             <span class="text-[11px] font-medium text-slate-600">{{ _('Scale:') }}</span>
-            <select x-model="upscaleFactor" @click.stop class="text-xs py-0.5 px-2 rounded border border-slate-300 bg-white text-slate-800 focus:border-royalblue outline-none">
+            <select x-model="upscaleFactor" @click.stop @mousedown.stop class="text-xs py-0.5 px-2 rounded border border-slate-300 bg-white text-slate-800 focus:border-royalblue outline-none cursor-pointer">
               <option value="1">1×</option>
               <option value="2">2× (Recommended)</option>
               <option value="3">3×</option>
@@ -629,22 +630,28 @@ these components in our help text and documentation.
 
         <!-- Upscale Toggle & Factor in Modal -->
         <div class="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200/80 rounded-xl px-2.5 py-1 text-xs select-none">
-          <label class="flex items-center gap-1.5 cursor-pointer">
+          <label for="modal-preview-upscale-toggle" class="flex items-center gap-1.5 cursor-pointer">
             <input type="checkbox"
+                   id="modal-preview-upscale-toggle"
                    x-model="enhancementPreviewUpscale"
                    @change="loadEnhancementPreview()"
+                   @click.stop
                    class="w-3.5 h-3.5 text-indigo-600 rounded border-indigo-300 focus:ring-0 cursor-pointer">
             <span class="font-medium text-indigo-900">{{ _('Upscale') }}</span>
           </label>
-          <select x-model="enhancementPreviewUpscaleFactor"
-                  x-show="enhancementPreviewUpscale"
-                  @change="loadEnhancementPreview()"
-                  class="text-[11px] font-semibold py-0.5 px-1.5 rounded border border-indigo-300 bg-white text-indigo-900 outline-none cursor-pointer">
-            <option value="1">1×</option>
-            <option value="2">2×</option>
-            <option value="3">3×</option>
-            <option value="4">4×</option>
-          </select>
+          <div @click.stop @mousedown.stop @touchstart.stop>
+            <select x-model="enhancementPreviewUpscaleFactor"
+                    x-show="enhancementPreviewUpscale"
+                    @change="loadEnhancementPreview()"
+                    @click.stop
+                    @mousedown.stop
+                    class="text-[11px] font-semibold py-0.5 px-1.5 rounded border border-indigo-300 bg-white text-indigo-900 outline-none cursor-pointer">
+              <option value="1">1×</option>
+              <option value="2">2×</option>
+              <option value="3">3×</option>
+              <option value="4">4×</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -821,7 +828,7 @@ these components in our help text and documentation.
         </button>
         
         <button type="button"
-                @click="selectedEnhancementProfile = enhancementPreviewProfile; lineSegmentation = enhancementPreviewLineSegmentation; runEnhancedOCR(); enhancementPreviewModalOpen = false"
+                @click="selectedEnhancementProfile = enhancementPreviewProfile; lineSegmentation = enhancementPreviewLineSegmentation; upscaleImage = enhancementPreviewUpscale; upscaleFactor = enhancementPreviewUpscaleFactor; runEnhancedOCR(); enhancementPreviewModalOpen = false"
                 class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-royalblue/10 text-royalblue hover:bg-royalblue/20 border border-royalblue/30 transition cursor-pointer flex items-center gap-1.5 shadow-xs">
           <svg class="w-3.5 h-3.5 text-royalblue" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"></path>

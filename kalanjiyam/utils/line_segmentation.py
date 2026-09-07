@@ -18,6 +18,9 @@ import numpy as np
 from PIL import Image
 from scipy.signal import find_peaks
 
+# Disable PIL decompression bomb limits for legitimate high-resolution/upscaled historical manuscripts
+Image.MAX_IMAGE_PIXELS = None
+
 logger = logging.getLogger(__name__)
 
 LINE_SEGMENTATION_VERSION = "2.0"
@@ -319,7 +322,7 @@ def build_segmented_ocr_page(
 
     max_line_w = max(crop.size[0] for crop in line_crops)
     n_lines = len(line_crops)
-    scale = max(1, scale_factor)
+    scale = max(1, int(scale_factor) if scale_factor else 1)
 
     base_gap = int(config.line_spacing * scale)
     margin_h = int(config.horizontal_margin * scale)
@@ -345,6 +348,9 @@ def build_segmented_ocr_page(
     canvas_w = max_line_w + (2 * margin_h)
     canvas_h = (2 * margin_v) + total_lines_h + total_gaps_h
 
+    assert canvas_w > 0, f"Invalid canvas width calculated: {canvas_w}"
+    assert canvas_h > 0, f"Invalid canvas height calculated: {canvas_h}"
+
     bg_color = (
         (config.background_color, config.background_color, config.background_color)
         if mode == "RGB"
@@ -360,6 +366,8 @@ def build_segmented_ocr_page(
         if i < len(line_gaps):
             cur_y += line_gaps[i]
 
+    assert canvas.width == canvas_w, f"Canvas width mismatch: {canvas.width} != {canvas_w}"
+    assert canvas.height == canvas_h, f"Canvas height mismatch: {canvas.height} != {canvas_h}"
     return canvas
 
 
@@ -424,9 +432,10 @@ def segment_and_reconstruct_image(
     When upscale_factor > 1, upscales each line crop individually before synthetic page reconstruction.
     If 0 lines are detected or detection fails, gracefully returns the original (optionally upscaled) image.
     """
+    scale_int = int(upscale_factor) if upscale_factor else 1
     stats = LineDetectionStats(original_size=img.size)
-    stats.upscale_enabled = bool(upscale_factor > 1)
-    stats.upscale_factor = max(1, upscale_factor)
+    stats.upscale_enabled = bool(scale_int > 1)
+    stats.upscale_factor = max(1, scale_int)
     t0 = time.perf_counter()
 
     try:
@@ -439,10 +448,10 @@ def segment_and_reconstruct_image(
         if not peaks or len(boundaries) < 2:
             logger.info("No text lines detected; falling back to full enhanced image.")
             stats.fallback_used = True
-            if upscale_factor > 1:
+            if scale_int > 1:
                 from kalanjiyam.utils.image_preprocessing import upscale_image
 
-                fallback_img = upscale_image(img, factor=upscale_factor)
+                fallback_img = upscale_image(img, factor=scale_int)
             else:
                 fallback_img = img
             stats.reconstructed_size = fallback_img.size
@@ -462,35 +471,42 @@ def segment_and_reconstruct_image(
 
         if not crops:
             stats.fallback_used = True
-            if upscale_factor > 1:
+            if scale_int > 1:
                 from kalanjiyam.utils.image_preprocessing import upscale_image
 
-                fallback_img = upscale_image(img, factor=upscale_factor)
+                fallback_img = upscale_image(img, factor=scale_int)
             else:
                 fallback_img = img
             stats.reconstructed_size = fallback_img.size
             stats.segmentation_latency_ms = (time.perf_counter() - t0) * 1000.0
             return fallback_img, stats
 
-        if upscale_factor > 1:
+        if scale_int > 1:
             from kalanjiyam.utils.image_preprocessing import upscale_image
 
-            crops = [upscale_image(c, factor=upscale_factor) for c in crops]
+            crops = [upscale_image(c, factor=scale_int) for c in crops]
+
+        for idx, c in enumerate(crops):
+            assert c.width > 0, f"Line crop {idx+1} width must be > 0"
+            assert c.height > 0, f"Line crop {idx+1} height must be > 0"
 
         reconstructed = build_segmented_ocr_page(
             crops,
             config=config,
             mode=img.mode,
             line_peaks=peaks,
-            scale_factor=upscale_factor,
+            scale_factor=scale_int,
         )
+        assert reconstructed.width > 0, f"Reconstructed image width must be > 0 (got {reconstructed.width})"
+        assert reconstructed.height > 0, f"Reconstructed image height must be > 0 (got {reconstructed.height})"
+
         stats.reconstructed_size = reconstructed.size
         stats.segmentation_latency_ms = (time.perf_counter() - t0) * 1000.0
 
         logger.info(
             "Line segmentation complete: %d lines detected (upscale=%dx), original=%s, reconstructed=%s in %.2fms",
             stats.lines_detected,
-            upscale_factor,
+            scale_int,
             stats.original_size,
             stats.reconstructed_size,
             stats.segmentation_latency_ms,
@@ -503,10 +519,10 @@ def segment_and_reconstruct_image(
             err,
         )
         stats.fallback_used = True
-        if upscale_factor > 1:
+        if scale_int > 1:
             from kalanjiyam.utils.image_preprocessing import upscale_image
 
-            fallback_img = upscale_image(img, factor=upscale_factor)
+            fallback_img = upscale_image(img, factor=scale_int)
         else:
             fallback_img = img
         stats.reconstructed_size = fallback_img.size

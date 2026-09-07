@@ -18,6 +18,9 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageFilter, ImageOps
 
+# Disable PIL decompression bomb limits for legitimate high-resolution/upscaled historical manuscripts
+Image.MAX_IMAGE_PIXELS = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -369,13 +372,17 @@ def upscale_image(
 
     Preserves exact aspect ratio.
     """
-    if factor <= 1:
+    scale = int(factor) if factor else 1
+    if scale <= 1:
         return img
 
     w, h = img.size
-    new_w = int(w * factor)
-    new_h = int(h * factor)
-    return img.resize((new_w, new_h), resample=resample)
+    new_w = int(w * scale)
+    new_h = int(h * scale)
+    upscaled = img.resize((new_w, new_h), resample=resample)
+    assert upscaled.width > 0, f"Invalid upscaled image width: {upscaled.width}"
+    assert upscaled.height > 0, f"Invalid upscaled image height: {upscaled.height}"
+    return upscaled
 
 
 @contextmanager
@@ -394,7 +401,7 @@ def preprocess_image_to_tempfile(
         raise FileNotFoundError(f"Source image not found: {path}")
 
     valid_profile = validate_enhancement_profile(profile)
-    scale_factor = upscale_factor if (upscale and upscale_factor > 1) else 1
+    scale_factor = int(upscale_factor) if (upscale and int(upscale_factor) > 1) else 1
 
     with Image.open(path) as img:
         processed = preprocess_image(img, valid_profile, config=config)
@@ -410,6 +417,9 @@ def preprocess_image_to_tempfile(
             )
         elif scale_factor > 1:
             processed = upscale_image(processed, factor=scale_factor)
+
+        assert processed.width > 0, f"Processed image width must be > 0 (got {processed.width})"
+        assert processed.height > 0, f"Processed image height must be > 0 (got {processed.height})"
 
         # Create temp jpeg file with high quality
         tag_parts = [valid_profile]

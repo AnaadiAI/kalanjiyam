@@ -1560,21 +1560,74 @@ def test_enhanced_ocr_api_with_upscale(flask_app, mock_ocr_response, tmp_path):
                     assert resp_preview.data is not None
 
 
-# Test Real Manuscript Image with Segmentation + 2x Upscale
-def test_actual_manuscript_segmentation_and_upscale():
-    import os
-    from kalanjiyam.utils.line_segmentation import segment_and_reconstruct_image
+# Test Real Manuscript Image with Segmentation Across All Scales (1x, 2x, 3x, 4x)
+def test_actual_manuscript_segmentation_and_upscale_all_scales():
+    import numpy as np
+    from kalanjiyam.utils.image_preprocessing import preprocess_image, preprocess_image_to_tempfile
+    from kalanjiyam.utils.line_segmentation import (
+        DEFAULT_LINE_SEGMENTATION_CONFIG,
+        crop_text_lines,
+        detect_text_lines,
+        segment_and_reconstruct_image,
+    )
 
     manuscript_path = Path(__file__).resolve().parents[3] / "test-data" / "00010 jpg images manuscripts.JPG"
     if not manuscript_path.exists():
         pytest.skip("Manuscript sample image not found at test-data path")
 
-    with Image.open(manuscript_path) as img:
-        reconstructed, stats = segment_and_reconstruct_image(img, upscale_factor=2)
-        assert stats.lines_detected == 18
-        assert stats.upscale_enabled is True
-        assert stats.upscale_factor == 2
-        assert stats.fallback_used is False
-        assert reconstructed.size[0] > img.size[0]
-        assert reconstructed.size[1] > 0
+    with Image.open(manuscript_path) as orig_img:
+        enhanced = preprocess_image(orig_img, "hybrid_binarization")
+        detected_lines = detect_text_lines(enhanced, DEFAULT_LINE_SEGMENTATION_CONFIG)
+        crops = crop_text_lines(enhanced, detected_lines, DEFAULT_LINE_SEGMENTATION_CONFIG)
+        assert len(crops) == 18
+
+        for factor in (1, 2, 3, 4):
+            reconstructed, stats = segment_and_reconstruct_image(enhanced, upscale_factor=factor)
+            assert stats.lines_detected == 18
+            assert stats.fallback_used is False
+            assert reconstructed.width > 0
+            assert reconstructed.height > 0
+
+            # Verify non-empty foreground pixels in reconstructed synthetic page
+            arr = np.array(reconstructed)
+            fg_pixels = np.sum(arr < 200)
+            assert fg_pixels > 100_000, f"Reconstructed image at {factor}x must contain foreground text pixels"
+
+            # Verify tempfile encoding & re-decoding
+            with preprocess_image_to_tempfile(
+                manuscript_path,
+                profile="hybrid_binarization",
+                line_segmentation=True,
+                upscale=bool(factor > 1),
+                upscale_factor=factor,
+            ) as tmp_file:
+                assert tmp_file.exists()
+                assert tmp_file.stat().st_size > 0
+                with Image.open(tmp_file) as reloaded:
+                    assert reloaded.size == reconstructed.size
+                    arr_reloaded = np.array(reloaded)
+                    assert np.sum(arr_reloaded < 200) > 100_000
+
+
+# Test Exactly One OCR API Call Per Page Across All Scales
+def test_enhanced_ocr_runner_single_api_call_all_scales(mock_ocr_response, tmp_path):
+    from kalanjiyam.utils.enhanced_ocr import run_enhanced_ocr
+
+    dummy_img = tmp_path / "page_single_call.jpg"
+    Image.new("RGB", (300, 400), color=(255, 255, 255)).save(dummy_img, format="JPEG")
+
+    for factor in (1, 2, 3, 4):
+        with patch("kalanjiyam.utils.enhanced_ocr.run_ocr", return_value=mock_ocr_response) as mock_run_ocr:
+            resp = run_enhanced_ocr(
+                dummy_img,
+                engine_name="dots_ocr",
+                profile="hybrid_binarization",
+                line_segmentation=True,
+                upscale=bool(factor > 1),
+                upscale_factor=factor,
+            )
+            assert mock_run_ocr.call_count == 1
+            assert resp.ocr_mode == "enhanced"
+            assert resp.upscale == bool(factor > 1)
+            assert resp.upscale_factor == (factor if factor > 1 else 1)
 

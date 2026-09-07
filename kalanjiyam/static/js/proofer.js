@@ -124,6 +124,7 @@ export default () => ({
   // OCR settings
   selectedEngine: '1', // Default to Google OCR (1)
   selectedLanguage: 'sa',
+  additionalLanguage: '',
 
   // Translation settings
   selectedTranslationEngine: '1',
@@ -1361,6 +1362,7 @@ export default () => ({
         // Load OCR settings
         this.selectedEngine = settings.selectedEngine || this.selectedEngine;
         this.selectedLanguage = settings.selectedLanguage || this.selectedLanguage;
+        this.additionalLanguage = settings.additionalLanguage || '';
         
         // Load Translation settings
         this.selectedTranslationEngine = settings.selectedTranslationEngine || this.selectedTranslationEngine;
@@ -1385,6 +1387,7 @@ export default () => ({
       toScript: this.toScript,
       selectedEngine: this.selectedEngine,
       selectedLanguage: this.selectedLanguage,
+      additionalLanguage: this.additionalLanguage,
       selectedTranslationEngine: this.selectedTranslationEngine,
       sourceLanguage: this.sourceLanguage,
       targetLanguage: this.targetLanguage,
@@ -1769,34 +1772,30 @@ export default () => ({
     setTimeout(() => {
       const engine = this.selectedEngine;
       const engineConfig = this.ocrEngines ? this.ocrEngines[engine] : null;
-      const languageSelect = document.getElementById('language-select');
-      const additionalLanguageSelect = document.getElementById('additional-language-select');
+      const languageSelects = document.querySelectorAll(
+        '#language-select, #enhanced-language-select, .ocr-primary-language-select'
+      );
+      const additionalLanguageSelects = document.querySelectorAll(
+        '#additional-language-select, #enhanced-additional-language-select, .ocr-additional-language-select'
+      );
 
-      const hasLanguages = engineConfig && Array.isArray(engineConfig.languages) && engineConfig.languages.length > 0;
+      const hasLanguages =
+        engineConfig &&
+        Array.isArray(engineConfig.languages) &&
+        engineConfig.languages.length > 0;
 
       if (!hasLanguages) {
-        if (languageSelect) languageSelect.innerHTML = '';
-        if (additionalLanguageSelect) additionalLanguageSelect.innerHTML = '';
+        languageSelects.forEach((select) => {
+          select.innerHTML = '';
+        });
+        additionalLanguageSelects.forEach((select) => {
+          select.innerHTML = '';
+        });
         return;
       }
-
-      if (!languageSelect) {
-        return;
-      }
-
-      // Clear existing options
-      languageSelect.innerHTML = '';
-
-      // Add language options
-      engineConfig.languages.forEach(lang => {
-        const option = document.createElement('option');
-        option.value = lang.value;
-        option.textContent = lang.text;
-        languageSelect.appendChild(option);
-      });
 
       // Set default language if current selection is not available
-      if (!engineConfig.languages.find(lang => lang.value === this.selectedLanguage)) {
+      if (!engineConfig.languages.find((lang) => lang.value === this.selectedLanguage)) {
         const languageMap = {
           'sa': 'san',  // Google Sanskrit -> Tesseract Sanskrit
           'san': 'sa',  // Tesseract Sanskrit -> Google Sanskrit
@@ -1807,27 +1806,49 @@ export default () => ({
         };
 
         const mappedLanguage = languageMap[this.selectedLanguage];
-        if (mappedLanguage && engineConfig.languages.find(lang => lang.value === mappedLanguage)) {
+        if (mappedLanguage && engineConfig.languages.find((lang) => lang.value === mappedLanguage)) {
           this.selectedLanguage = mappedLanguage;
         } else {
           this.selectedLanguage = engineConfig.languages[0].value;
         }
       }
 
+      // Clear and populate primary language options on all matching selects
+      languageSelects.forEach((languageSelect) => {
+        languageSelect.innerHTML = '';
+        engineConfig.languages.forEach((lang) => {
+          const option = document.createElement('option');
+          option.value = lang.value;
+          option.textContent = lang.text;
+          languageSelect.appendChild(option);
+        });
+        languageSelect.value = this.selectedLanguage;
+      });
+
       // Update additional language options for bilingual support
-      if (additionalLanguageSelect) {
-        if (engine === '2' || engine === '3') {
+      const supportsAdditional = engine === '2' || engine === '3';
+      additionalLanguageSelects.forEach((additionalLanguageSelect) => {
+        if (supportsAdditional) {
           additionalLanguageSelect.innerHTML = '<option value="">None</option>';
-          engineConfig.languages.forEach(lang => {
+          engineConfig.languages.forEach((lang) => {
             const option = document.createElement('option');
             option.value = lang.value;
             option.textContent = lang.text;
             additionalLanguageSelect.appendChild(option);
           });
+          if (
+            this.additionalLanguage &&
+            engineConfig.languages.find((lang) => lang.value === this.additionalLanguage)
+          ) {
+            additionalLanguageSelect.value = this.additionalLanguage;
+          } else {
+            additionalLanguageSelect.value = '';
+            this.additionalLanguage = '';
+          }
         } else {
           additionalLanguageSelect.innerHTML = '';
         }
-      }
+      });
     }, 0);
   },
 
@@ -1900,14 +1921,25 @@ export default () => ({
     }
     const engine = this.selectedEngine;
     const primaryLanguage = this.selectedLanguage || 'sa';
-    const additionalLanguageSelect = document.getElementById('additional-language-select');
-    const additionalLanguage = additionalLanguageSelect ? additionalLanguageSelect.value : '';
-    
+    let additionalLanguage = this.additionalLanguage;
+    if (!additionalLanguage) {
+      const additionalSelect =
+        document.getElementById('additional-language-select') ||
+        document.getElementById('enhanced-additional-language-select');
+      if (additionalSelect && additionalSelect.value) {
+        additionalLanguage = additionalSelect.value;
+      }
+    }
+
     if (engine === '2' && additionalLanguage) {
       // Tesseract uses + separator
       return `${primaryLanguage}+${additionalLanguage}`;
     }
-    
+    if (engine === '3' && additionalLanguage) {
+      // Surya uses comma separator
+      return `${primaryLanguage},${additionalLanguage}`;
+    }
+
     return primaryLanguage;
   },
 

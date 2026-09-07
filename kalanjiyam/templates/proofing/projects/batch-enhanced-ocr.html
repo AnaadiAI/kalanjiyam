@@ -360,4 +360,215 @@
     </ul>
   </div>
 </div>
+
+<script>
+// Language options for different OCR engines
+const languageOptions = {
+  '1': [ // Google OCR
+    { value: 'sa', text: 'Sanskrit (sa)' },
+    { value: 'hi', text: 'Hindi (hi)' },
+    { value: 'te', text: 'Telugu (te)' },
+    { value: 'mr', text: 'Marathi (mr)' },
+    { value: 'bn', text: 'Bengali (bn)' },
+    { value: 'gu', text: 'Gujarati (gu)' },
+    { value: 'kn', text: 'Kannada (kn)' },
+    { value: 'ml', text: 'Malayalam (ml)' },
+    { value: 'ta', text: 'Tamil (ta)' },
+    { value: 'pa', text: 'Punjabi (pa)' },
+    { value: 'or', text: 'Odia (or)' },
+    { value: 'ur', text: 'Urdu (ur)' },
+    { value: 'en', text: 'English (en)' }
+  ],
+  '2': [ // Tesseract OCR
+    { value: 'san', text: 'Sanskrit (san)' },
+    { value: 'eng', text: 'English (eng)' },
+    { value: 'hin', text: 'Hindi (hin)' },
+    { value: 'tel', text: 'Telugu (tel)' },
+    { value: 'mar', text: 'Marathi (mar)' },
+    { value: 'ben', text: 'Bengali (ben)' },
+    { value: 'guj', text: 'Gujarati (guj)' },
+    { value: 'kan', text: 'Kannada (kan)' },
+    { value: 'mal', text: 'Malayalam (mal)' },
+    { value: 'tam', text: 'Tamil (tam)' },
+    { value: 'pan', text: 'Punjabi (pan)' },
+    { value: 'ori', text: 'Odia (ori)' },
+    { value: 'urd', text: 'Urdu (urd)' }
+  ],
+  '3': [ // Surya OCR
+    { value: 'sa', text: 'Sanskrit (sa)' },
+    { value: 'hi', text: 'Hindi (hi)' },
+    { value: 'te', text: 'Telugu (te)' },
+    { value: 'mr', text: 'Marathi (mr)' },
+    { value: 'bn', text: 'Bengali (bn)' },
+    { value: 'gu', text: 'Gujarati (gu)' },
+    { value: 'kn', text: 'Kannada (kn)' },
+    { value: 'ml', text: 'Malayalam (ml)' },
+    { value: 'ta', text: 'Tamil (ta)' },
+    { value: 'pa', text: 'Punjabi (pa)' },
+    { value: 'or', text: 'Odia (or)' },
+    { value: 'ur', text: 'Urdu (ur)' },
+    { value: 'en', text: 'English (en)' },
+    { value: 'ar', text: 'Arabic (ar)' },
+    { value: 'fa', text: 'Persian (fa)' },
+    { value: 'th', text: 'Thai (th)' },
+    { value: 'ko', text: 'Korean (ko)' },
+    { value: 'ja', text: 'Japanese (ja)' },
+    { value: 'zh', text: 'Chinese (zh)' },
+    { value: 'ru', text: 'Russian (ru)' },
+    { value: 'es', text: 'Spanish (es)' },
+    { value: 'fr', text: 'French (fr)' },
+    { value: 'de', text: 'German (de)' },
+    { value: 'it', text: 'Italian (it)' },
+    { value: 'pt', text: 'Portuguese (pt)' },
+    { value: 'nl', text: 'Dutch (nl)' },
+    { value: 'pl', text: 'Polish (pl)' },
+    { value: 'tr', text: 'Turkish (tr)' },
+    { value: 'id', text: 'Indonesian (id)' },
+    { value: 'ms', text: 'Malay (ms)' }
+  ],
+  '4': [ // Nanonets OCR
+    { value: 'sa', text: 'Sanskrit (sa)' },
+    { value: 'en', text: 'English (en)' },
+    { value: 'hi', text: 'Hindi (hi)' },
+    { value: 'te', text: 'Telugu (te)' },
+    { value: 'mr', text: 'Marathi (mr)' },
+    { value: 'bn', text: 'Bengali (bn)' },
+    { value: 'gu', text: 'Gujarati (gu)' },
+    { value: 'kn', text: 'Kannada (kn)' },
+    { value: 'ml', text: 'Malayalam (ml)' },
+    { value: 'ta', text: 'Tamil (ta)' },
+    { value: 'pa', text: 'Punjabi (pa)' },
+    { value: 'or', text: 'Odia (or)' },
+    { value: 'ur', text: 'Urdu (ur)' }
+  ],
+  '5': [ // DeepSeek OCR
+    { value: 'sa', text: 'Sanskrit (sa)' },
+    { value: 'en', text: 'English (en)' },
+    { value: 'hi', text: 'Hindi (hi)' },
+    { value: 'te', text: 'Telugu (te)' },
+    { value: 'mr', text: 'Marathi (mr)' },
+    { value: 'bn', text: 'Bengali (bn)' },
+    { value: 'gu', text: 'Gujarati (gu)' },
+    { value: 'kn', text: 'Kannada (kn)' },
+    { value: 'ml', text: 'Malayalam (ml)' },
+    { value: 'ta', text: 'Tamil (ta)' },
+    { value: 'pa', text: 'Punjabi (pa)' },
+    { value: 'or', text: 'Odia (or)' },
+    { value: 'ur', text: 'Urdu (ur)' }
+  ],
+  '6': [ // Chandra OCR
+    { value: 'sa', text: 'Sanskrit (sa)' },
+    { value: 'en', text: 'English (en)' },
+    { value: 'hi', text: 'Hindi (hi)' },
+    { value: 'te', text: 'Telugu (te)' },
+    { value: 'mr', text: 'Marathi (mr)' },
+    { value: 'bn', text: 'Bengali (bn)' },
+    { value: 'gu', text: 'Gujarati (gu)' },
+    { value: 'kn', text: 'Kannada (kn)' },
+    { value: 'ml', text: 'Malayalam (ml)' },
+    { value: 'ta', text: 'Tamil (ta)' },
+    { value: 'pa', text: 'Punjabi (pa)' },
+    { value: 'or', text: 'Odia (or)' },
+    { value: 'ur', text: 'Urdu (ur)' }
+  ],
+  '7': [ // Qwen 2VL OCR
+    { value: 'sa', text: 'Sanskrit (sa)' },
+    { value: 'en', text: 'English (en)' },
+    { value: 'hi', text: 'Hindi (hi)' },
+    { value: 'te', text: 'Telugu (te)' },
+    { value: 'mr', text: 'Marathi (mr)' },
+    { value: 'bn', text: 'Bengali (bn)' },
+    { value: 'gu', text: 'Gujarati (gu)' },
+    { value: 'kn', text: 'Kannada (kn)' },
+    { value: 'ml', text: 'Malayalam (ml)' },
+    { value: 'ta', text: 'Tamil (ta)' },
+    { value: 'pa', text: 'Punjabi (pa)' },
+    { value: 'or', text: 'Odia (or)' },
+    { value: 'ur', text: 'Urdu (ur)' }
+  ],
+  '8': [], // Surya Table auto-detects
+  '9': [ // Paddle Table OCR
+    { value: 'sa', text: 'Sanskrit (sa)' },
+    { value: 'en', text: 'English (en)' },
+    { value: 'hi', text: 'Hindi (hi)' },
+    { value: 'te', text: 'Telugu (te)' },
+    { value: 'mr', text: 'Marathi (mr)' },
+    { value: 'bn', text: 'Bengali (bn)' },
+    { value: 'gu', text: 'Gujarati (gu)' },
+    { value: 'kn', text: 'Kannada (kn)' },
+    { value: 'ml', text: 'Malayalam (ml)' },
+    { value: 'ta', text: 'Tamil (ta)' },
+    { value: 'pa', text: 'Punjabi (pa)' },
+    { value: 'or', text: 'Odia (or)' },
+    { value: 'ur', text: 'Urdu (ur)' }
+  ],
+  '10': [], // GLM OCR auto-detects
+  '11': [ // Sanskrit Manuscript OCR
+    { value: 'san', text: 'Sanskrit (san)' }
+  ],
+  '12': [], // Dots OCR auto-detects
+  '13': [] // Gemma OCR auto-detects
+};
+
+const localizedLanguageLabels = {
+  sa: {{ _('Sanskrit (sa)')|tojson }}, hi: {{ _('Hindi (hi)')|tojson }}, te: {{ _('Telugu (te)')|tojson }},
+  mr: {{ _('Marathi (mr)')|tojson }}, bn: {{ _('Bengali (bn)')|tojson }}, gu: {{ _('Gujarati (gu)')|tojson }},
+  kn: {{ _('Kannada (kn)')|tojson }}, ml: {{ _('Malayalam (ml)')|tojson }}, ta: {{ _('Tamil (ta)')|tojson }},
+  pa: {{ _('Punjabi (pa)')|tojson }}, or: {{ _('Odia (or)')|tojson }}, ur: {{ _('Urdu (ur)')|tojson }},
+  en: {{ _('English (en)')|tojson }}, san: {{ _('Sanskrit (san)')|tojson }}, eng: {{ _('English (eng)')|tojson }},
+  hin: {{ _('Hindi (hin)')|tojson }}, tel: {{ _('Telugu (tel)')|tojson }}, mar: {{ _('Marathi (mar)')|tojson }},
+  ben: {{ _('Bengali (ben)')|tojson }}, guj: {{ _('Gujarati (guj)')|tojson }}, kan: {{ _('Kannada (kan)')|tojson }},
+  mal: {{ _('Malayalam (mal)')|tojson }}, tam: {{ _('Tamil (tam)')|tojson }}, pan: {{ _('Punjabi (pan)')|tojson }},
+  ori: {{ _('Odia (ori)')|tojson }}, urd: {{ _('Urdu (urd)')|tojson }}, ar: {{ _('Arabic (ar)')|tojson }},
+  fa: {{ _('Persian (fa)')|tojson }}, th: {{ _('Thai (th)')|tojson }}, ko: {{ _('Korean (ko)')|tojson }},
+  ja: {{ _('Japanese (ja)')|tojson }}, zh: {{ _('Chinese (zh)')|tojson }}, ru: {{ _('Russian (ru)')|tojson }},
+  es: {{ _('Spanish (es)')|tojson }}, fr: {{ _('French (fr)')|tojson }}, de: {{ _('German (de)')|tojson }},
+  it: {{ _('Italian (it)')|tojson }}, pt: {{ _('Portuguese (pt)')|tojson }}, nl: {{ _('Dutch (nl)')|tojson }},
+  pl: {{ _('Polish (pl)')|tojson }}, tr: {{ _('Turkish (tr)')|tojson }}, vi: {{ _('Vietnamese (vi)')|tojson }},
+  id: {{ _('Indonesian (id)')|tojson }}, ms: {{ _('Malay (ms)')|tojson }}
+};
+
+// Function to update language options based on selected engine
+function updateLanguageOptions() {
+  const engineSelect = document.getElementById('engine');
+  const languageSelect = document.getElementById('language');
+  if (!engineSelect || !languageSelect) return;
+
+  const selectedEngine = engineSelect.value;
+  const languageContainer = languageSelect.closest('div');
+  const options = languageOptions[selectedEngine];
+
+  if (!options || options.length === 0) {
+    if (languageContainer) {
+      languageContainer.style.display = 'none';
+    }
+    languageSelect.innerHTML = '';
+    return;
+  }
+
+  if (languageContainer) {
+    languageContainer.style.display = '';
+  }
+
+  languageSelect.innerHTML = '';
+
+  options.forEach(option => {
+    const optionElement = document.createElement('option');
+    optionElement.value = option.value;
+    optionElement.textContent = localizedLanguageLabels[option.value] || option.text;
+    if (option.value === 'sa' || option.value === 'san') {
+      optionElement.selected = true;
+    }
+    languageSelect.appendChild(optionElement);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const engineSelect = document.getElementById('engine');
+  if (engineSelect) {
+    engineSelect.addEventListener('change', updateLanguageOptions);
+  }
+  updateLanguageOptions();
+});
+</script>
 {% endblock %}

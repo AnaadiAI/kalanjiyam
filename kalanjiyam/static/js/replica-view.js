@@ -226,7 +226,19 @@ export class ReplicaView {
     this._render();
   }
 
-  setDocument(doc) {
+  setDocument(doc, force = false) {
+    if (force) {
+      const key = this._getStorageKey();
+      if (key) {
+        localStorage.removeItem(key);
+      }
+      this.isRestoredFromCache = false;
+      this.originalDocument = JSON.parse(JSON.stringify(doc));
+      this.document = doc;
+      this._render();
+      return;
+    }
+
     if (!this.originalDocument) {
       this.originalDocument = JSON.parse(JSON.stringify(doc));
     }

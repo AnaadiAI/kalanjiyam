@@ -1108,10 +1108,14 @@ export default () => ({
     const textarea = document.getElementById('content');
     if (docField) {
       docField.value = JSON.stringify(this.pageDocument);
+      docField.dispatchEvent(new Event('input', { bubbles: true }));
+      docField.dispatchEvent(new Event('change', { bubbles: true }));
     }
     if (textarea) {
       textarea.value = plain;
       this.content = plain;
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.dispatchEvent(new Event('change', { bubbles: true }));
     }
     // Skip _applyFlowEditorContent for DOCX/html-format documents:
     // the flow editor is authoritative and should not be overwritten.
@@ -1145,11 +1149,20 @@ export default () => ({
         'warning',
       );
     }
+    const storageKey = this._getStorageKey();
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
+    }
+
     this.pageDocument = reclusterDocumentBlocks(fromOcrPayload(payload));
     if (payload.page_width) this.pageDocument.page_width = payload.page_width;
     if (payload.page_height) this.pageDocument.page_height = payload.page_height;
     this._flowPlainCache = documentToPlainText(this.pageDocument);
-    if (this._replicaView) this._replicaView.setDocument(this.pageDocument);
+    this.content = this._flowPlainCache;
+
+    if (this._replicaView) {
+      this._replicaView.setDocument(this.pageDocument, true);
+    }
     if (this._bboxOverlay) {
       this._setOverlayBoxes(payload);
       requestAnimationFrame(() => {
@@ -1157,6 +1170,19 @@ export default () => ({
       });
     }
     this._syncDocumentToForm();
+
+    // Ensure Flow / Rich Editor gets updated immediately with new OCR HTML
+    if (window.richEditorInstance) {
+      try {
+        this._isProgrammaticUpdate = true;
+        const flowHtml = this._flowHtmlFromDocument();
+        setEditorContent(window.richEditorInstance, flowHtml);
+        this._isProgrammaticUpdate = false;
+      } catch (e) {
+        console.warn('Failed to update rich editor content from OCR payload:', e);
+      }
+    }
+
     if (payload.available_versions) {
       this.availableVersions = payload.available_versions;
     }

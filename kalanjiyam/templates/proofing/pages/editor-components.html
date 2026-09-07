@@ -174,7 +174,7 @@ these components in our help text and documentation.
           <template x-for="ver in availableVersions" :key="ver.version_key">
             <li class="p-2.5 hover:bg-slate-50 flex items-center justify-between gap-2 text-xs">
               <div class="flex flex-col min-w-0">
-                <span class="font-medium text-slate-900 truncate" x-text="ver.display_name"></span>
+                <span class="font-medium text-slate-900 break-words" x-text="ver.display_name"></span>
                 <span class="text-[10px] text-slate-400" x-text="'Updated: ' + (ver.updated_at ? new Date(ver.updated_at).toLocaleString() : 'Never')"></span>
               </div>
               <div class="flex items-center gap-1.5 shrink-0">

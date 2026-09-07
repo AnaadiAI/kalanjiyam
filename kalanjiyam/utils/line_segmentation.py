@@ -60,6 +60,8 @@ class LineDetectionStats:
     text_block: tuple[int, int, int, int] = (0, 0, 0, 0)
     segmentation_latency_ms: float = 0.0
     fallback_used: bool = False
+    upscale_enabled: bool = False
+    upscale_factor: int = 1
 
 
 def _extract_foreground_mask(img: Image.Image | np.ndarray) -> tuple[np.ndarray, np.ndarray | None]:
@@ -305,21 +307,23 @@ def build_segmented_ocr_page(
     config: LineSegmentationConfig = DEFAULT_LINE_SEGMENTATION_CONFIG,
     mode: str = "RGB",
     line_peaks: list[int] | None = None,
+    scale_factor: int = 1,
 ) -> Image.Image:
     """Reconstruct line crops into ONE single clean synthetic OCR image.
 
     Preserves top-to-bottom reading order, controlled inter-line gaps,
-    and natural paragraph gaps.
+    and natural paragraph gaps, scaling canvas layout when line crops are upscaled.
     """
     if not line_crops:
         raise ValueError("Cannot build synthetic OCR page from empty line crops.")
 
     max_line_w = max(crop.size[0] for crop in line_crops)
     n_lines = len(line_crops)
+    scale = max(1, scale_factor)
 
-    base_gap = config.line_spacing
-    margin_h = config.horizontal_margin
-    margin_v = config.vertical_margin
+    base_gap = int(config.line_spacing * scale)
+    margin_h = int(config.horizontal_margin * scale)
+    margin_v = int(config.vertical_margin * scale)
 
     # Compute inter-line gaps, preserving detected paragraph breaks
     line_gaps: list[int] = []
@@ -328,7 +332,7 @@ def build_segmented_ocr_page(
         med_dist = float(np.median(peak_diffs))
         for d in peak_diffs:
             if d > config.paragraph_gap_multiplier * med_dist:
-                extra_gap = int(d - med_dist)
+                extra_gap = int((d - med_dist) * scale)
                 line_gaps.append(base_gap + extra_gap)
             else:
                 line_gaps.append(base_gap)
@@ -413,12 +417,16 @@ def generate_segmentation_debug_overlay(
 def segment_and_reconstruct_image(
     img: Image.Image,
     config: LineSegmentationConfig = DEFAULT_LINE_SEGMENTATION_CONFIG,
+    upscale_factor: int = 1,
 ) -> tuple[Image.Image, LineDetectionStats]:
     """Complete end-to-end pipeline: detect line peaks, find valleys, crop lines, and build ONE synthetic page.
 
-    If 0 lines are detected or detection fails, gracefully returns the original image.
+    When upscale_factor > 1, upscales each line crop individually before synthetic page reconstruction.
+    If 0 lines are detected or detection fails, gracefully returns the original (optionally upscaled) image.
     """
     stats = LineDetectionStats(original_size=img.size)
+    stats.upscale_enabled = bool(upscale_factor > 1)
+    stats.upscale_factor = max(1, upscale_factor)
     t0 = time.perf_counter()
 
     try:
@@ -431,9 +439,15 @@ def segment_and_reconstruct_image(
         if not peaks or len(boundaries) < 2:
             logger.info("No text lines detected; falling back to full enhanced image.")
             stats.fallback_used = True
-            stats.reconstructed_size = img.size
+            if upscale_factor > 1:
+                from kalanjiyam.utils.image_preprocessing import upscale_image
+
+                fallback_img = upscale_image(img, factor=upscale_factor)
+            else:
+                fallback_img = img
+            stats.reconstructed_size = fallback_img.size
             stats.segmentation_latency_ms = (time.perf_counter() - t0) * 1000.0
-            return img, stats
+            return fallback_img, stats
 
         detected_lines: list[tuple[int, int, int, int]] = []
         bx0, _, bx1, _ = text_block
@@ -448,19 +462,35 @@ def segment_and_reconstruct_image(
 
         if not crops:
             stats.fallback_used = True
-            stats.reconstructed_size = img.size
+            if upscale_factor > 1:
+                from kalanjiyam.utils.image_preprocessing import upscale_image
+
+                fallback_img = upscale_image(img, factor=upscale_factor)
+            else:
+                fallback_img = img
+            stats.reconstructed_size = fallback_img.size
             stats.segmentation_latency_ms = (time.perf_counter() - t0) * 1000.0
-            return img, stats
+            return fallback_img, stats
+
+        if upscale_factor > 1:
+            from kalanjiyam.utils.image_preprocessing import upscale_image
+
+            crops = [upscale_image(c, factor=upscale_factor) for c in crops]
 
         reconstructed = build_segmented_ocr_page(
-            crops, config=config, mode=img.mode, line_peaks=peaks
+            crops,
+            config=config,
+            mode=img.mode,
+            line_peaks=peaks,
+            scale_factor=upscale_factor,
         )
         stats.reconstructed_size = reconstructed.size
         stats.segmentation_latency_ms = (time.perf_counter() - t0) * 1000.0
 
         logger.info(
-            "Line segmentation complete: %d lines detected, original=%s, reconstructed=%s in %.2fms",
+            "Line segmentation complete: %d lines detected (upscale=%dx), original=%s, reconstructed=%s in %.2fms",
             stats.lines_detected,
+            upscale_factor,
             stats.original_size,
             stats.reconstructed_size,
             stats.segmentation_latency_ms,
@@ -473,6 +503,12 @@ def segment_and_reconstruct_image(
             err,
         )
         stats.fallback_used = True
-        stats.reconstructed_size = img.size
+        if upscale_factor > 1:
+            from kalanjiyam.utils.image_preprocessing import upscale_image
+
+            fallback_img = upscale_image(img, factor=upscale_factor)
+        else:
+            fallback_img = img
+        stats.reconstructed_size = fallback_img.size
         stats.segmentation_latency_ms = (time.perf_counter() - t0) * 1000.0
-        return img, stats
+        return fallback_img, stats

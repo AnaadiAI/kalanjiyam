@@ -139,6 +139,8 @@ export default () => ({
   enhancedOcrDropdownOpen: false,
   selectedEnhancementProfile: 'document_cleanup',
   lineSegmentation: false,
+  upscaleImage: false,
+  upscaleFactor: '2',
   showOcrEngineInfo: false,
 
   // Enhancement Preview & Image Replacement state
@@ -147,6 +149,8 @@ export default () => ({
   enhancementPreviewUrl: '',
   enhancementPreviewProfile: 'hybrid_binarization',
   enhancementPreviewLineSegmentation: false,
+  enhancementPreviewUpscale: false,
+  enhancementPreviewUpscaleFactor: '2',
   enhancementPreviewViewMode: 'split', // 'split' | 'preprocessed' | 'original'
   originalImageUrl: (typeof IMAGE_URL !== 'undefined') ? IMAGE_URL : (typeof window !== 'undefined' && window.IMAGE_URL ? window.IMAGE_URL : ''),
   isReplacingPageImage: false,
@@ -1941,6 +1945,9 @@ export default () => ({
     if (this.lineSegmentation) {
       url += '&line_segmentation=1';
     }
+    if (this.upscaleImage) {
+      url += `&upscale=1&upscale_factor=${this.upscaleFactor || '2'}`;
+    }
     if (combinedLanguage) {
       url += `&language=${combinedLanguage}`;
     }
@@ -2064,6 +2071,8 @@ export default () => ({
     this.originalImageUrl = (typeof IMAGE_URL !== 'undefined' && IMAGE_URL) ? IMAGE_URL : (typeof window !== 'undefined' && window.IMAGE_URL ? window.IMAGE_URL : '');
     this.enhancementPreviewProfile = profile || this.selectedEnhancementProfile || 'hybrid_binarization';
     this.enhancementPreviewLineSegmentation = !!this.lineSegmentation;
+    this.enhancementPreviewUpscale = !!this.upscaleImage;
+    this.enhancementPreviewUpscaleFactor = this.upscaleFactor || '2';
     this.resetPreviewZoom();
     this.enhancementPreviewModalOpen = true;
     this.enhancedOcrDropdownOpen = false;
@@ -2090,7 +2099,8 @@ export default () => ({
     const pathname = (window.location && window.location.pathname) || '';
     const profile = this.enhancementPreviewProfile || 'hybrid_binarization';
     const lineSeg = this.enhancementPreviewLineSegmentation ? '&line_segmentation=1' : '';
-    this.enhancementPreviewUrl = pathname.replace('/proofing/', '/api/preview-enhancement/') + `?profile=${profile}${lineSeg}&t=${Date.now()}`;
+    const upscaleParam = this.enhancementPreviewUpscale ? `&upscale=1&upscale_factor=${this.enhancementPreviewUpscaleFactor || '2'}` : '';
+    this.enhancementPreviewUrl = pathname.replace('/proofing/', '/api/preview-enhancement/') + `?profile=${profile}${lineSeg}${upscaleParam}&t=${Date.now()}`;
   },
 
   async replacePageImageWithPreprocessed() {

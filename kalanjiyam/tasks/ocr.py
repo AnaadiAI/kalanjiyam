@@ -572,6 +572,8 @@ def _run_enhanced_ocr_for_page_inner(
     language: str = "auto",
     save_enhanced_images: bool = False,
     line_segmentation: bool = False,
+    upscale: bool = False,
+    upscale_factor: int = 2,
     force: bool = False,
 ):
     """Run Enhanced OCR in application context."""
@@ -621,11 +623,12 @@ def _run_enhanced_ocr_for_page_inner(
         image_path = get_page_image_filepath(project_slug, page_slug, org_slug=org_slug)
         engine = normalize_engine(engine)
         profile = validate_enhancement_profile(profile)
-        version_key = (
-            f"ocr:enhanced:{engine}:{profile}:segmented"
-            if line_segmentation
-            else f"ocr:enhanced:{engine}:{profile}"
-        )
+        version_key_parts = [f"ocr:enhanced:{engine}:{profile}"]
+        if line_segmentation:
+            version_key_parts.append("segmented")
+        if upscale and upscale_factor > 1:
+            version_key_parts.append(f"upscale:{upscale_factor}x")
+        version_key = ":".join(version_key_parts)
 
         pv = (
             session.query(db.PageVersion)
@@ -773,7 +776,12 @@ def _run_enhanced_ocr_for_page_inner(
                 logging.warning(f"Error recording UI batch enhanced OCR metrics for skipped page: {metric_err}")
 
             cached_payload = load_page_enhanced_ocr(
-                page, engine, profile, line_segmentation=line_segmentation
+                page,
+                engine,
+                profile,
+                line_segmentation=line_segmentation,
+                upscale=upscale,
+                upscale_factor=upscale_factor,
             )
             if cached_payload:
                 return cached_payload
@@ -830,6 +838,8 @@ def _run_enhanced_ocr_for_page_inner(
             profile=profile,
             language=language,
             line_segmentation=line_segmentation,
+            upscale=upscale,
+            upscale_factor=upscale_factor,
         )
 
         # Extract visual elements if blocks are returned
@@ -860,10 +870,22 @@ def _run_enhanced_ocr_for_page_inner(
             image_height=page.page_height,
         )
         save_page_enhanced_ocr(
-            page, payload_dict, engine, profile, line_segmentation=line_segmentation
+            page,
+            payload_dict,
+            engine,
+            profile,
+            line_segmentation=line_segmentation,
+            upscale=upscale,
+            upscale_factor=upscale_factor,
         )
 
-        summary = f"Enhanced OCR run ({engine}, {profile}{', closely written' if line_segmentation else ''})"
+        summary_tags = []
+        if line_segmentation:
+            summary_tags.append("closely written")
+        if upscale and upscale_factor > 1:
+            summary_tags.append(f"{upscale_factor}x upscale")
+        tag_str = f", {', '.join(summary_tags)}" if summary_tags else ""
+        summary = f"Enhanced OCR run ({engine}, {profile}{tag_str})"
         try:
             add_revision(
                 page=page,
@@ -1049,6 +1071,8 @@ def run_enhanced_ocr_for_page(
     language: str = "auto",
     save_enhanced_images: bool = False,
     line_segmentation: bool = False,
+    upscale: bool = False,
+    upscale_factor: int = 2,
     force: bool = False,
 ):
     _run_enhanced_ocr_for_page_inner(
@@ -1060,6 +1084,8 @@ def run_enhanced_ocr_for_page(
         language,
         save_enhanced_images=save_enhanced_images,
         line_segmentation=line_segmentation,
+        upscale=upscale,
+        upscale_factor=upscale_factor,
         force=force,
     )
 
@@ -1072,6 +1098,8 @@ def run_enhanced_ocr_for_project(
     language: str = "auto",
     save_enhanced_images: bool = False,
     line_segmentation: bool = False,
+    upscale: bool = False,
+    upscale_factor: int = 2,
     queue: str | None = None,
 ) -> GroupResult | None:
     """Create a `group` task to run Enhanced OCR on a project."""
@@ -1110,10 +1138,14 @@ def run_enhanced_ocr_for_project(
             session.flush()
 
             project_title = getattr(db_project, "display_title", None) or project.slug
-            seg_tag = "+Segmented" if line_segmentation else ""
+            tag_parts = [f"Enhanced:{profile}"]
+            if line_segmentation:
+                tag_parts.append("+Segmented")
+            if upscale and upscale_factor > 1:
+                tag_parts.append(f"+{upscale_factor}xUpscale")
             batch_item = BatchItem(
                 job_id=batch_job.id,
-                file_path=f"{project_title} ({project.slug}) [Enhanced:{profile}{seg_tag}]",
+                file_path=f"{project_title} ({project.slug}) [{' '.join(tag_parts)}]",
                 project_id=db_project.id,
                 status="IN_PROGRESS",
                 total_pages=len(unedited_pages),
@@ -1166,6 +1198,8 @@ def run_enhanced_ocr_for_project(
                 language=language,
                 save_enhanced_images=save_enhanced_images,
                 line_segmentation=line_segmentation,
+                upscale=upscale,
+                upscale_factor=upscale_factor,
             ).set(priority=priority)
             for p in unedited_pages
         )

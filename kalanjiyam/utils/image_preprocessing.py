@@ -357,8 +357,25 @@ def preprocess_image(
         raise RuntimeError(
             f"Preprocessing changed image dimensions from {orig_size} to {result.size}"
         )
-
     return result
+
+
+def upscale_image(
+    img: Image.Image,
+    factor: int = 2,
+    resample: Image.Resampling = Image.Resampling.LANCZOS,
+) -> Image.Image:
+    """Upscale an image by an integer factor (1x, 2x, 3x, 4x) using high-quality interpolation (Lanczos/Bicubic).
+
+    Preserves exact aspect ratio.
+    """
+    if factor <= 1:
+        return img
+
+    w, h = img.size
+    new_w = int(w * factor)
+    new_h = int(h * factor)
+    return img.resize((new_w, new_h), resample=resample)
 
 
 @contextmanager
@@ -368,6 +385,8 @@ def preprocess_image_to_tempfile(
     config: PreprocessingConfig | None = None,
     line_segmentation: bool = False,
     segmentation_config: Any | None = None,
+    upscale: bool = False,
+    upscale_factor: int = 2,
 ) -> Iterator[Path]:
     """Context manager that produces a preprocessed image tempfile and ensures cleanup."""
     path = Path(image_path)
@@ -375,6 +394,7 @@ def preprocess_image_to_tempfile(
         raise FileNotFoundError(f"Source image not found: {path}")
 
     valid_profile = validate_enhancement_profile(profile)
+    scale_factor = upscale_factor if (upscale and upscale_factor > 1) else 1
 
     with Image.open(path) as img:
         processed = preprocess_image(img, valid_profile, config=config)
@@ -385,14 +405,20 @@ def preprocess_image_to_tempfile(
             )
 
             seg_cfg = segmentation_config or DEFAULT_LINE_SEGMENTATION_CONFIG
-            processed, _ = segment_and_reconstruct_image(processed, config=seg_cfg)
+            processed, _ = segment_and_reconstruct_image(
+                processed, config=seg_cfg, upscale_factor=scale_factor
+            )
+        elif scale_factor > 1:
+            processed = upscale_image(processed, factor=scale_factor)
 
         # Create temp jpeg file with high quality
-        suffix = (
-            f"_{valid_profile}_segmented.jpg"
-            if line_segmentation
-            else f"_{valid_profile}.jpg"
-        )
+        tag_parts = [valid_profile]
+        if line_segmentation:
+            tag_parts.append("segmented")
+        if scale_factor > 1:
+            tag_parts.append(f"upscale_{scale_factor}x")
+        suffix = f"_{'_'.join(tag_parts)}.jpg"
+
         with tempfile.NamedTemporaryFile(
             suffix=suffix, delete=False
         ) as tmp:

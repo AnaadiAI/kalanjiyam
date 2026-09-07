@@ -30,6 +30,8 @@ def run_enhanced_ocr(
     gpu_config=None,
     line_segmentation: bool = False,
     segmentation_config=None,
+    upscale: bool = False,
+    upscale_factor: int = 2,
 ) -> OcrResponse:
     from kalanjiyam.utils.enhanced_ocr import run_enhanced_ocr as _run_enhanced_ocr
 
@@ -41,6 +43,8 @@ def run_enhanced_ocr(
         gpu_config=gpu_config,
         line_segmentation=line_segmentation,
         segmentation_config=segmentation_config,
+        upscale=upscale,
+        upscale_factor=upscale_factor,
     )
 
 

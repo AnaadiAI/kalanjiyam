@@ -1636,15 +1636,18 @@ def metadata_runs(slug, limit):
 @click.option("--engine", "ocr_engine", default="dots_ocr", help="OCR engine (e.g. 'dots-ocr', 'gemma-ocr')")
 @click.option("--enhancement", "--profile", "enhancement", default="document_cleanup", help="Enhancement profile ('document_cleanup', 'bg_clahe', 'sharpen', 'text_enhancement', 'hybrid_binarization')")
 @click.option("--line-segmentation/--no-line-segmentation", "--closely-written", "line_segmentation", default=False, help="Enable Closely Written Manuscript line segmentation")
+@click.option("--upscale/--no-upscale", "upscale", default=False, help="Enable image upscaling before OCR")
+@click.option("--upscale-factor", "upscale_factor", type=click.Choice(["1", "2", "3", "4"]), default="2", help="Upscale factor: 1, 2 (default), 3, or 4")
 @click.option("--lang", "lang", default="sa", help="Language code (default: 'sa')")
 @click.option("--env", "app_env", default=None, help="Kalanjiyam environment")
-def enhanced_ocr_cmd(project_slug, page_slug, ocr_engine, enhancement, line_segmentation, lang, app_env):
+def enhanced_ocr_cmd(project_slug, page_slug, ocr_engine, enhancement, line_segmentation, upscale, upscale_factor, lang, app_env):
     """Run Enhanced OCR on a single page with image preprocessing."""
     import os
 
     from kalanjiyam.tasks.ocr import _run_enhanced_ocr_for_page_inner
     env = app_env or os.environ.get("KALANJIYAM_ENVIRONMENT", "development")
-    click.echo(f"Running Enhanced OCR for {project_slug}/{page_slug} (engine={ocr_engine}, enhancement={enhancement}, line_segmentation={line_segmentation}, lang={lang})...")
+    factor = int(upscale_factor)
+    click.echo(f"Running Enhanced OCR for {project_slug}/{page_slug} (engine={ocr_engine}, enhancement={enhancement}, line_segmentation={line_segmentation}, upscale={upscale} ({factor}x), lang={lang})...")
     result = _run_enhanced_ocr_for_page_inner(
         app_env=env,
         project_slug=project_slug,
@@ -1653,9 +1656,12 @@ def enhanced_ocr_cmd(project_slug, page_slug, ocr_engine, enhancement, line_segm
         profile=enhancement,
         language=lang,
         line_segmentation=line_segmentation,
+        upscale=upscale,
+        upscale_factor=factor,
     )
-    click.echo(f"Enhanced OCR completed: {result.get('blocks_count', 0)} blocks, mode={result.get('ocr_mode')}, profile={enhancement}, line_segmentation={line_segmentation}")
+    click.echo(f"Enhanced OCR completed: {result.get('blocks_count', 0)} blocks, mode={result.get('ocr_mode')}, profile={enhancement}, line_segmentation={line_segmentation}, upscale={upscale}")
 
 
 if __name__ == "__main__":
     cli()
+

@@ -68,6 +68,10 @@ class OcrResponse:
     line_segmentation_version: str | None = None
     #: Optional dictionary of line segmentation statistics.
     line_segmentation_stats: dict | None = None
+    #: Whether image upscaling was applied.
+    upscale: bool = False
+    #: Upscale factor applied (e.g. 1, 2, 3, 4).
+    upscale_factor: int = 1
 
 
 def calculate_p05_confidence(

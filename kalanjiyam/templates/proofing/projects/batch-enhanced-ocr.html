@@ -84,7 +84,7 @@
     {{ m.project_tabs(project=project, active="batch_processes", is_mod=current_user.is_moderator) }}
   </div>
 
-  <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 mb-8" x-data="{ enhancementProfile: 'hybrid_binarization', saveImagesMode: '0', lineSegmentation: false }">
+  <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 mb-8" x-data="{ enhancementProfile: 'hybrid_binarization', saveImagesMode: '0', lineSegmentation: false, upscaleImage: false, upscaleFactor: '2' }">
     <div class="flex items-center justify-between gap-4 mb-4">
       <div>
         <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -197,24 +197,55 @@
           </div>
         </div>
 
-        <!-- Step 2: Closely Written Manuscript Preprocessing Option -->
+        <!-- Step 2: Additional Preprocessing Options -->
         <div class="pt-4 border-t border-slate-100">
           <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5">
-            {{ _("2. Closely Written Manuscript Preprocessing") }}
+            {{ _("2. Additional Preprocessing Options") }}
           </label>
-          <label class="p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3.5 bg-white hover:border-slate-300"
-                 :class="lineSegmentation ? 'border-violet-600 bg-violet-50/50 shadow-xs' : 'border-slate-200'">
-            <input type="checkbox" name="line_segmentation" value="1" x-model="lineSegmentation" class="mt-1 text-violet-600 focus:ring-violet-500 rounded" />
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="block text-xs font-bold text-slate-900">{{ _("Closely Written Manuscript") }}</span>
-                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">{{ _("Recommended for Packed Lines") }}</span>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Closely Written Manuscript Option -->
+            <label class="p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3.5 bg-white hover:border-slate-300"
+                   :class="lineSegmentation ? 'border-violet-600 bg-violet-50/50 shadow-xs' : 'border-slate-200'">
+              <input type="checkbox" name="line_segmentation" value="1" x-model="lineSegmentation" class="mt-1 text-violet-600 focus:ring-violet-500 rounded" />
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="block text-xs font-bold text-slate-900">{{ _("Closely Written Manuscript") }}</span>
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">{{ _("Packed Lines") }}</span>
+                </div>
+                <span class="block text-[11px] text-slate-600 mt-1 leading-relaxed">
+                  {{ _("Detects and isolates individual text lines, reconstructing them into ONE clean synthetic page before OCR to eliminate merged-line hallucinations.") }}
+                </span>
               </div>
-              <span class="block text-[11px] text-slate-600 mt-1 leading-relaxed">
-                {{ _("Detects and isolates individual text lines with vertical context padding, reconstructing them into ONE clean synthetic page before sending to OCR. Eliminates merged-line character hallucinations.") }}
-              </span>
+            </label>
+
+            <!-- Upscale Image Option -->
+            <div class="p-4 rounded-xl border-2 transition-all bg-white hover:border-slate-300 flex flex-col justify-between"
+                 :class="upscaleImage ? 'border-violet-600 bg-violet-50/50 shadow-xs' : 'border-slate-200'">
+              <label class="flex items-start gap-3.5 cursor-pointer">
+                <input type="checkbox" name="upscale" value="1" x-model="upscaleImage" class="mt-1 text-violet-600 focus:ring-violet-500 rounded" />
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="block text-xs font-bold text-slate-900">{{ _("Upscale Image") }}</span>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">{{ _("High Resolution") }}</span>
+                  </div>
+                  <span class="block text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    {{ _("Upscales page or line crops with Lanczos interpolation prior to OCR recognition.") }}
+                  </span>
+                </div>
+              </label>
+              <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between" x-show="upscaleImage" x-cloak>
+                <span class="text-xs font-semibold text-slate-700">{{ _("Scale Factor:") }}</span>
+                <select name="upscale_factor" x-model="upscaleFactor" class="text-xs py-1 px-3 rounded-lg border border-slate-300 bg-white text-slate-800 focus:border-violet-600 focus:ring-1 focus:ring-violet-500 outline-none">
+                  <option value="1">1×</option>
+                  <option value="2">2× (Recommended)</option>
+                  <option value="3">3×</option>
+                  <option value="4">4×</option>
+                </select>
+              </div>
             </div>
-          </label>
+
+          </div>
         </div>
 
         <!-- Step 3: Image Storage & Replacement Mode -->

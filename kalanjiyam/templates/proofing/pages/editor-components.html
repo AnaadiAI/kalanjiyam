@@ -484,8 +484,8 @@ these components in our help text and documentation.
         </select>
       </div>
 
-      <!-- Closely Written Manuscript Option -->
-      <div class="pt-1.5 border-t border-slate-100">
+      <!-- Additional Processing: Closely Written Manuscript & Upscale Image -->
+      <div class="pt-1.5 border-t border-slate-100 space-y-1.5">
         <label class="flex items-start gap-2 p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
                :class="lineSegmentation ? 'border-royalblue bg-royalblue/5 text-royalblue' : 'text-slate-700'">
           <input type="checkbox"
@@ -502,6 +502,35 @@ these components in our help text and documentation.
             </span>
           </div>
         </label>
+
+        <!-- Upscale Image -->
+        <div class="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+             :class="upscaleImage ? 'border-royalblue bg-royalblue/5' : ''">
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox"
+                   x-model="upscaleImage"
+                   class="mt-0.5 rounded border-slate-300 text-royalblue focus:ring-royalblue/20"
+                   @click.stop />
+            <div class="flex flex-col select-none flex-1">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-medium" :class="upscaleImage ? 'text-royalblue' : 'text-slate-700'">{{ _('Upscale Image') }}</span>
+                <span class="text-[9px] font-semibold px-1 py-0.2 rounded bg-indigo-100 text-indigo-800">{{ _('Lanczos') }}</span>
+              </div>
+              <span class="text-[10px] text-slate-500 font-normal leading-tight mt-0.5">
+                {{ _('Upscales resolution before OCR') }}
+              </span>
+            </div>
+          </label>
+          <div class="mt-1.5 flex items-center justify-between pl-5 pr-1" x-show="upscaleImage" x-cloak>
+            <span class="text-[11px] font-medium text-slate-600">{{ _('Scale:') }}</span>
+            <select x-model="upscaleFactor" @click.stop class="text-xs py-0.5 px-2 rounded border border-slate-300 bg-white text-slate-800 focus:border-royalblue outline-none">
+              <option value="1">1×</option>
+              <option value="2">2× (Recommended)</option>
+              <option value="3">3×</option>
+              <option value="4">4×</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -559,7 +588,7 @@ these components in our help text and documentation.
         </div>
       </div>
 
-      <!-- Profile Selector Pills & Segmentation in Header -->
+      <!-- Profile Selector Pills & Options in Header -->
       <div class="flex items-center gap-2 flex-wrap">
         <div class="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl">
           <button type="button" @click="enhancementPreviewProfile = 'hybrid_binarization'; loadEnhancementPreview()"
@@ -597,6 +626,26 @@ these components in our help text and documentation.
                  class="w-3.5 h-3.5 text-amber-600 rounded border-amber-300 focus:ring-0 cursor-pointer">
           <span class="font-medium text-amber-900">{{ _('Segment Lines') }}</span>
         </label>
+
+        <!-- Upscale Toggle & Factor in Modal -->
+        <div class="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200/80 rounded-xl px-2.5 py-1 text-xs select-none">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox"
+                   x-model="enhancementPreviewUpscale"
+                   @change="loadEnhancementPreview()"
+                   class="w-3.5 h-3.5 text-indigo-600 rounded border-indigo-300 focus:ring-0 cursor-pointer">
+            <span class="font-medium text-indigo-900">{{ _('Upscale') }}</span>
+          </label>
+          <select x-model="enhancementPreviewUpscaleFactor"
+                  x-show="enhancementPreviewUpscale"
+                  @change="loadEnhancementPreview()"
+                  class="text-[11px] font-semibold py-0.5 px-1.5 rounded border border-indigo-300 bg-white text-indigo-900 outline-none cursor-pointer">
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="3">3×</option>
+            <option value="4">4×</option>
+          </select>
+        </div>
       </div>
 
       <!-- Close Button -->

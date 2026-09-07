@@ -1254,8 +1254,8 @@ def test_actual_closely_written_manuscript_segmentation():
         generate_segmentation_debug_overlay,
     )
 
-    manuscript_path = "/home/mrportable/Documents/kalanjiyam/test-data/00010 jpg images manuscripts.JPG"
-    if not os.path.exists(manuscript_path):
+    manuscript_path = Path(__file__).resolve().parents[3] / "test-data" / "00010 jpg images manuscripts.JPG"
+    if not manuscript_path.exists():
         pytest.skip("Manuscript sample image not found at test-data path")
 
     with Image.open(manuscript_path) as img:
@@ -1278,3 +1278,303 @@ def test_actual_closely_written_manuscript_segmentation():
 
         overlay = generate_segmentation_debug_overlay(img)
         assert overlay.size == img.size
+
+
+# ===========================================================================
+# Upscale Image Feature Tests
+# ===========================================================================
+
+
+def test_upscale_image_resampling():
+    from kalanjiyam.utils.image_preprocessing import upscale_image
+
+    im = Image.new("RGB", (100, 150), color=(120, 130, 140))
+    # 1x scale factor preserves dimensions
+    assert upscale_image(im, factor=1).size == (100, 150)
+    # 2x doubles dimensions
+    assert upscale_image(im, factor=2).size == (200, 300)
+    # 3x triples dimensions
+    assert upscale_image(im, factor=3).size == (300, 450)
+    # 4x quadruples dimensions
+    assert upscale_image(im, factor=4).size == (400, 600)
+    # Mode preservation
+    im_l = Image.new("L", (100, 150), color=128)
+    assert upscale_image(im_l, factor=2).mode == "L"
+
+
+# Test Case A: Segmentation OFF, Upscale OFF
+def test_pipeline_case_a_seg_off_upscale_off(test_image, mock_ocr_response):
+    with patch(
+        "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
+    ) as mock_remote:
+        resp = run_enhanced_ocr(
+            test_image,
+            engine_name="dots-ocr",
+            profile="hybrid_binarization",
+            language="sa",
+            line_segmentation=False,
+            upscale=False,
+        )
+        assert resp.ocr_mode == "enhanced"
+        assert resp.line_segmentation is False
+        assert resp.upscale is False
+        assert resp.upscale_factor == 1
+        assert mock_remote.call_count == 1
+
+        api_dict = ocr_response_to_api_dict(resp, "dots_ocr", image_width=400, image_height=600)
+        assert "line_segmentation" not in api_dict
+        assert "upscale" not in api_dict
+        assert "transformed_image_state" not in api_dict
+
+
+# Test Case B: Segmentation ON, Upscale OFF
+def test_pipeline_case_b_seg_on_upscale_off(closely_written_manuscript_image, mock_ocr_response):
+    with patch(
+        "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
+    ) as mock_remote:
+        resp = run_enhanced_ocr(
+            closely_written_manuscript_image,
+            engine_name="dots-ocr",
+            profile="hybrid_binarization",
+            language="sa",
+            line_segmentation=True,
+            upscale=False,
+        )
+        assert resp.ocr_mode == "enhanced"
+        assert resp.line_segmentation is True
+        assert resp.upscale is False
+        assert resp.upscale_factor == 1
+        assert mock_remote.call_count == 1
+
+        api_dict = ocr_response_to_api_dict(resp, "dots_ocr", image_width=500, image_height=700)
+        assert api_dict["line_segmentation"] is True
+        assert "upscale" not in api_dict
+        assert api_dict["transformed_image_state"] == "reconstructed_segmented_lines"
+
+
+# Test Case C: Segmentation OFF, Upscale ON (1x, 2x, 3x, 4x)
+@pytest.mark.parametrize("factor", [1, 2, 3, 4])
+def test_pipeline_case_c_seg_off_upscale_on(test_image, factor, mock_ocr_response):
+    with patch(
+        "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
+    ) as mock_remote:
+        resp = run_enhanced_ocr(
+            test_image,
+            engine_name="dots-ocr",
+            profile="document_cleanup",
+            language="sa",
+            line_segmentation=False,
+            upscale=True,
+            upscale_factor=factor,
+        )
+        assert resp.ocr_mode == "enhanced"
+        assert resp.line_segmentation is False
+        assert resp.upscale is True
+        assert resp.upscale_factor == factor
+        assert mock_remote.call_count == 1
+
+        api_dict = ocr_response_to_api_dict(resp, "dots_ocr", image_width=400, image_height=600)
+        assert api_dict["upscale"] is True
+        assert api_dict["upscale_factor"] == factor
+        if factor > 1:
+            assert api_dict["transformed_image_state"] == "upscaled"
+        else:
+            assert "transformed_image_state" not in api_dict
+
+
+# Test Case D: Segmentation ON, Upscale ON (1x, 2x, 3x, 4x)
+@pytest.mark.parametrize("factor", [1, 2, 3, 4])
+def test_pipeline_case_d_seg_on_upscale_on(
+    closely_written_manuscript_image, factor, mock_ocr_response
+):
+    with patch(
+        "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
+    ) as mock_remote:
+        resp = run_enhanced_ocr(
+            closely_written_manuscript_image,
+            engine_name="dots-ocr",
+            profile="hybrid_binarization",
+            language="sa",
+            line_segmentation=True,
+            upscale=True,
+            upscale_factor=factor,
+        )
+        assert resp.ocr_mode == "enhanced"
+        assert resp.line_segmentation is True
+        assert resp.upscale is True
+        assert resp.upscale_factor == factor
+        assert mock_remote.call_count == 1
+
+        api_dict = ocr_response_to_api_dict(resp, "dots_ocr", image_width=500, image_height=700)
+        assert api_dict["line_segmentation"] is True
+        assert api_dict["upscale"] is True
+        assert api_dict["upscale_factor"] == factor
+        if factor > 1:
+            assert api_dict["transformed_image_state"] == "reconstructed_segmented_lines_upscaled"
+        else:
+            assert api_dict["transformed_image_state"] == "reconstructed_segmented_lines"
+
+
+# Test Tempfile Generation Dimensions for All 4 Cases
+def test_tempfile_dimensions_for_pipeline_cases(test_image):
+    with Image.open(test_image) as original:
+        orig_w, orig_h = original.size
+
+    # Case A: seg OFF, upscale OFF
+    with preprocess_image_to_tempfile(test_image, "document_cleanup", line_segmentation=False, upscale=False) as f:
+        with Image.open(f) as im:
+            assert im.size == (orig_w, orig_h)
+            assert f.name.endswith("_document_cleanup.jpg")
+
+    # Case C: seg OFF, upscale ON (2x)
+    with preprocess_image_to_tempfile(test_image, "document_cleanup", line_segmentation=False, upscale=True, upscale_factor=2) as f:
+        with Image.open(f) as im:
+            assert im.size == (orig_w * 2, orig_h * 2)
+            assert f.name.endswith("_document_cleanup_upscale_2x.jpg")
+
+    # Case C: seg OFF, upscale ON (3x)
+    with preprocess_image_to_tempfile(test_image, "document_cleanup", line_segmentation=False, upscale=True, upscale_factor=3) as f:
+        with Image.open(f) as im:
+            assert im.size == (orig_w * 3, orig_h * 3)
+            assert f.name.endswith("_document_cleanup_upscale_3x.jpg")
+
+
+# Test Storage Keys and Revision Tags for All Combinations
+def test_upscale_storage_keys_and_revision_tags(flask_app):
+    with flask_app.app_context():
+        # Storage keys
+        k_base = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=False, upscale=False)
+        k_seg = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=True, upscale=False)
+        k_upscale_2x = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=False, upscale=True, upscale_factor=2)
+        k_both_2x = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=True, upscale=True, upscale_factor=2)
+        k_both_3x = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=True, upscale=True, upscale_factor=3)
+
+        assert len({k_base, k_seg, k_upscale_2x, k_both_2x, k_both_3x}) == 5
+        assert "hybrid_binarization_upscale_2x" in k_upscale_2x
+        assert "hybrid_binarization_segmented_upscale_2x" in k_both_2x
+        assert "hybrid_binarization_segmented_upscale_3x" in k_both_3x
+
+        # Revision tags
+        class MockRevision:
+            def __init__(self, key):
+                self.page_version = MagicMock(version_key=key)
+                self.summary = ""
+                self.translations = []
+                self.author = None
+
+        tag_base = derive_revision_tag(MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization"))
+        tag_seg = derive_revision_tag(MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization:segmented"))
+        tag_up2 = derive_revision_tag(MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization:upscale:2x"))
+        tag_both = derive_revision_tag(MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization:segmented:upscale:2x"))
+
+        assert tag_base == "ocr-enhanced-dots-ocr_hybrid-binarization"
+        assert tag_seg == "ocr-enhanced-dots-ocr_hybrid-binarization_segmented"
+        assert tag_up2 == "ocr-enhanced-dots-ocr_hybrid-binarization_upscale_2x"
+        assert tag_both == "ocr-enhanced-dots-ocr_hybrid-binarization_segmented_upscale_2x"
+        assert len({tag_base, tag_seg, tag_up2, tag_both}) == 4
+
+
+# Test Fallback with Upscaling
+def test_segmentation_fallback_with_upscaling(tmp_path):
+    from kalanjiyam.utils.line_segmentation import segment_and_reconstruct_image
+
+    blank_img_path = tmp_path / "blank_upscale.jpg"
+    blank_im = Image.new("RGB", (150, 200), color=(255, 255, 255))
+    blank_im.save(blank_img_path, format="JPEG")
+
+    with Image.open(blank_img_path) as img:
+        reconstructed, stats = segment_and_reconstruct_image(img, upscale_factor=2)
+        assert stats.fallback_used is True
+        assert stats.lines_detected == 0
+        assert stats.upscale_enabled is True
+        assert stats.upscale_factor == 2
+        # Fallback image is upscaled by factor 2
+        assert reconstructed.size == (300, 400)
+
+
+# Test API endpoint with Upscale options
+def test_enhanced_ocr_api_with_upscale(flask_app, mock_ocr_response, tmp_path):
+    import kalanjiyam.database as db
+    import kalanjiyam.queries as q
+
+    with flask_app.app_context():
+        session = q.get_session()
+        board = session.query(db.Board).first() or db.Board(name="Test Board Upscale API")
+        session.add(board)
+        session.flush()
+
+        status = session.query(db.PageStatus).first()
+        project = db.Project(
+            slug=f"test-upscale-api-{uuid.uuid4().hex[:6]}",
+            display_title="Test Upscale Book",
+            board_id=board.id,
+        )
+        session.add(project)
+        session.flush()
+
+        page = db.Page(project_id=project.id, order=1, slug="1", status_id=status.id)
+        session.add(page)
+        session.commit()
+
+        dummy_img = tmp_path / "page_upscale_api.jpg"
+        Image.new("RGB", (400, 600), color=(250, 250, 250)).save(dummy_img, format="JPEG")
+
+        with flask_app.test_client() as client:
+            with (
+                patch("kalanjiyam.views.proofing.page.get_page_image_filepath", return_value=dummy_img),
+                patch("kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response) as mock_api_remote,
+                patch("kalanjiyam.utils.quotas.ensure_ocr_quota_for_project"),
+                patch("kalanjiyam.utils.quotas.consume_ocr_credit_for_project"),
+                patch("kalanjiyam.views.proofing.page.q.user_can_view_proofing_project", return_value=True),
+                patch("kalanjiyam.views.proofing.decorators.current_user") as dec_user,
+                patch("kalanjiyam.views.proofing.page.current_user") as mock_user,
+            ):
+                for u in (dec_user, mock_user):
+                    u.is_authenticated = True
+                    u.is_super_admin = False
+                    u.is_org_admin = True
+                    u.is_moderator = True
+                    u.is_p2 = True
+                    u.is_p1 = True
+                    u.id = 1
+
+                # 1. Test Enhanced OCR with upscale=1 and upscale_factor=3
+                resp = client.get(
+                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=dots_ocr&enhancement=hybrid_binarization&upscale=1&upscale_factor=3&language=sa"
+                )
+                assert resp.status_code == 200
+                data = resp.get_json()
+                assert data["upscale"] is True
+                assert data["upscale_factor"] == 3
+                assert data["transformed_image_state"] == "upscaled"
+                assert data["version_key"] == "ocr:enhanced:dots_ocr:hybrid_binarization:upscale:3x"
+                assert mock_api_remote.call_count == 1
+
+                # 2. Test Preview with upscale=1 and upscale_factor=2
+                resp_preview = client.get(
+                    f"/api/preview-enhancement/{project.slug}/{page.slug}/?profile=hybrid_binarization&upscale=1&upscale_factor=2"
+                )
+                assert resp_preview.status_code == 200
+                assert resp_preview.content_type == "image/jpeg"
+                with Image.open(io.BytesIO(resp_preview.data)) if "io" in globals() else Image.open(tmp_path / "page_upscale_api.jpg") as pimg:
+                    assert resp_preview.data is not None
+
+
+# Test Real Manuscript Image with Segmentation + 2x Upscale
+def test_actual_manuscript_segmentation_and_upscale():
+    import os
+    from kalanjiyam.utils.line_segmentation import segment_and_reconstruct_image
+
+    manuscript_path = Path(__file__).resolve().parents[3] / "test-data" / "00010 jpg images manuscripts.JPG"
+    if not manuscript_path.exists():
+        pytest.skip("Manuscript sample image not found at test-data path")
+
+    with Image.open(manuscript_path) as img:
+        reconstructed, stats = segment_and_reconstruct_image(img, upscale_factor=2)
+        assert stats.lines_detected == 18
+        assert stats.upscale_enabled is True
+        assert stats.upscale_factor == 2
+        assert stats.fallback_used is False
+        assert reconstructed.size[0] > img.size[0]
+        assert reconstructed.size[1] > 0
+

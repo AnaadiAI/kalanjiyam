@@ -160,17 +160,21 @@ def page_enhanced_ocr_key(
     profile: str,
     org_slug: str = None,
     line_segmentation: bool = False,
+    upscale: bool = False,
+    upscale_factor: int = 2,
 ) -> str:
     """Key for a page's Enhanced OCR payload (gzipped JSON).
 
-    Separates enhanced OCR results by engine, enhancement profile, and line segmentation
-    so normal, standard enhanced, and segmented enhanced OCR results never overwrite each other.
+    Separates enhanced OCR results by engine, enhancement profile, line segmentation,
+    and upscale factor so different configurations never overwrite each other.
     """
     org = resolve_org_slug(project_slug, org_slug)
     engine_tag = (engine or "model").lower().strip().replace("_", "-")
     profile_tag = (profile or "default").lower().strip()
     if line_segmentation:
         profile_tag = f"{profile_tag}_segmented"
+    if upscale and upscale_factor > 1:
+        profile_tag = f"{profile_tag}_upscale_{upscale_factor}x"
     return f"projects/{org}/{project_slug}/ocr/enhanced/{engine_tag}/{profile_tag}/{page_slug}.json.gz"
 
 

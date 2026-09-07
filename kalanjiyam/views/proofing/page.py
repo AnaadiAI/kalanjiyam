@@ -272,7 +272,13 @@ def get_version_display_name(version_key: str) -> str:
             parts = version_key.split(":")
             engine_name = parts[2] if len(parts) > 2 else ""
             profile = parts[3] if len(parts) > 3 else ""
-            is_segmented = len(parts) > 4 and parts[4] == "segmented"
+            is_segmented = "segmented" in parts[4:]
+            upscale_str = None
+            for idx, p in enumerate(parts[4:], start=4):
+                if p == "upscale" and idx + 1 < len(parts):
+                    upscale_str = parts[idx + 1]
+                elif p.startswith("upscale_"):
+                    upscale_str = p.split("upscale_", 1)[1]
 
             from kalanjiyam.utils.ocr_types import REVERSE_ENGINE_MAP, normalize_engine
 
@@ -297,6 +303,8 @@ def get_version_display_name(version_key: str) -> str:
             )
             if is_segmented:
                 profile_label = f"{profile_label} + Line Segmentation" if profile_label else _l("Line Segmentation")
+            if upscale_str:
+                profile_label = f"{profile_label} + {upscale_str.upper()} Upscale" if profile_label else f"{upscale_str.upper()} Upscale"
             if profile_label:
                 return _l(
                     "Enhanced %(ocr)s (%(profile)s)",
@@ -1685,6 +1693,13 @@ def enhanced_ocr(project_slug, page_slug):
         or request.values.get("closely_written") in ("1", "true", "True", True)
         or request.values.get("segment_lines") in ("1", "true", "True", True)
     )
+    upscale = request.values.get("upscale") in ("1", "true", "True", True)
+    try:
+        upscale_factor = int(request.values.get("upscale_factor", 2) or 2)
+    except (ValueError, TypeError):
+        upscale_factor = 2
+    if upscale_factor not in (1, 2, 3, 4):
+        upscale_factor = 2
 
     from kalanjiyam.utils.enhanced_ocr import run_enhanced_ocr
     from kalanjiyam.utils.image_preprocessing import (
@@ -1713,6 +1728,8 @@ def enhanced_ocr(project_slug, page_slug):
             profile=profile,
             language=language,
             line_segmentation=line_segmentation,
+            upscale=upscale,
+            upscale_factor=upscale_factor,
         )
         consume_ocr_credit_for_project(project_)
 
@@ -1731,11 +1748,13 @@ def enhanced_ocr(project_slug, page_slug):
                 logging.exception(f"Failed to crop visual elements: {e}")
 
         # Target PageVersion track for enhanced OCR
-        version_key = (
-            f"ocr:enhanced:{engine}:{profile}:segmented"
-            if line_segmentation
-            else f"ocr:enhanced:{engine}:{profile}"
-        )
+        version_key_parts = [f"ocr:enhanced:{engine}:{profile}"]
+        if line_segmentation:
+            version_key_parts.append("segmented")
+        if upscale and upscale_factor > 1:
+            version_key_parts.append(f"upscale:{upscale_factor}x")
+        version_key = ":".join(version_key_parts)
+
         session = q.get_session()
         pv = (
             session.query(db.PageVersion)
@@ -1793,6 +1812,8 @@ def enhanced_ocr(project_slug, page_slug):
             preprocessing_latency_ms=ocr_response.preprocessing_latency_ms,
             line_segmentation=line_segmentation,
             line_segmentation_version=ocr_response.line_segmentation_version,
+            upscale=upscale,
+            upscale_factor=upscale_factor if upscale else 1,
         )
         doc = PageDocument.from_ocr_response(
             normalized,
@@ -1801,10 +1822,18 @@ def enhanced_ocr(project_slug, page_slug):
         )
         _stamp_provenance(doc, engine, ocr_response.model)
 
+        summary_tags = []
+        if line_segmentation:
+            summary_tags.append("closely written")
+        if upscale and upscale_factor > 1:
+            summary_tags.append(f"{upscale_factor}x upscale")
+        tag_str = f", {', '.join(summary_tags)}" if summary_tags else ""
+        summary = f"Enhanced OCR run ({engine}, {profile}{tag_str})"
+
         # Save a new revision to the ocr:enhanced:{engine}:{profile} version track
         add_revision(
             page_,
-            summary=f"Enhanced OCR run ({engine}, {profile}{', closely written' if line_segmentation else ''})",
+            summary=summary,
             content=doc.to_plain_text(),
             status=SitePageStatus.R0.value,
             version=current_ver,
@@ -1838,7 +1867,13 @@ def enhanced_ocr(project_slug, page_slug):
         from kalanjiyam.utils.document_storage import save_page_enhanced_ocr
 
         save_page_enhanced_ocr(
-            page_, payload, engine, profile, line_segmentation=line_segmentation
+            page_,
+            payload,
+            engine,
+            profile,
+            line_segmentation=line_segmentation,
+            upscale=upscale,
+            upscale_factor=upscale_factor,
         )
 
         # Prepend APPLICATION_URL_PREFIX to image paths in the returned JSON blocks
@@ -1908,6 +1943,15 @@ def preview_enhancement(project_slug, page_slug):
 
     line_segmentation_raw = request.args.get("line_segmentation", "false").lower()
     line_segmentation = line_segmentation_raw in ("true", "1", "yes", "y")
+    upscale_raw = request.args.get("upscale", "false").lower()
+    upscale = upscale_raw in ("true", "1", "yes", "y")
+    try:
+        upscale_factor = int(request.args.get("upscale_factor", "2") or 2)
+    except (ValueError, TypeError):
+        upscale_factor = 2
+    if upscale_factor not in (1, 2, 3, 4):
+        upscale_factor = 2
+    scale_factor = upscale_factor if (upscale and upscale_factor > 1) else 1
 
     org_slug = get_project_org_slug(project_)
     storage = get_storage()
@@ -1940,7 +1984,13 @@ def preview_enhancement(project_slug, page_slug):
                     segment_and_reconstruct_image,
                 )
 
-                processed, _ = segment_and_reconstruct_image(processed)
+                processed, _ = segment_and_reconstruct_image(
+                    processed, upscale_factor=scale_factor
+                )
+        elif scale_factor > 1:
+            from kalanjiyam.utils.image_preprocessing import upscale_image
+
+            processed = upscale_image(processed, factor=scale_factor)
 
         if processed.mode not in ("RGB", "L"):
             processed = processed.convert("RGB")

@@ -38,16 +38,19 @@ def run_enhanced_ocr(
     gpu_config=None,
     line_segmentation: bool = False,
     segmentation_config=None,
+    upscale: bool = False,
+    upscale_factor: int = 2,
 ) -> OcrResponse:
     """Run Enhanced OCR pipeline on an input page image.
 
     1. Validates source image path, engine, and enhancement profile.
     2. Applies the requested preprocessing profile.
     3. If line_segmentation is enabled, segments tightly-packed text lines and
-       reconstructs them into ONE synthetic page before OCR.
-    4. Executes OCR via run_ocr() with EXACTLY ONE API invocation.
-    5. Stamps enhanced OCR metadata (ocr_mode, enhancement_profile, line_segmentation).
-    6. Preserves coordinate space and document structures.
+       reconstructs them into ONE synthetic page before OCR (with optional upscaling).
+    4. If upscale is enabled (and line_segmentation is False), upscales the enhanced page.
+    5. Executes OCR via run_ocr() with EXACTLY ONE API invocation.
+    6. Stamps enhanced OCR metadata (ocr_mode, enhancement_profile, line_segmentation, upscale, upscale_factor).
+    7. Preserves coordinate space and document structures.
     """
     del gpu_config
 
@@ -67,11 +70,13 @@ def run_enhanced_ocr(
 
     t0_prep = time.time()
     logger.info(
-        "Starting Enhanced OCR for %s: engine=%s, profile=%s, line_segmentation=%s, language=%s",
+        "Starting Enhanced OCR for %s: engine=%s, profile=%s, line_segmentation=%s, upscale=%s (factor=%sx), language=%s",
         path.name,
         normalized_engine,
         valid_profile,
         line_segmentation,
+        upscale,
+        upscale_factor,
         language,
     )
 
@@ -80,6 +85,8 @@ def run_enhanced_ocr(
         valid_profile,
         line_segmentation=line_segmentation,
         segmentation_config=segmentation_config,
+        upscale=upscale,
+        upscale_factor=upscale_factor,
     ) as preprocessed_path:
         prep_latency_ms = round((time.time() - t0_prep) * 1000, 2)
 
@@ -97,6 +104,8 @@ def run_enhanced_ocr(
     ocr_response.preprocessing_latency_ms = prep_latency_ms
     ocr_response.engine = normalized_engine
     ocr_response.line_segmentation = bool(line_segmentation)
+    ocr_response.upscale = bool(upscale)
+    ocr_response.upscale_factor = int(upscale_factor) if upscale else 1
 
     if line_segmentation:
         from kalanjiyam.utils.line_segmentation import LINE_SEGMENTATION_VERSION
@@ -113,11 +122,13 @@ def run_enhanced_ocr(
         }
 
     logger.info(
-        "Enhanced OCR completed for %s: engine=%s, profile=%s, line_segmentation=%s, prep_latency=%.2fms, engine_latency=%.2fms",
+        "Enhanced OCR completed for %s: engine=%s, profile=%s, line_segmentation=%s, upscale=%s (%dx), prep_latency=%.2fms, engine_latency=%.2fms",
         path.name,
         normalized_engine,
         valid_profile,
         line_segmentation,
+        upscale,
+        upscale_factor,
         prep_latency_ms,
         ocr_response.engine_latency_ms or 0.0,
     )

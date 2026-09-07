@@ -1844,6 +1844,8 @@ def batch_enhanced_ocr(slug):
             language = task_data.get("language") or "auto"
             save_enhanced_images = bool(task_data.get("save_enhanced_images", False))
             line_segmentation = bool(task_data.get("line_segmentation", False))
+            upscale = bool(task_data.get("upscale", False))
+            upscale_factor = int(task_data.get("upscale_factor", 2) or 2)
 
             r = GroupResult.restore(task_id, app=celery_app)
             if r and r.results:
@@ -1862,10 +1864,12 @@ def batch_enhanced_ocr(slug):
                     from kalanjiyam.utils.ocr_types import REVERSE_ENGINE_MAP
 
                     numeric_value = REVERSE_ENGINE_MAP.get(engine, "12")
-                    seg_label = " + Segmented" if line_segmentation else ""
-                    engine_label = (
-                        f"OCR {numeric_value} ({profile.replace('_', ' ').title()}{seg_label})"
-                    )
+                    tag_parts = [profile.replace("_", " ").title()]
+                    if line_segmentation:
+                        tag_parts.append("Segmented")
+                    if upscale and upscale_factor > 1:
+                        tag_parts.append(f"{upscale_factor}x Upscale")
+                    engine_label = f"OCR {numeric_value} ({' + '.join(tag_parts)})"
 
                     return render_template(
                         "proofing/projects/batch-enhanced-ocr-post.html",
@@ -1884,6 +1888,8 @@ def batch_enhanced_ocr(slug):
                         language=language,
                         save_enhanced_images=save_enhanced_images,
                         line_segmentation=line_segmentation,
+                        upscale=upscale,
+                        upscale_factor=upscale_factor,
                     )
                 else:
                     redis_client.delete(task_key)
@@ -1932,6 +1938,13 @@ def batch_enhanced_ocr(slug):
         language = request.form.get("language") or "auto"
         save_enhanced_images = request.form.get("save_enhanced_images") == "1"
         line_segmentation = request.form.get("line_segmentation") in ("1", "true", "True", True) or request.form.get("closely_written") in ("1", "true", "True", True)
+        upscale = request.form.get("upscale") in ("1", "true", "True", True)
+        try:
+            upscale_factor = int(request.form.get("upscale_factor", 2) or 2)
+        except (ValueError, TypeError):
+            upscale_factor = 2
+        if upscale_factor not in (1, 2, 3, 4):
+            upscale_factor = 2
 
         if is_restricted_ocr:
             engine = default_ocr_engine
@@ -1950,6 +1963,8 @@ def batch_enhanced_ocr(slug):
                 language=language,
                 save_enhanced_images=save_enhanced_images,
                 line_segmentation=line_segmentation,
+                upscale=upscale,
+                upscale_factor=upscale_factor,
                 queue=queue_name,
             )
             if task:
@@ -1969,6 +1984,8 @@ def batch_enhanced_ocr(slug):
                     "language": language,
                     "save_enhanced_images": save_enhanced_images,
                     "line_segmentation": line_segmentation,
+                    "upscale": upscale,
+                    "upscale_factor": upscale_factor,
                     "started_at": datetime.utcnow().isoformat(),
                     "project_slug": slug,
                 }
@@ -1993,13 +2010,17 @@ def batch_enhanced_ocr(slug):
                             "language": language,
                             "save_enhanced_images": save_enhanced_images,
                             "line_segmentation": line_segmentation,
+                            "upscale": upscale,
+                            "upscale_factor": upscale_factor,
                         },
                     )
                 numeric_value = REVERSE_ENGINE_MAP.get(engine, "12")
-                seg_label = " + Segmented" if line_segmentation else ""
-                engine_label = (
-                    f"OCR {numeric_value} ({profile.replace('_', ' ').title()}{seg_label})"
-                )
+                tag_parts = [profile.replace("_", " ").title()]
+                if line_segmentation:
+                    tag_parts.append("Segmented")
+                if upscale and upscale_factor > 1:
+                    tag_parts.append(f"{upscale_factor}x Upscale")
+                engine_label = f"OCR {numeric_value} ({' + '.join(tag_parts)})"
 
                 return render_template(
                     "proofing/projects/batch-enhanced-ocr-post.html",
@@ -2017,6 +2038,8 @@ def batch_enhanced_ocr(slug):
                     language=language,
                     save_enhanced_images=save_enhanced_images,
                     line_segmentation=line_segmentation,
+                    upscale=upscale,
+                    upscale_factor=upscale_factor,
                     engine_label=engine_label,
                     is_restricted_ocr=is_restricted_ocr,
                     default_engine_value=default_engine_value,

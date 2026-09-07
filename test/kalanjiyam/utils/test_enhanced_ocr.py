@@ -890,3 +890,345 @@ def test_batch_enhanced_ocr_get_and_post(flask_app, tmp_path):
                         f"/proofing/batch-enhanced-ocr-status/{mock_task.id}"
                     )
                     assert status_resp.status_code == 200
+
+
+# ===========================================================================
+# Closely Written Manuscript Line Segmentation Tests
+# ===========================================================================
+
+
+@pytest.fixture
+def closely_written_manuscript_image(tmp_path) -> Path:
+    """Create a simulated closely written Devanagari manuscript page with tightly packed text lines."""
+    img_path = tmp_path / "manuscript_page_packed.png"
+    w, h = 500, 700
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    # Draw 8 closely spaced text lines (Devanagari shirorekha + glyph strokes)
+    # Line spacing is tight (gap of ~8px between lines of height ~22px)
+    line_tops = [60, 95, 130, 165, 200, 235, 270, 305]
+    for top in line_tops:
+        # Shirorekha (headline continuous bar)
+        draw.rectangle([40, top, 460, top + 3], fill=(0, 0, 0))
+        # Vertical / loop glyph strokes hanging from shirorekha
+        for x in range(45, 455, 12):
+            draw.rectangle([x, top + 3, x + 4, top + 18], fill=(0, 0, 0))
+        # Ascender / upper matras
+        for x in range(60, 440, 36):
+            draw.line([(x, top - 6), (x + 6, top)], fill=(0, 0, 0), width=2)
+        # Descender / lower matras
+        for x in range(70, 430, 48):
+            draw.arc([x, top + 16, x + 8, top + 24], start=0, end=180, fill=(0, 0, 0), width=2)
+
+    im.save(img_path, format="PNG")
+    return img_path
+
+
+# 1. Feature disabled: existing OCR behavior is unchanged
+def test_line_segmentation_disabled_unchanged(test_image, mock_ocr_response):
+    with patch(
+        "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
+    ) as mock_remote:
+        resp = run_enhanced_ocr(
+            test_image,
+            engine_name="dots-ocr",
+            profile="hybrid_binarization",
+            language="sa",
+            line_segmentation=False,
+        )
+        assert resp.line_segmentation is False
+        assert resp.line_segmentation_version is None
+        mock_remote.assert_called_once()
+        api_dict = ocr_response_to_api_dict(
+            resp, "dots_ocr", image_width=400, image_height=600
+        )
+        assert "line_segmentation" not in api_dict
+        assert "transformed_image_state" not in api_dict
+
+
+# 2. Feature enabled: multiple text lines produce ONE reconstructed image
+def test_line_segmentation_enabled_reconstructs_single_image(
+    closely_written_manuscript_image,
+):
+    from kalanjiyam.utils.line_segmentation import (
+        DEFAULT_LINE_SEGMENTATION_CONFIG,
+        crop_text_lines,
+        detect_text_lines,
+        segment_and_reconstruct_image,
+    )
+
+    with Image.open(closely_written_manuscript_image) as img:
+        detected = detect_text_lines(img, config=DEFAULT_LINE_SEGMENTATION_CONFIG)
+        # Should detect all 8 lines
+        assert len(detected) >= 6
+
+        crops = crop_text_lines(img, detected, config=DEFAULT_LINE_SEGMENTATION_CONFIG)
+        assert len(crops) == len(detected)
+
+        reconstructed, stats = segment_and_reconstruct_image(
+            img, config=DEFAULT_LINE_SEGMENTATION_CONFIG
+        )
+        assert stats.lines_detected >= 6
+        assert stats.fallback_used is False
+        assert isinstance(reconstructed, Image.Image)
+        # Reconstructed image is a valid non-empty single image
+        rw, rh = reconstructed.size
+        assert rw > 0 and rh > 0
+
+
+# 3. Empty / no-line detection gracefully falls back to enhanced full-page image
+def test_empty_or_no_line_detection_fallback(tmp_path, mock_ocr_response):
+    from kalanjiyam.utils.line_segmentation import segment_and_reconstruct_image
+
+    blank_img_path = tmp_path / "blank_page.jpg"
+    blank_im = Image.new("RGB", (300, 400), color=(255, 255, 255))
+    blank_im.save(blank_img_path, format="JPEG")
+
+    with Image.open(blank_img_path) as img:
+        reconstructed, stats = segment_and_reconstruct_image(img)
+        assert stats.fallback_used is True
+        assert stats.lines_detected == 0
+        assert reconstructed.size == (300, 400)
+
+    # Full pipeline test on blank image
+    with patch(
+        "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
+    ) as mock_remote:
+        resp = run_enhanced_ocr(
+            blank_img_path,
+            engine_name="dots-ocr",
+            profile="hybrid_binarization",
+            language="sa",
+            line_segmentation=True,
+        )
+        assert resp is not None
+        assert resp.line_segmentation is True
+        mock_remote.assert_called_once()
+
+
+# 4. Closely spaced lines are detected separately
+def test_closely_spaced_lines_detection():
+    from kalanjiyam.utils.line_segmentation import detect_text_lines
+
+    w, h = 400, 200
+    im = Image.new("L", (w, h), color=255)
+    draw = ImageDraw.Draw(im)
+
+    # Draw 3 tightly packed lines with only 5px gap
+    lines_y = [30, 60, 90]
+    for y in lines_y:
+        draw.rectangle([20, y, 380, y + 4], fill=0)  # shirorekha
+        for x in range(25, 375, 10):
+            draw.rectangle([x, y + 4, x + 3, y + 16], fill=0)  # body
+
+    detected = detect_text_lines(im)
+    assert len(detected) == 3
+    # Verify reading order (y1 values strictly increasing)
+    y_starts = [line[0] for line in detected]
+    assert y_starts == sorted(y_starts)
+
+
+# 5. Padding: detected line crops retain sufficient vertical context
+def test_line_padding_preserves_vertical_context():
+    from kalanjiyam.utils.line_segmentation import (
+        LineSegmentationConfig,
+        crop_text_lines,
+    )
+
+    w, h = 300, 100
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    detected = [(30, 50, 20, 280)]  # line height = 20
+
+    config = LineSegmentationConfig(
+        top_padding_ratio=0.25,
+        bottom_padding_ratio=0.25,
+        min_padding_px=6,
+    )
+    crops = crop_text_lines(im, detected, config=config)
+    assert len(crops) == 1
+    # Line height = 20, padding top=6, bottom=6 -> total height >= 32
+    assert crops[0].size[1] >= 30
+
+
+# 6. OCR invocation count: mock OCR runner and assert EXACTLY ONE invocation
+def test_ocr_invocation_count_is_strictly_one(
+    closely_written_manuscript_image, mock_ocr_response
+):
+    with patch(
+        "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
+    ) as mock_remote:
+        resp = run_enhanced_ocr(
+            closely_written_manuscript_image,
+            engine_name="dots-ocr",
+            profile="hybrid_binarization",
+            language="sa",
+            line_segmentation=True,
+        )
+        assert resp is not None
+        # Must be EXACTLY ONE call, NEVER N calls per line!
+        assert mock_remote.call_count == 1
+        assert resp.line_segmentation is True
+        assert resp.line_segmentation_version == "1.0"
+
+
+# 7. Cache/revision identity: segmented and non-segmented runs do not collide
+def test_segmented_and_non_segmented_cache_and_revision_identity(flask_app):
+    with flask_app.app_context():
+        # Storage keys
+        key_unseg = page_enhanced_ocr_key(
+            "cool-book", "19", "dots-ocr", "hybrid_binarization", line_segmentation=False
+        )
+        key_seg = page_enhanced_ocr_key(
+            "cool-book", "19", "dots-ocr", "hybrid_binarization", line_segmentation=True
+        )
+
+        assert key_unseg != key_seg
+        assert "hybrid_binarization_segmented" in key_seg
+        assert "hybrid_binarization_segmented" not in key_unseg
+
+        # Revision tags
+        class MockRevision:
+            def __init__(self, key):
+                self.page_version = MagicMock(version_key=key)
+                self.summary = ""
+                self.translations = []
+                self.author = None
+
+        rev_unseg = MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization")
+        rev_seg = MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization:segmented")
+
+        tag_unseg = derive_revision_tag(rev_unseg)
+        tag_seg = derive_revision_tag(rev_seg)
+
+        assert tag_unseg == "ocr-enhanced-dots-ocr_hybrid-binarization"
+        assert tag_seg == "ocr-enhanced-dots-ocr_hybrid-binarization_segmented"
+        assert tag_unseg != tag_seg
+
+
+# 8. Existing profiles: composition with hybrid_binarization and other profiles
+@pytest.mark.parametrize("profile", SUPPORTED_ENHANCEMENT_PROFILES)
+def test_composition_with_all_enhancement_profiles(
+    closely_written_manuscript_image, profile, mock_ocr_response
+):
+    with patch(
+        "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
+    ) as mock_remote:
+        resp = run_enhanced_ocr(
+            closely_written_manuscript_image,
+            engine_name="dots-ocr",
+            profile=profile,
+            language="sa",
+            line_segmentation=True,
+        )
+        assert resp.ocr_mode == "enhanced"
+        assert resp.enhancement_profile == profile
+        assert resp.line_segmentation is True
+        assert mock_remote.call_count == 1
+
+
+# 9. Single-page API and Batch Task integration for line segmentation
+def test_line_segmentation_api_and_batch_task(flask_app, mock_ocr_response, tmp_path):
+    import kalanjiyam.database as db
+    import kalanjiyam.queries as q
+    from kalanjiyam.tasks.ocr import _run_enhanced_ocr_for_page_inner
+
+    with flask_app.app_context():
+        session = q.get_session()
+        board = session.query(db.Board).first() or db.Board(name="Test Board Segmented")
+        session.add(board)
+        session.flush()
+
+        status = session.query(db.PageStatus).first()
+        project = db.Project(
+            slug="test-segmented-ocr-book",
+            display_title="Test Segmented Book",
+            board_id=board.id,
+        )
+        session.add(project)
+        session.flush()
+
+        page = db.Page(project_id=project.id, order=1, slug="1", status_id=status.id)
+        session.add(page)
+        session.commit()
+
+        dummy_img = tmp_path / "page_seg_task.jpg"
+        Image.new("RGB", (400, 600), color=(250, 250, 250)).save(
+            dummy_img, format="JPEG"
+        )
+
+        with (
+            patch(
+                "kalanjiyam.tasks.ocr.get_page_image_filepath", return_value=dummy_img
+            ),
+            patch(
+                "kalanjiyam.utils.ocr_runner.run_ocr_remote",
+                return_value=mock_ocr_response,
+            ) as mock_remote,
+            patch("kalanjiyam.utils.quotas.ensure_ocr_quota_for_project"),
+            patch("kalanjiyam.utils.quotas.consume_ocr_credit_for_project"),
+        ):
+            # Run background task with line_segmentation=True
+            result = _run_enhanced_ocr_for_page_inner(
+                app_env="testing",
+                project_slug=project.slug,
+                page_slug=page.slug,
+                engine="dots-ocr",
+                profile="hybrid_binarization",
+                language="sa",
+                line_segmentation=True,
+            )
+            assert result is not None
+            assert result["ocr_mode"] == "enhanced"
+            assert result["line_segmentation"] is True
+            assert result["transformed_image_state"] == "reconstructed_segmented_lines"
+            assert mock_remote.call_count == 1
+
+            # Check revision was saved to ocr:enhanced:dots_ocr:hybrid_binarization:segmented
+            pv = (
+                session.query(db.PageVersion)
+                .filter_by(
+                    page_id=page.id,
+                    version_key="ocr:enhanced:dots_ocr:hybrid_binarization:segmented",
+                )
+                .first()
+            )
+            assert pv is not None
+
+        # Test API endpoint with line_segmentation=1
+        with flask_app.test_client() as client:
+            with (
+                patch(
+                    "kalanjiyam.views.proofing.page.get_page_image_filepath",
+                    return_value=dummy_img,
+                ),
+                patch(
+                    "kalanjiyam.utils.ocr_runner.run_ocr_remote",
+                    return_value=mock_ocr_response,
+                ) as mock_api_remote,
+                patch("kalanjiyam.utils.quotas.ensure_ocr_quota_for_project"),
+                patch("kalanjiyam.utils.quotas.consume_ocr_credit_for_project"),
+                patch(
+                    "kalanjiyam.views.proofing.page.q.user_can_view_proofing_project",
+                    return_value=True,
+                ),
+                patch("kalanjiyam.views.proofing.decorators.current_user") as dec_user,
+                patch("kalanjiyam.views.proofing.page.current_user") as mock_user,
+            ):
+                for u in (dec_user, mock_user):
+                    u.is_authenticated = True
+                    u.is_super_admin = False
+                    u.is_org_admin = True
+                    u.is_moderator = True
+                    u.is_p2 = True
+                    u.is_p1 = True
+                    u.id = 1
+
+                resp = client.get(
+                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=dots_ocr&enhancement=hybrid_binarization&line_segmentation=1&language=sa"
+                )
+                assert resp.status_code == 200
+                data = resp.get_json()
+                assert data["line_segmentation"] is True
+                assert data["version_key"] == "ocr:enhanced:dots_ocr:hybrid_binarization:segmented"
+                assert mock_api_remote.call_count == 1

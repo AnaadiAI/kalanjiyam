@@ -103,6 +103,7 @@ def save_page_enhanced_ocr(
     payload: dict | list | str,
     engine: str,
     profile: str,
+    line_segmentation: bool = False,
 ) -> bool:
     """Persist Enhanced OCR JSON payload to object storage as .json.gz.
 
@@ -117,20 +118,32 @@ def save_page_enhanced_ocr(
         project_slug = getattr(project, "slug", str(project))
         org_slug = get_project_org_slug(project)
         page_slug = getattr(page, "slug", str(page))
-        key = page_enhanced_ocr_key(project_slug, page_slug, engine, profile, org_slug=org_slug)
+        key = page_enhanced_ocr_key(
+            project_slug,
+            page_slug,
+            engine,
+            profile,
+            org_slug=org_slug,
+            line_segmentation=line_segmentation,
+        )
         get_storage().save_json_gz(key, payload)
 
-        version_key = f"ocr:enhanced:{engine}:{profile}"
+        version_key = (
+            f"ocr:enhanced:{engine}:{profile}:segmented"
+            if line_segmentation
+            else f"ocr:enhanced:{engine}:{profile}"
+        )
         if isinstance(payload, dict):
             set_cached_ocr_document(project_slug, page_slug, version_key, payload)
         invalidate_page_ocr_cache(project_slug, page_slug, version_key=version_key)
         return True
     except Exception as err:
         LOG.warning(
-            "S3/VersityGW write failed for page %s Enhanced OCR (%s/%s): %s",
+            "S3/VersityGW write failed for page %s Enhanced OCR (%s/%s, segmented=%s): %s",
             getattr(page, "slug", page),
             engine,
             profile,
+            line_segmentation,
             err,
         )
         return False
@@ -140,6 +153,7 @@ def load_page_enhanced_ocr(
     page: Any,
     engine: str,
     profile: str,
+    line_segmentation: bool = False,
 ) -> dict | list | str | None:
     """Load Enhanced OCR payload for a page from object storage or Redis cache.
 
@@ -158,7 +172,11 @@ def load_page_enhanced_ocr(
 
     project_slug = getattr(project, "slug", str(project))
     page_slug = getattr(page, "slug", str(page))
-    version_key = f"ocr:enhanced:{engine}:{profile}"
+    version_key = (
+        f"ocr:enhanced:{engine}:{profile}:segmented"
+        if line_segmentation
+        else f"ocr:enhanced:{engine}:{profile}"
+    )
 
     def _get_cached():
         return get_cached_ocr_document(project_slug, page_slug, version_key)
@@ -166,22 +184,30 @@ def load_page_enhanced_ocr(
     def _fetch_from_storage():
         try:
             org_slug = get_project_org_slug(project)
-            key = page_enhanced_ocr_key(project_slug, page_slug, engine, profile, org_slug=org_slug)
+            key = page_enhanced_ocr_key(
+                project_slug,
+                page_slug,
+                engine,
+                profile,
+                org_slug=org_slug,
+                line_segmentation=line_segmentation,
+            )
             data = get_storage().load_json_gz(key)
             if data is not None and isinstance(data, dict):
                 set_cached_ocr_document(project_slug, page_slug, version_key, data)
             return data
         except Exception as err:
             LOG.warning(
-                "Failed to fetch page %s Enhanced OCR (%s/%s) from storage: %s",
+                "Failed to fetch page %s Enhanced OCR (%s/%s, segmented=%s) from storage: %s",
                 getattr(page, "slug", page),
                 engine,
                 profile,
+                line_segmentation,
                 err,
             )
             return None
 
-    resource_key = f"enhanced_ocr:{project_slug}:{page_slug}:{engine}:{profile}"
+    resource_key = f"enhanced_ocr:{project_slug}:{page_slug}:{engine}:{profile}{':segmented' if line_segmentation else ''}"
     return coalesce_cache_fetch(resource_key, _fetch_from_storage, _get_cached)
 
 
@@ -391,15 +417,17 @@ def derive_revision_tag(revision: Any) -> str:
     # 1. Check version_key first
     if version_key:
         if version_key.startswith("ocr:enhanced:"):
-            parts = version_key.split("ocr:enhanced:", 1)[1].split(":", 1)
-            eng = parts[0] if parts else "model"
+            parts = version_key.split("ocr:enhanced:", 1)[1].split(":")
+            eng = parts[0] if len(parts) > 0 else "model"
             prof = parts[1] if len(parts) > 1 else "default"
-            return f"ocr-enhanced-{slugify(eng)}_{slugify(prof)}"
+            seg = f"_{slugify(parts[2])}" if len(parts) > 2 and parts[2] else ""
+            return f"ocr-enhanced-{slugify(eng)}_{slugify(prof)}{seg}"
         elif version_key.startswith("enhanced_ocr:"):
-            parts = version_key.split("enhanced_ocr:", 1)[1].split(":", 1)
-            eng = parts[0] if parts else "model"
+            parts = version_key.split("enhanced_ocr:", 1)[1].split(":")
+            eng = parts[0] if len(parts) > 0 else "model"
             prof = parts[1] if len(parts) > 1 else "default"
-            return f"ocr-enhanced-{slugify(eng)}_{slugify(prof)}"
+            seg = f"_{slugify(parts[2])}" if len(parts) > 2 and parts[2] else ""
+            return f"ocr-enhanced-{slugify(eng)}_{slugify(prof)}{seg}"
         elif version_key.startswith("ocr:"):
             engine = version_key.split("ocr:", 1)[1]
             return f"ocr-{slugify(engine)}"

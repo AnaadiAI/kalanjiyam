@@ -28,6 +28,8 @@ def run_enhanced_ocr(
     profile: str = "document_cleanup",
     language: str = "sa",
     gpu_config=None,
+    line_segmentation: bool = False,
+    segmentation_config=None,
 ) -> OcrResponse:
     from kalanjiyam.utils.enhanced_ocr import run_enhanced_ocr as _run_enhanced_ocr
 
@@ -37,6 +39,8 @@ def run_enhanced_ocr(
         profile=profile,
         language=language,
         gpu_config=gpu_config,
+        line_segmentation=line_segmentation,
+        segmentation_config=segmentation_config,
     )
 
 

@@ -571,6 +571,7 @@ def _run_enhanced_ocr_for_page_inner(
     profile: str = "document_cleanup",
     language: str = "auto",
     save_enhanced_images: bool = False,
+    line_segmentation: bool = False,
     force: bool = False,
 ):
     """Run Enhanced OCR in application context."""
@@ -620,7 +621,11 @@ def _run_enhanced_ocr_for_page_inner(
         image_path = get_page_image_filepath(project_slug, page_slug, org_slug=org_slug)
         engine = normalize_engine(engine)
         profile = validate_enhancement_profile(profile)
-        version_key = f"ocr:enhanced:{engine}:{profile}"
+        version_key = (
+            f"ocr:enhanced:{engine}:{profile}:segmented"
+            if line_segmentation
+            else f"ocr:enhanced:{engine}:{profile}"
+        )
 
         pv = (
             session.query(db.PageVersion)
@@ -767,7 +772,9 @@ def _run_enhanced_ocr_for_page_inner(
             except Exception as metric_err:
                 logging.warning(f"Error recording UI batch enhanced OCR metrics for skipped page: {metric_err}")
 
-            cached_payload = load_page_enhanced_ocr(page, engine, profile)
+            cached_payload = load_page_enhanced_ocr(
+                page, engine, profile, line_segmentation=line_segmentation
+            )
             if cached_payload:
                 return cached_payload
             if existing_bot_revision.document:
@@ -822,6 +829,7 @@ def _run_enhanced_ocr_for_page_inner(
             engine_name=engine,
             profile=profile,
             language=language,
+            line_segmentation=line_segmentation,
         )
 
         # Extract visual elements if blocks are returned
@@ -851,9 +859,11 @@ def _run_enhanced_ocr_for_page_inner(
             image_width=page.page_width,
             image_height=page.page_height,
         )
-        save_page_enhanced_ocr(page, payload_dict, engine, profile)
+        save_page_enhanced_ocr(
+            page, payload_dict, engine, profile, line_segmentation=line_segmentation
+        )
 
-        summary = f"Enhanced OCR run ({engine}, {profile})"
+        summary = f"Enhanced OCR run ({engine}, {profile}{', closely written' if line_segmentation else ''})"
         try:
             add_revision(
                 page=page,
@@ -1038,6 +1048,7 @@ def run_enhanced_ocr_for_page(
     profile: str = "document_cleanup",
     language: str = "auto",
     save_enhanced_images: bool = False,
+    line_segmentation: bool = False,
     force: bool = False,
 ):
     _run_enhanced_ocr_for_page_inner(
@@ -1048,6 +1059,7 @@ def run_enhanced_ocr_for_page(
         profile,
         language,
         save_enhanced_images=save_enhanced_images,
+        line_segmentation=line_segmentation,
         force=force,
     )
 
@@ -1059,6 +1071,7 @@ def run_enhanced_ocr_for_project(
     profile: str = "document_cleanup",
     language: str = "auto",
     save_enhanced_images: bool = False,
+    line_segmentation: bool = False,
     queue: str | None = None,
 ) -> GroupResult | None:
     """Create a `group` task to run Enhanced OCR on a project."""
@@ -1097,9 +1110,10 @@ def run_enhanced_ocr_for_project(
             session.flush()
 
             project_title = getattr(db_project, "display_title", None) or project.slug
+            seg_tag = "+Segmented" if line_segmentation else ""
             batch_item = BatchItem(
                 job_id=batch_job.id,
-                file_path=f"{project_title} ({project.slug}) [Enhanced:{profile}]",
+                file_path=f"{project_title} ({project.slug}) [Enhanced:{profile}{seg_tag}]",
                 project_id=db_project.id,
                 status="IN_PROGRESS",
                 total_pages=len(unedited_pages),
@@ -1151,6 +1165,7 @@ def run_enhanced_ocr_for_project(
                 profile=profile,
                 language=language,
                 save_enhanced_images=save_enhanced_images,
+                line_segmentation=line_segmentation,
             ).set(priority=priority)
             for p in unedited_pages
         )

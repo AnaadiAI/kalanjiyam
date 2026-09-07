@@ -138,6 +138,7 @@ export default () => ({
   ocrDropdownOpen: false,
   enhancedOcrDropdownOpen: false,
   selectedEnhancementProfile: 'document_cleanup',
+  lineSegmentation: false,
   showOcrEngineInfo: false,
 
   // Enhancement Preview & Image Replacement state
@@ -653,6 +654,7 @@ export default () => ({
       const parts = versionKey.split(':');
       const engine = parts[2] || '';
       const profile = parts[3] || '';
+      const isSegmented = parts.length > 4 && parts[4] === 'segmented';
       const engineMap = {
         "google": "1",
         "tesseract": "2",
@@ -684,7 +686,10 @@ export default () => ({
       };
       const num = engineMap[engine] || engine;
       const ocrLabel = /^\d+$/.test(num) ? 'OCR ' + num : (num.charAt(0).toUpperCase() + num.slice(1) + ' OCR');
-      const profileLabel = profileMap[profile] || (profile ? profile.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '');
+      let profileLabel = profileMap[profile] || (profile ? profile.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '');
+      if (isSegmented) {
+        profileLabel = profileLabel ? `${profileLabel} + Line Segmentation` : 'Line Segmentation';
+      }
       return profileLabel ? `Enhanced ${ocrLabel} (${profileLabel})` : `Enhanced ${ocrLabel}`;
     }
     if (versionKey.startsWith('ocr:')) {
@@ -1932,6 +1937,9 @@ export default () => ({
     const combinedLanguage = this.getCombinedLanguage();
     const pathname = (window.location && window.location.pathname) || '';
     let url = pathname.replace('/proofing/', '/api/enhanced-ocr/') + `?engine=${decodedEngine}&enhancement=${profile}`;
+    if (this.lineSegmentation) {
+      url += '&line_segmentation=1';
+    }
     if (combinedLanguage) {
       url += `&language=${combinedLanguage}`;
     }

@@ -366,6 +366,8 @@ def preprocess_image_to_tempfile(
     image_path: Path | str,
     profile: str,
     config: PreprocessingConfig | None = None,
+    line_segmentation: bool = False,
+    segmentation_config: Any | None = None,
 ) -> Iterator[Path]:
     """Context manager that produces a preprocessed image tempfile and ensures cleanup."""
     path = Path(image_path)
@@ -376,9 +378,23 @@ def preprocess_image_to_tempfile(
 
     with Image.open(path) as img:
         processed = preprocess_image(img, valid_profile, config=config)
+        if line_segmentation:
+            from kalanjiyam.utils.line_segmentation import (
+                DEFAULT_LINE_SEGMENTATION_CONFIG,
+                segment_and_reconstruct_image,
+            )
+
+            seg_cfg = segmentation_config or DEFAULT_LINE_SEGMENTATION_CONFIG
+            processed, _ = segment_and_reconstruct_image(processed, config=seg_cfg)
+
         # Create temp jpeg file with high quality
+        suffix = (
+            f"_{valid_profile}_segmented.jpg"
+            if line_segmentation
+            else f"_{valid_profile}.jpg"
+        )
         with tempfile.NamedTemporaryFile(
-            suffix=f"_{valid_profile}.jpg", delete=False
+            suffix=suffix, delete=False
         ) as tmp:
             tmp_path = Path(tmp.name)
 

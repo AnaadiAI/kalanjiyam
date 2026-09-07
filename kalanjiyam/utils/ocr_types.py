@@ -62,6 +62,12 @@ class OcrResponse:
     enhancement_version: str | None = None
     #: Preprocessing duration in milliseconds.
     preprocessing_latency_ms: float | None = None
+    #: Whether line segmentation was applied for closely written manuscripts.
+    line_segmentation: bool = False
+    #: Line segmentation pipeline version (e.g. '1.0').
+    line_segmentation_version: str | None = None
+    #: Optional dictionary of line segmentation statistics.
+    line_segmentation_stats: dict | None = None
 
 
 def calculate_p05_confidence(

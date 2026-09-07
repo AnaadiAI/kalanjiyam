@@ -165,4 +165,12 @@ def ocr_response_to_api_dict(
             }
         if getattr(ocr, "preprocessing_latency_ms", None) is not None:
             result["preprocessing_latency_ms"] = ocr.preprocessing_latency_ms
+        if getattr(ocr, "line_segmentation", False):
+            result["line_segmentation"] = True
+            result["line_segmentation_version"] = (
+                getattr(ocr, "line_segmentation_version", "1.0") or "1.0"
+            )
+            result["transformed_image_state"] = "reconstructed_segmented_lines"
+            if getattr(ocr, "line_segmentation_stats", None):
+                result["line_segmentation_stats"] = ocr.line_segmentation_stats
     return result

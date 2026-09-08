@@ -1979,6 +1979,10 @@ def preview_enhancement(project_slug, page_slug):
                 )
 
                 processed = generate_segmentation_debug_overlay(processed)
+                if scale_factor > 1:
+                    from kalanjiyam.utils.image_preprocessing import upscale_image
+
+                    processed = upscale_image(processed, factor=scale_factor)
             else:
                 from kalanjiyam.utils.line_segmentation import (
                     segment_and_reconstruct_image,

@@ -150,6 +150,7 @@ export default () => ({
   enhancementPreviewUrl: '',
   enhancementPreviewProfile: 'hybrid_binarization',
   enhancementPreviewLineSegmentation: false,
+  enhancementPreviewSegmentationDebug: true,
   enhancementPreviewUpscale: false,
   enhancementPreviewUpscaleFactor: '2',
   enhancementPreviewViewMode: 'split', // 'split' | 'preprocessed' | 'original'
@@ -2164,6 +2165,7 @@ export default () => ({
     this.originalImageUrl = (typeof IMAGE_URL !== 'undefined' && IMAGE_URL) ? IMAGE_URL : (typeof window !== 'undefined' && window.IMAGE_URL ? window.IMAGE_URL : '');
     this.enhancementPreviewProfile = profile || this.selectedEnhancementProfile || 'hybrid_binarization';
     this.enhancementPreviewLineSegmentation = !!this.lineSegmentation;
+    this.enhancementPreviewSegmentationDebug = true;
     this.enhancementPreviewUpscale = !!this.upscaleImage;
     this.enhancementPreviewUpscaleFactor = this.upscaleFactor || '2';
     this.resetPreviewZoom();
@@ -2192,8 +2194,9 @@ export default () => ({
     const pathname = (window.location && window.location.pathname) || '';
     const profile = this.enhancementPreviewProfile || 'hybrid_binarization';
     const lineSeg = this.enhancementPreviewLineSegmentation ? '&line_segmentation=1' : '';
+    const debugParam = (this.enhancementPreviewLineSegmentation && this.enhancementPreviewSegmentationDebug) ? '&debug=1' : '';
     const upscaleParam = this.enhancementPreviewUpscale ? `&upscale=1&upscale_factor=${this.enhancementPreviewUpscaleFactor || '2'}` : '';
-    this.enhancementPreviewUrl = pathname.replace('/proofing/', '/api/preview-enhancement/') + `?profile=${profile}${lineSeg}${upscaleParam}&t=${Date.now()}`;
+    this.enhancementPreviewUrl = pathname.replace('/proofing/', '/api/preview-enhancement/') + `?profile=${profile}${lineSeg}${debugParam}${upscaleParam}&t=${Date.now()}`;
   },
 
   async replacePageImageWithPreprocessed() {

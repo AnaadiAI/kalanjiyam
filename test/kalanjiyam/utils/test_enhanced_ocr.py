@@ -21,6 +21,7 @@ Covers:
 """
 
 import gzip
+import io
 import json
 import uuid
 from pathlib import Path
@@ -701,7 +702,29 @@ def test_preview_enhancement_endpoint(flask_app, tmp_path):
                 assert resp_seg.content_type == "image/jpeg"
                 assert len(resp_seg.data) > 0
 
-                # 4. Invalid profile returns 400
+                # 4. Preview with line segmentation and debug overlay enabled
+                resp_overlay = client.get(
+                    f"/api/preview-enhancement/{project.slug}/{page.slug}/?profile=hybrid_binarization&line_segmentation=1&debug=1"
+                )
+                assert resp_overlay.status_code == 200
+                assert resp_overlay.content_type == "image/jpeg"
+                assert len(resp_overlay.data) > 0
+                with Image.open(io.BytesIO(resp_overlay.data)) as oimg:
+                    assert oimg.size == (200, 300)
+                    assert oimg.mode == "RGB"
+
+                # 5. Preview with line segmentation, debug overlay, and upscale enabled
+                resp_overlay_up = client.get(
+                    f"/api/preview-enhancement/{project.slug}/{page.slug}/?profile=hybrid_binarization&line_segmentation=1&debug=1&upscale=1&upscale_factor=2"
+                )
+                assert resp_overlay_up.status_code == 200
+                assert resp_overlay_up.content_type == "image/jpeg"
+                assert len(resp_overlay_up.data) > 0
+                with Image.open(io.BytesIO(resp_overlay_up.data)) as up_oimg:
+                    assert up_oimg.size == (400, 600)
+                    assert up_oimg.mode == "RGB"
+
+                # 6. Invalid profile returns 400
                 resp_bad = client.get(
                     f"/api/preview-enhancement/{project.slug}/{page.slug}/?profile=bad_profile_xyz"
                 )

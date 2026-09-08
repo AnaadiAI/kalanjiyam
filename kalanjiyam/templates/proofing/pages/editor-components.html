@@ -1040,6 +1040,10 @@ these components in our help text and documentation.
               :disabled="!canUndoVoice" title="{{ _('Undo the last voice edit') }}">{{ _('Undo') }}</button>
       <button type="button" class="voice-btn" @click.prevent="clearVoiceLog()"
               x-show="voiceLog.length" title="{{ _('Clear the conversation') }}">{{ _('Clear') }}</button>
+      <button type="button" class="voice-btn text-emerald-600 hover:text-emerald-700 font-medium"
+              x-show="voiceActive && voiceStatus === 'speaking'"
+              @click.prevent="commitVoice()"
+              title="{{ _('Send voice command now without waiting for silence pause (Alt+Enter)') }}">{{ _('Done') }}</button>
       <button type="button"
               class="voice-btn-primary"
               :class="voiceActive ? 'voice-btn-stop' : ''"

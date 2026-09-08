@@ -20,9 +20,9 @@
 /** How often we sample the input level, in ms. */
 const TICK_MS = 50;
 
-/** Silence needed to close an utterance. Long enough to survive the pause
- *  between words in dictated Tamil, short enough not to feel laggy. */
-const SILENCE_MS = 1200;
+/** Silence needed to close an utterance. Shortened from 1200ms to 850ms to
+ *  make responses much snappier after the user stops speaking. */
+const SILENCE_MS = 850;
 
 /** Utterances shorter than this are coughs, clicks, and chair scrapes. */
 const MIN_SPEECH_MS = 400;
@@ -41,6 +41,11 @@ const SPEECH_FACTOR = 2.5;
 /** Absolute floor, so a pathologically silent input (a muted or virtual
  *  device) cannot calibrate to ~0 and then treat its own dither as speech. */
 const MIN_THRESHOLD = 0.015;
+
+/** Consecutive loud samples required to reset the silence timer.
+ *  Prevents single-tick fan/mic noise spikes on budget PCs from keeping the
+ *  utterance open indefinitely. */
+const CONSECUTIVE_LOUD_TICKS_RESET = 2;
 
 /** Containers in preference order. Chrome/Firefox take the first, Safari mp4. */
 const MIME_CANDIDATES = [
@@ -93,6 +98,7 @@ export default class VoiceSession {
     this.isSpeaking = false;
     this.silenceMs = 0;
     this.speechMs = 0;
+    this.consecutiveLoudTicks = 0;
     this.threshold = MIN_THRESHOLD;
     this.calibrationMs = 0;
     this.calibrationPeak = 0;
@@ -108,6 +114,8 @@ export default class VoiceSession {
 
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: {
+        channelCount: { ideal: 1 },
+        sampleRate: { ideal: 16000 },
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
@@ -171,12 +179,34 @@ export default class VoiceSession {
     const loud = level > this.threshold;
 
     if (!this.isSpeaking) {
-      if (loud) this._beginUtterance();
+      if (loud) {
+        this.consecutiveLoudTicks += 1;
+        // Require at least 2 consecutive loud ticks (100ms) to begin an utterance,
+        // filtering out isolated mic pops, clicks, and fan flutter.
+        if (this.consecutiveLoudTicks >= 2) {
+          this.consecutiveLoudTicks = 0;
+          this._beginUtterance();
+        }
+      } else {
+        this.consecutiveLoudTicks = 0;
+      }
       return;
     }
 
     this.speechMs += TICK_MS;
-    this.silenceMs = loud ? 0 : this.silenceMs + TICK_MS;
+
+    if (loud) {
+      this.consecutiveLoudTicks += 1;
+      // Only reset the silence counter when sound is sustained. Single-tick
+      // background spikes (fan whir, breathing, static) will not reset the
+      // countdown to 0.
+      if (this.consecutiveLoudTicks >= CONSECUTIVE_LOUD_TICKS_RESET) {
+        this.silenceMs = 0;
+      }
+    } else {
+      this.consecutiveLoudTicks = 0;
+      this.silenceMs += TICK_MS;
+    }
 
     if (this.silenceMs >= SILENCE_MS || this.speechMs >= MAX_SEGMENT_MS) {
       this._endUtterance();
@@ -187,16 +217,25 @@ export default class VoiceSession {
     this.isSpeaking = true;
     this.silenceMs = 0;
     this.speechMs = 0;
+    this.consecutiveLoudTicks = 0;
     this.chunks = [];
     this.onState('speaking');
 
     try {
-      const opts = this.mimeType ? { mimeType: this.mimeType } : {};
+      const opts = {
+        ...(this.mimeType ? { mimeType: this.mimeType } : {}),
+        audioBitsPerSecond: 24000,
+      };
       this.recorder = new MediaRecorder(this.stream, opts);
     } catch (e) {
-      this.isSpeaking = false;
-      this.onError(e);
-      return;
+      try {
+        const fallbackOpts = this.mimeType ? { mimeType: this.mimeType } : {};
+        this.recorder = new MediaRecorder(this.stream, fallbackOpts);
+      } catch (errFallback) {
+        this.isSpeaking = false;
+        this.onError(errFallback);
+        return;
+      }
     }
 
     this.recorder.ondataavailable = (e) => {
@@ -223,10 +262,21 @@ export default class VoiceSession {
 
   _endUtterance() {
     this.isSpeaking = false;
+    this.consecutiveLoudTicks = 0;
     if (this.recorder && this.recorder.state !== 'inactive') {
       try { this.recorder.stop(); } catch (e) { /* already stopping */ }
     }
     this.recorder = null;
+  }
+
+  /**
+   * Immediately close and emit the current utterance without waiting
+   * for the silence timeout. Safe to call anytime; no-op if not speaking.
+   */
+  commitUtterance() {
+    if (this.isSpeaking) {
+      this._endUtterance();
+    }
   }
 
   /** Stop listening but keep the object reusable via start(). */
@@ -237,6 +287,7 @@ export default class VoiceSession {
     // Deliberately drop any in-flight utterance: the user asked to stop, so
     // acting on whatever they were half-way through saying would be wrong.
     this.isSpeaking = false;
+    this.consecutiveLoudTicks = 0;
     if (this.recorder && this.recorder.state !== 'inactive') {
       this.recorder.onstop = null;
       try { this.recorder.stop(); } catch (e) { /* already stopping */ }

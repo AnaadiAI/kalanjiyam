@@ -616,14 +616,21 @@ export default () => ({
     window.onbeforeunload = this.onBeforeUnload.bind(this);
     window.addEventListener('pagehide', () => this.stopVoice());
 
-    // Alt+M toggles the mic. Registered here rather than in
-    // setupKeyboardNavigation, which deliberately ignores keys while focus is
-    // inside a block -- exactly where a proofreader's cursor lives.
+    // Alt+M toggles the mic. Alt+Enter commits the current utterance immediately.
+    // Registered here rather than in setupKeyboardNavigation, which deliberately
+    // ignores keys while focus is inside a block -- exactly where a proofreader's cursor lives.
     window.addEventListener('keydown', (e) => {
-      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'm' || e.key === 'M')) {
-        if (!this.voiceEnabled) return;
-        e.preventDefault();
-        this.toggleVoice();
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === 'm' || e.key === 'M') {
+          if (!this.voiceEnabled) return;
+          e.preventDefault();
+          this.toggleVoice();
+        } else if (e.key === 'Enter' || e.code === 'Enter') {
+          if (this.voiceActive && this.voiceStatus === 'speaking') {
+            e.preventDefault();
+            this.commitVoice();
+          }
+        }
       }
     });
     
@@ -1500,6 +1507,12 @@ export default () => ({
     this.voiceActive = false;
     this.voiceStatus = 'idle';
     this.voiceLevel = 0;
+  },
+
+  commitVoice() {
+    if (this._voiceSession && typeof this._voiceSession.commitUtterance === 'function') {
+      this._voiceSession.commitUtterance();
+    }
   },
 
   /** Blocks trimmed to what the service needs. Geometry is deliberately omitted. */

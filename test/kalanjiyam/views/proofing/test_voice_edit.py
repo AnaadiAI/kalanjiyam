@@ -256,8 +256,13 @@ def test_to_api_dict_does_not_leak_dropped_ops():
 # ---------------------------------------------------------------------------
 
 
-def test_endpoint_is_absent_when_the_feature_is_off(rama_client):
-    assert _post(rama_client).status_code == 404
+def test_endpoint_is_absent_when_the_feature_is_off(rama_client, flask_app):
+    previous = flask_app.config.get("VOICE_EDIT_ENABLED")
+    flask_app.config["VOICE_EDIT_ENABLED"] = False
+    try:
+        assert _post(rama_client).status_code == 404
+    finally:
+        flask_app.config["VOICE_EDIT_ENABLED"] = previous
 
 
 def test_endpoint_rejects_a_missing_audio_part(rama_client, voice_on):

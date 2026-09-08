@@ -840,7 +840,7 @@
 
   .voice-lang {
     @apply text-xs font-medium rounded-lg border border-slate-200 bg-white px-2.5 py-1.5
-      text-slate-700 shadow-xs focus:border-royalblue focus:ring-1 focus:ring-royalblue
+      text-slate-700 shadow-sm focus:border-royalblue focus:ring-1 focus:ring-royalblue
       disabled:opacity-60 disabled:cursor-not-allowed shrink-0;
   }
 
@@ -854,18 +854,18 @@
 
   .voice-btn {
     @apply inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white
-      text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-xs active:scale-95 disabled:opacity-40
+      text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm active:scale-95 disabled:opacity-40
       disabled:cursor-not-allowed transition-all;
   }
 
   .voice-btn-done {
     @apply inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50
-      text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 active:scale-95 shadow-xs transition-all;
+      text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 active:scale-95 shadow-sm transition-all;
   }
 
   .voice-btn-primary {
     @apply inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-slate-800 text-white
-      hover:bg-slate-700 active:scale-95 shadow-xs transition-all;
+      hover:bg-slate-700 active:scale-95 shadow-sm transition-all;
   }
 
   .voice-btn-stop {

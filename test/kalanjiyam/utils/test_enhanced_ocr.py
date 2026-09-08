@@ -26,6 +26,7 @@ import uuid
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
@@ -1630,4 +1631,333 @@ def test_enhanced_ocr_runner_single_api_call_all_scales(mock_ocr_response, tmp_p
             assert resp.ocr_mode == "enhanced"
             assert resp.upscale == bool(factor > 1)
             assert resp.upscale_factor == (factor if factor > 1 else 1)
+
+
+# ===========================================================================
+# Content-Aware Line Segmentation Tests
+# ===========================================================================
+
+
+def _make_base_line(draw, x_start, x_end, y_headline, glyph_spacing=15, glyph_height=18):
+    """Draw a basic Devanagari headline with hanging glyph stems."""
+    draw.rectangle([x_start, y_headline, x_end, y_headline + 3], fill=(0, 0, 0))
+    for x in range(x_start + 10, x_end - 10, glyph_spacing):
+        draw.rectangle([x, y_headline + 3, x + 5, y_headline + 3 + glyph_height], fill=(0, 0, 0))
+
+
+# 1. Normal Devanagari line
+def test_content_aware_normal_devanagari_lines():
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        detect_text_lines,
+        crop_text_lines,
+        _extract_foreground_mask,
+    )
+
+    w, h = 400, 250
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    _make_base_line(draw, 40, 360, 50)
+    _make_base_line(draw, 40, 360, 110)
+    _make_base_line(draw, 40, 360, 170)
+
+    bin_img, _ = _extract_foreground_mask(im)
+    peaks, safe_b, init_v, block, decisions = detect_line_peaks_and_safe_boundaries(im)
+    assert len(peaks) == 3
+    assert len(safe_b) == 4
+    # Reading order and non-overlapping
+    assert safe_b == sorted(safe_b)
+    bx0, _, bx1, _ = block
+
+    # Verify NO glyph pixels cut by ANY boundary
+    for b in safe_b:
+        assert np.sum(bin_img[b, bx0:bx1] == 255) == 0
+
+    # Verify crops are rectangular
+    lines = detect_text_lines(im)
+    crops = crop_text_lines(im, lines)
+    assert len(crops) == 3
+    for c in crops:
+        assert isinstance(c, Image.Image)
+        assert c.width > 0 and c.height > 0
+
+    # Determinism
+    peaks2, safe_b2, _, _, _ = detect_line_peaks_and_safe_boundaries(im)
+    assert peaks == peaks2
+    assert safe_b == safe_b2
+
+
+# 2. Line containing tall matras
+def test_content_aware_tall_matras():
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        detect_text_lines,
+        _extract_foreground_mask,
+    )
+
+    w, h = 450, 250
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    # Line 1 with very tall upper matras (e.g. ai / au flags extending to Y=35, headline at 65)
+    _make_base_line(draw, 50, 400, 65)
+    for x in range(70, 380, 40):
+        draw.line([(x, 35), (x + 8, 65)], fill=(0, 0, 0), width=2)
+
+    # Line 2 with normal height (headline at 135)
+    _make_base_line(draw, 50, 400, 135)
+
+    bin_img, _ = _extract_foreground_mask(im)
+    peaks, safe_b, init_v, block, decisions = detect_line_peaks_and_safe_boundaries(im)
+    assert len(peaks) == 2
+    bx0, _, bx1, _ = block
+
+    # Top boundary B0 must be placed above the tall matras (<= 35)
+    assert safe_b[0] <= 35
+    for b in safe_b:
+        assert np.sum(bin_img[b, bx0:bx1] == 255) == 0
+
+    lines = detect_text_lines(im)
+    h0 = lines[0][1] - lines[0][0]
+    h1 = lines[1][1] - lines[1][0]
+    # Crop height differs between lines due to tall matra
+    assert h0 != h1
+    assert h0 > h1
+
+
+# 3. Line containing detached matras
+def test_content_aware_detached_matras():
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        detect_text_lines,
+        crop_text_lines,
+        _extract_foreground_mask,
+    )
+
+    w, h = 450, 250
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    _make_base_line(draw, 50, 400, 60)
+    # Detached matra above headline (e.g. floating repha/stroke)
+    draw.rectangle([120, 45, 130, 52], fill=(0, 0, 0))
+    draw.rectangle([250, 45, 260, 52], fill=(0, 0, 0))
+
+    _make_base_line(draw, 50, 400, 130)
+
+    bin_img, _ = _extract_foreground_mask(im)
+    peaks, safe_b, init_v, block, decisions = detect_line_peaks_and_safe_boundaries(im)
+    assert len(peaks) == 2
+    bx0, _, bx1, _ = block
+
+    # Verify no glyph pixels cut
+    for b in safe_b:
+        assert np.sum(bin_img[b, bx0:bx1] == 255) == 0
+
+    lines = detect_text_lines(im)
+    crops = crop_text_lines(im, lines)
+    assert len(crops) == 2
+    for c in crops:
+        assert c.width > 0 and c.height > 0
+
+
+# 4. Line containing anusvara / chandrabindu
+def test_content_aware_anusvara_chandrabindu():
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        _extract_foreground_mask,
+    )
+
+    w, h = 450, 250
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    _make_base_line(draw, 50, 400, 60)
+    _make_base_line(draw, 50, 400, 130)
+
+    # Anusvara dots above Line 2 headline at Y=118..122
+    for x in range(80, 360, 50):
+        draw.ellipse([x, 118, x + 5, 123], fill=(0, 0, 0))
+
+    bin_img, _ = _extract_foreground_mask(im)
+    peaks, safe_b, init_v, block, decisions = detect_line_peaks_and_safe_boundaries(im)
+    assert len(peaks) == 2
+    bx0, _, bx1, _ = block
+
+    # Inter-line boundary B1 must be ABOVE anusvara dots (<= 118)
+    assert safe_b[1] <= 118
+    for b in safe_b:
+        assert np.sum(bin_img[b, bx0:bx1] == 255) == 0
+
+
+# 5. Line containing visarga
+def test_content_aware_visarga():
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        _extract_foreground_mask,
+    )
+
+    w, h = 450, 250
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    _make_base_line(draw, 50, 350, 60)
+    # Visarga dots at x=365: two dots at Y=68..72 and Y=76..80
+    draw.ellipse([365, 68, 370, 73], fill=(0, 0, 0))
+    draw.ellipse([365, 76, 370, 81], fill=(0, 0, 0))
+
+    _make_base_line(draw, 50, 350, 130)
+
+    bin_img, _ = _extract_foreground_mask(im)
+    peaks, safe_b, _, block, _ = detect_line_peaks_and_safe_boundaries(im)
+    bx0, _, bx1, _ = block
+
+    for b in safe_b:
+        assert np.sum(bin_img[b, bx0:bx1] == 255) == 0
+
+
+# 6. Line containing complex conjuncts
+def test_content_aware_complex_conjuncts():
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        _extract_foreground_mask,
+    )
+
+    w, h = 450, 280
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    _make_base_line(draw, 50, 400, 60)
+    # Deep conjunct / virama descenders extending down to Y=108
+    draw.rectangle([140, 81, 148, 108], fill=(0, 0, 0))
+    draw.rectangle([260, 81, 268, 108], fill=(0, 0, 0))
+
+    _make_base_line(draw, 50, 400, 150)
+
+    bin_img, _ = _extract_foreground_mask(im)
+    peaks, safe_b, _, block, decisions = detect_line_peaks_and_safe_boundaries(im)
+    bx0, _, bx1, _ = block
+
+    # Inter-line boundary B1 must be moved below the deep conjunct (>= 108)
+    assert safe_b[1] >= 108
+    for b in safe_b:
+        assert np.sum(bin_img[b, bx0:bx1] == 255) == 0
+
+
+# 7. Two very closely spaced lines
+def test_content_aware_closely_spaced_lines():
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        _extract_foreground_mask,
+    )
+
+    w, h = 400, 160
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    # Line 1 from 30 to 52 (headline at 30, body down to 52)
+    _make_base_line(draw, 40, 360, 30, glyph_height=19)
+    # Line 2 headline at 57 (only 4px whitespace gap between 53 and 56!)
+    _make_base_line(draw, 40, 360, 57, glyph_height=19)
+
+    bin_img, _ = _extract_foreground_mask(im)
+    peaks, safe_b, _, block, _ = detect_line_peaks_and_safe_boundaries(im)
+    assert len(peaks) == 2
+    bx0, _, bx1, _ = block
+
+    for b in safe_b:
+        assert np.sum(bin_img[b, bx0:bx1] == 255) == 0
+
+
+# 8. Lines with large paragraph spacing
+def test_content_aware_paragraph_spacing():
+    from kalanjiyam.utils.line_segmentation import (
+        LineSegmentationConfig,
+        segment_and_reconstruct_image,
+    )
+
+    w, h = 450, 350
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    # Paragraph 1: Lines at 40 and 90 (spacing 50)
+    _make_base_line(draw, 50, 400, 40)
+    _make_base_line(draw, 50, 400, 90)
+
+    # Paragraph 2: Line at 190 (spacing 100 -> paragraph gap!)
+    _make_base_line(draw, 50, 400, 190)
+
+    cfg = LineSegmentationConfig(preserve_paragraph_gaps=True, paragraph_gap_multiplier=1.35)
+    reconstructed, stats = segment_and_reconstruct_image(im, config=cfg)
+    assert stats.lines_detected == 3
+    assert stats.fallback_used is False
+    assert reconstructed.width > 0 and reconstructed.height > 0
+
+
+# 9. Candidate boundary crossing a connected component
+def test_content_aware_candidate_crossing_component():
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        _extract_foreground_mask,
+    )
+
+    w, h = 500, 300
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    _make_base_line(draw, 50, 450, 80)
+    # Descenders extending to 125
+    for x in range(70, 430, 24):
+        draw.rectangle([x, 98, x + 4, 120], fill=(0, 0, 0))
+    draw.rectangle([140, 118, 145, 125], fill=(0, 0, 0))
+
+    # Line 2 at 150 with upper matras from 128 to 150
+    _make_base_line(draw, 50, 450, 150)
+    for x in range(80, 420, 40):
+        draw.line([(x, 138), (x + 5, 150)], fill=(0, 0, 0), width=2)
+    draw.line([(220, 128), (225, 150)], fill=(0, 0, 0), width=2)
+
+    bin_img, _ = _extract_foreground_mask(im)
+    peaks, safe_b, init_v, block, decisions = detect_line_peaks_and_safe_boundaries(im)
+    bx0, _, bx1, _ = block
+
+    # Initial valley cuts the upper matra at Y=128
+    assert np.sum(bin_img[init_v[1], bx0:bx1] == 255) > 0
+    # Final safe boundary moved away from ink to Y=126
+    assert safe_b[1] != init_v[1]
+    assert np.sum(bin_img[safe_b[1], bx0:bx1] == 255) == 0
+    assert decisions[1].moved is True
+
+
+# 10. Candidate boundary sitting immediately adjacent to foreground ink
+def test_content_aware_boundary_adjacent_to_ink():
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        generate_segmentation_debug_overlay,
+        _extract_foreground_mask,
+    )
+
+    w, h = 500, 300
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    # Line 1 at 70, ends at 95
+    _make_base_line(draw, 50, 450, 70, glyph_height=20)
+    # Line 2 at 160
+    _make_base_line(draw, 50, 450, 160, glyph_height=20)
+
+    bin_img, _ = _extract_foreground_mask(im)
+    peaks, safe_b, init_v, block, decisions = detect_line_peaks_and_safe_boundaries(im)
+    bx0, _, bx1, _ = block
+
+    # Boundary is chosen in the clean whitespace band with 0 ink cut
+    for b in safe_b:
+        assert np.sum(bin_img[b, bx0:bx1] == 255) == 0
+    assert decisions[1].whitespace_window_score == 0
+
+    # Debug overlay test
+    overlay = generate_segmentation_debug_overlay(im)
+    assert overlay.size == im.size
+
 

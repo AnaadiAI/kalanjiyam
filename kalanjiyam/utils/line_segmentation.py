@@ -26,6 +26,20 @@ logger = logging.getLogger(__name__)
 LINE_SEGMENTATION_VERSION = "2.0"
 
 
+@dataclass
+class BoundaryDecision:
+    """Record of a content-aware boundary placement decision."""
+
+    boundary_index: int
+    initial_boundary: int
+    final_boundary: int
+    ink_density_at_boundary: int
+    whitespace_window_score: int
+    moved: bool
+    movement_distance: int
+    reason: str
+
+
 @dataclass(frozen=True)
 class LineSegmentationConfig:
     """Configuration parameters for manuscript line segmentation and reconstruction."""
@@ -46,6 +60,16 @@ class LineSegmentationConfig:
     preserve_paragraph_gaps: bool = True
     paragraph_gap_multiplier: float = 1.35
 
+    # Content-aware boundary parameters
+    padding_px: int = 4
+    safety_window_k: int = 2
+    min_component_area: int = 4
+    max_above_ratio: float = 0.55
+    max_below_ratio: float = 0.85
+    noise_pixel_threshold: int = 0
+    tight_crops: bool = False
+    debug_mode: bool = False
+
 
 DEFAULT_LINE_SEGMENTATION_CONFIG = LineSegmentationConfig()
 
@@ -60,6 +84,7 @@ class LineDetectionStats:
     line_heights: list[int] = field(default_factory=list)
     line_peaks: list[int] = field(default_factory=list)
     line_boundaries: list[int] = field(default_factory=list)
+    boundary_decisions: list[BoundaryDecision] = field(default_factory=list)
     text_block: tuple[int, int, int, int] = (0, 0, 0, 0)
     segmentation_latency_ms: float = 0.0
     fallback_used: bool = False
@@ -215,54 +240,380 @@ def detect_line_peaks_and_valleys(
 
     peaks = [int(p) for p in (peaks2 if len(peaks2) > 0 else peaks1)]
 
-    # Valley detection between adjacent peaks using lightly smoothed HPP
+    # Lightly smoothed HPP for initial candidate valley search
     hpp_valley = cv2.GaussianBlur(hpp[:, None], (1, 9), 1.5).flatten()
 
-    boundaries: list[int] = []
+    safe_boundaries, initial_valleys, decisions = find_safe_boundaries(
+        bin_img, peaks, block_x0, block_x1, hpp_valley, med_spacing, config=config
+    )
 
-    # 1. Top boundary above first peak
+    block_y0 = safe_boundaries[0] if safe_boundaries else 0
+    block_y1 = safe_boundaries[-1] if safe_boundaries else h
+
+    return peaks, safe_boundaries, initial_valleys, (block_x0, block_y0, block_x1, block_y1), decisions
+
+
+def find_safe_boundaries(
+    bin_img: np.ndarray,
+    peaks: list[int],
+    block_x0: int,
+    block_x1: int,
+    hpp_valley: np.ndarray,
+    med_spacing: float,
+    config: LineSegmentationConfig = DEFAULT_LINE_SEGMENTATION_CONFIG,
+) -> tuple[list[int], list[int], list[BoundaryDecision]]:
+    """Determine content-aware safe boundaries between lines.
+
+    Analyzes connected component bounding boxes, row foreground occupancy, and local window ink
+    around initial projection valleys to navigate around vertically extending Devanagari matras,
+    modifiers, and conjuncts, placing boundaries squarely in genuine whitespace bands.
+
+    Returns:
+        (safe_boundaries, initial_valleys, boundary_decisions)
+    """
+    h, w = bin_img.shape
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+        bin_img, connectivity=8
+    )
+
+    # Extract connected components with area >= min_component_area overlapping the horizontal text block
+    components: list[tuple[int, int, int, int, int]] = []
+    for lbl in range(1, num_labels):
+        area = int(stats[lbl, cv2.CC_STAT_AREA])
+        if area < config.min_component_area:
+            continue
+        cx = int(stats[lbl, cv2.CC_STAT_LEFT])
+        cw = int(stats[lbl, cv2.CC_STAT_WIDTH])
+        cy = int(stats[lbl, cv2.CC_STAT_TOP])
+        ch = int(stats[lbl, cv2.CC_STAT_HEIGHT])
+        if (cx + cw) < block_x0 or cx > block_x1:
+            continue
+        components.append((cy, cy + ch, cx, cw, area))
+
+    # Row-wise foreground ink count inside text block
+    row_ink = np.sum(bin_img[:, block_x0:block_x1] == 255, axis=1).astype(np.int32)
+
+    # Number of connected components whose body is strictly sliced by each row y
+    components_cut = np.zeros(h, dtype=np.int32)
+    for cy_min, cy_max, _, _, _ in components:
+        if cy_max - cy_min > 1:
+            components_cut[cy_min + 1 : cy_max] += 1
+
+    # Local window ink occupancy around row y: [y - k, y + k]
+    k = max(1, config.safety_window_k)
+    window_ink = np.zeros(h, dtype=np.int32)
+    for y in range(h):
+        y_lo = max(0, y - k)
+        y_hi = min(h, y + k + 1)
+        window_ink[y] = int(np.sum(row_ink[y_lo:y_hi]))
+
+    safe_boundaries: list[int] = []
+    initial_valleys: list[int] = []
+    boundary_decisions: list[BoundaryDecision] = []
+
+    # 1. Top Boundary B_0 (above first line peak)
     p0 = peaks[0]
-    top_search_limit = max(0, p0 - int(med_spacing * 1.2))
+    top_search_limit = max(0, p0 - int(med_spacing * 1.5))
     top_slice = hpp_valley[top_search_limit:p0]
     if len(top_slice) > 0:
-        b0 = top_search_limit + int(np.argmin(top_slice))
+        y_init_0 = top_search_limit + int(np.argmin(top_slice))
     else:
-        b0 = max(0, p0 - int(med_spacing * 0.5))
-    boundaries.append(int(b0))
+        y_init_0 = max(0, p0 - int(med_spacing * 0.5))
+    initial_valleys.append(int(y_init_0))
 
-    # 2. Valley between every adjacent pair of line peaks
+    # Topmost foreground ink of line 0 within search limit
+    ink_above = np.where(
+        (row_ink[:p0] > config.noise_pixel_threshold) & (np.arange(p0) >= top_search_limit)
+    )[0]
+    if len(ink_above) > 0:
+        ink_top_0 = int(ink_above[0])
+    else:
+        ink_top_0 = p0
+
+    b0_candidate = max(0, ink_top_0 - config.padding_px)
+    while b0_candidate > 0 and (
+        row_ink[b0_candidate] > config.noise_pixel_threshold
+        or components_cut[b0_candidate] > 0
+    ):
+        b0_candidate -= 1
+    safe_boundaries.append(int(b0_candidate))
+
+    top_moved = bool(b0_candidate != y_init_0)
+    top_dist = int(b0_candidate - y_init_0)
+    top_reason = "preserved_valley"
+    if top_moved:
+        top_reason = (
+            "moved_up_to_clear_upper_matras"
+            if top_dist < 0
+            else "moved_down_to_safe_whitespace"
+        )
+
+    boundary_decisions.append(
+        BoundaryDecision(
+            boundary_index=0,
+            initial_boundary=int(y_init_0),
+            final_boundary=int(b0_candidate),
+            ink_density_at_boundary=int(row_ink[b0_candidate]),
+            whitespace_window_score=int(window_ink[b0_candidate]),
+            moved=top_moved,
+            movement_distance=top_dist,
+            reason=top_reason,
+        )
+    )
+
+    # 2. Inter-Line Boundaries B_1 .. B_{N-1}
     for i in range(len(peaks) - 1):
         p_curr = peaks[i]
         p_next = peaks[i + 1]
-        inter_slice = hpp_valley[p_curr:p_next]
-        v = p_curr + int(np.argmin(inter_slice))
-        boundaries.append(int(v))
+        gap = p_next - p_curr
 
-    # 3. Bottom boundary below final peak
+        inter_slice = hpp_valley[p_curr:p_next]
+        y_init = p_curr + int(np.argmin(inter_slice))
+        initial_valleys.append(int(y_init))
+
+        y_start = p_curr + max(3, int(gap * 0.15))
+        y_end = p_next - max(2, int(gap * 0.08))
+        if y_start >= y_end:
+            y_start = p_curr + 1
+            y_end = p_next
+
+        # Detect contiguous clean whitespace bands
+        clean_bands: list[tuple[int, int]] = []
+        band_start: int | None = None
+        for y in range(y_start, y_end):
+            if components_cut[y] == 0 and row_ink[y] <= config.noise_pixel_threshold:
+                if band_start is None:
+                    band_start = y
+            else:
+                if band_start is not None:
+                    clean_bands.append((band_start, y - 1))
+                    band_start = None
+        if band_start is not None:
+            clean_bands.append((band_start, y_end - 1))
+
+        if clean_bands:
+            # Score each clean band: prefer wide bands with low window ink, closest to y_init
+            best_band = clean_bands[0]
+            best_score = -float("inf")
+            for b_s, b_e in clean_bands:
+                b_mid = (b_s + b_e) // 2
+                width = b_e - b_s + 1
+                w_ink = window_ink[b_mid]
+                dist = abs(b_mid - y_init)
+                score = (width * 10.0) - (w_ink * 2.0) - (dist * 0.5)
+                if score > best_score:
+                    best_score = score
+                    best_band = (b_s, b_e)
+            y_safe = (best_band[0] + best_band[1]) // 2
+            reason = "whitespace_band_center"
+        else:
+            # Fallback if no 100% zero-ink row exists (e.g. tightly packed touching lines)
+            best_y = y_init
+            min_cost = float("inf")
+            for y in range(y_start, y_end):
+                cost = (
+                    components_cut[y] * 1000.0
+                    + row_ink[y] * 10.0
+                    + window_ink[y] * 2.0
+                    + abs(y - y_init) * 0.1
+                )
+                if cost < min_cost:
+                    min_cost = cost
+                    best_y = y
+            y_safe = best_y
+            reason = "minimal_cut_cost_fallback"
+
+        moved = bool(y_safe != y_init)
+        move_dist = int(y_safe - y_init)
+        if moved:
+            if row_ink[y_init] > config.noise_pixel_threshold or components_cut[y_init] > 0:
+                reason = f"avoided_glyph_ink_at_initial_valley_{y_init}"
+            elif move_dist > 0:
+                reason = "moved_down_to_safe_whitespace"
+            else:
+                reason = "moved_up_to_safe_whitespace"
+        else:
+            reason = "preserved_valley"
+
+        boundary_decisions.append(
+            BoundaryDecision(
+                boundary_index=i + 1,
+                initial_boundary=int(y_init),
+                final_boundary=int(y_safe),
+                ink_density_at_boundary=int(row_ink[y_safe]),
+                whitespace_window_score=int(window_ink[y_safe]),
+                moved=moved,
+                movement_distance=move_dist,
+                reason=reason,
+            )
+        )
+        safe_boundaries.append(int(y_safe))
+
+    # 3. Bottom Boundary B_N (below final line peak)
     plast = peaks[-1]
-    bot_search_limit = min(h, plast + int(med_spacing * 1.2))
+    bot_search_limit = min(h, plast + int(med_spacing * 1.5))
     bot_slice = hpp_valley[plast:bot_search_limit]
     if len(bot_slice) > 0:
-        blast = plast + int(np.argmin(bot_slice))
+        y_init_last = plast + int(np.argmin(bot_slice))
     else:
-        blast = min(h, plast + int(med_spacing * 0.5))
-    boundaries.append(int(blast))
+        y_init_last = min(h, plast + int(med_spacing * 0.5))
+    initial_valleys.append(int(y_init_last))
 
-    block_y0 = boundaries[0]
-    block_y1 = boundaries[-1]
+    # Lowermost foreground ink of final line
+    ink_below = np.where(row_ink[plast:bot_search_limit] > config.noise_pixel_threshold)[0]
+    if len(ink_below) > 0:
+        ink_bot_last = plast + int(ink_below[-1])
+    else:
+        ink_bot_last = plast
 
-    return peaks, boundaries, (block_x0, block_y0, block_x1, block_y1)
+    bn_candidate = min(h, ink_bot_last + config.padding_px + 1)
+    while bn_candidate < h and (
+        row_ink[bn_candidate] > config.noise_pixel_threshold
+        or components_cut[bn_candidate] > 0
+    ):
+        bn_candidate += 1
+    safe_boundaries.append(int(bn_candidate))
+
+    bot_moved = bool(bn_candidate != y_init_last)
+    bot_dist = int(bn_candidate - y_init_last)
+    bot_reason = "preserved_valley"
+    if bot_moved:
+        bot_reason = (
+            "moved_down_to_clear_lower_matras"
+            if bot_dist > 0
+            else "moved_up_to_safe_whitespace"
+        )
+
+    boundary_decisions.append(
+        BoundaryDecision(
+            boundary_index=len(peaks),
+            initial_boundary=int(y_init_last),
+            final_boundary=int(bn_candidate),
+            ink_density_at_boundary=int(row_ink[bn_candidate]),
+            whitespace_window_score=int(window_ink[bn_candidate]),
+            moved=bot_moved,
+            movement_distance=bot_dist,
+            reason=bot_reason,
+        )
+    )
+
+    return safe_boundaries, initial_valleys, boundary_decisions
+
+
+def detect_line_peaks_and_safe_boundaries(
+    img: Image.Image | np.ndarray,
+    config: LineSegmentationConfig = DEFAULT_LINE_SEGMENTATION_CONFIG,
+) -> tuple[
+    list[int],
+    list[int],
+    list[int],
+    tuple[int, int, int, int],
+    list[BoundaryDecision],
+]:
+    """Detect candidate text-line centers (peaks) and content-aware safe whitespace boundaries.
+
+    Returns:
+        (peaks, safe_boundaries, initial_valleys, (block_x0, block_y0, block_x1, block_y1), decisions)
+    """
+    bin_img, _ = _extract_foreground_mask(img)
+    h, w = bin_img.shape
+
+    if h < config.min_line_height or w < 20:
+        return [], [], [], (0, 0, w, h), []
+
+    # Exclude extreme outer margins to prevent border/scanner noise
+    margin_y = max(2, int(h * config.margin_filter_ratio))
+    margin_x = max(2, int(w * config.margin_filter_ratio))
+    masked_bin = bin_img.copy()
+    masked_bin[:margin_y, :] = 0
+    masked_bin[h - margin_y :, :] = 0
+    masked_bin[:, :margin_x] = 0
+    masked_bin[:, w - margin_x :] = 0
+
+    block_x0, block_x1 = _detect_text_block_horizontal_range(masked_bin, config)
+
+    # Compute horizontal projection profile inside core text block
+    text_bin = masked_bin[:, block_x0:block_x1]
+    hpp = np.sum(text_bin == 255, axis=1).astype(np.float32)
+
+    if np.max(hpp) == 0:
+        return [], [], [], (block_x0, 0, block_x1, h), []
+
+    # Pass 1: Scale-adaptive coarse smoothing
+    sigma1 = max(3.0, h / 350.0)
+    ksize1 = int(sigma1 * 6) | 1
+    hpp_s1 = cv2.GaussianBlur(hpp[:, None], (1, ksize1), sigma1).flatten()
+
+    min_dist1 = max(8, int(h / 70.0))
+    max_h1 = float(np.max(hpp_s1))
+    peaks1, _ = find_peaks(
+        hpp_s1,
+        height=max_h1 * config.peak_height_ratio,
+        distance=min_dist1,
+        prominence=max_h1 * config.peak_prominence_ratio,
+    )
+
+    if len(peaks1) == 0:
+        return [], [], [], (block_x0, 0, block_x1, h), []
+
+    if len(peaks1) >= 2:
+        med_spacing = float(np.median(np.diff(peaks1)))
+    else:
+        med_spacing = max(16.0, h / 25.0)
+
+    # Pass 2: Fine-tuned smoothing based on detected median spacing
+    sigma2 = max(2.0, med_spacing / 12.0)
+    ksize2 = int(sigma2 * 6) | 1
+    hpp_s2 = cv2.GaussianBlur(hpp[:, None], (1, ksize2), sigma2).flatten()
+
+    min_dist2 = max(8, int(med_spacing * 0.45))
+    max_h2 = float(np.max(hpp_s2))
+    peaks2, _ = find_peaks(
+        hpp_s2,
+        height=max_h2 * config.peak_height_ratio,
+        distance=min_dist2,
+        prominence=max_h2 * config.peak_prominence_ratio,
+    )
+
+    peaks = [int(p) for p in (peaks2 if len(peaks2) > 0 else peaks1)]
+
+    # Lightly smoothed HPP for initial candidate valley search
+    hpp_valley = cv2.GaussianBlur(hpp[:, None], (1, 9), 1.5).flatten()
+
+    safe_boundaries, initial_valleys, decisions = find_safe_boundaries(
+        bin_img, peaks, block_x0, block_x1, hpp_valley, med_spacing, config=config
+    )
+
+    block_y0 = safe_boundaries[0] if safe_boundaries else 0
+    block_y1 = safe_boundaries[-1] if safe_boundaries else h
+
+    return peaks, safe_boundaries, initial_valleys, (block_x0, block_y0, block_x1, block_y1), decisions
+
+
+def detect_line_peaks_and_valleys(
+    img: Image.Image | np.ndarray,
+    config: LineSegmentationConfig = DEFAULT_LINE_SEGMENTATION_CONFIG,
+) -> tuple[list[int], list[int], tuple[int, int, int, int]]:
+    """Detect candidate text-line centers (peaks) and inter-line whitespace boundaries.
+
+    Returns:
+        (peaks, boundaries, (block_x0, block_y0, block_x1, block_y1))
+    """
+    peaks, boundaries, _, text_block, _ = detect_line_peaks_and_safe_boundaries(
+        img, config=config
+    )
+    return peaks, boundaries, text_block
 
 
 def detect_text_lines(
     img: Image.Image | np.ndarray,
     config: LineSegmentationConfig = DEFAULT_LINE_SEGMENTATION_CONFIG,
 ) -> list[tuple[int, int, int, int]]:
-    """Detect contiguous, valley-to-valley text lines in a manuscript image.
+    """Detect contiguous, content-aware safe text lines in a manuscript image.
 
     Returns:
         List of (y_start, y_end, x_start, x_end) line bounds in top-to-bottom reading order.
-        Adjacent line slices share valley boundaries so there is NO overlap between crops.
+        Adjacent line slices share safe boundaries so there is NO overlap between crops.
     """
     peaks, boundaries, (block_x0, _, block_x1, _) = detect_line_peaks_and_valleys(
         img, config
@@ -272,11 +623,29 @@ def detect_text_lines(
         return []
 
     lines: list[tuple[int, int, int, int]] = []
-    for i in range(len(boundaries) - 1):
-        y0 = boundaries[i]
-        y1 = boundaries[i + 1]
-        if y1 > y0:
-            lines.append((y0, y1, block_x0, block_x1))
+    if config.tight_crops:
+        bin_img, _ = _extract_foreground_mask(img)
+        row_ink = np.sum(bin_img[:, block_x0:block_x1] == 255, axis=1).astype(np.int32)
+        for i in range(len(boundaries) - 1):
+            b0 = boundaries[i]
+            b1 = boundaries[i + 1]
+            if b1 <= b0:
+                continue
+            active = np.where(row_ink[b0:b1] > config.noise_pixel_threshold)[0]
+            if len(active) > 0:
+                ink_top = b0 + int(active[0])
+                ink_bot = b0 + int(active[-1])
+                safe_y0 = max(b0, ink_top - config.padding_px)
+                safe_y1 = min(b1, ink_bot + config.padding_px + 1)
+            else:
+                safe_y0, safe_y1 = b0, b1
+            lines.append((safe_y0, safe_y1, block_x0, block_x1))
+    else:
+        for i in range(len(boundaries) - 1):
+            y0 = boundaries[i]
+            y1 = boundaries[i + 1]
+            if y1 > y0:
+                lines.append((y0, y1, block_x0, block_x1))
 
     return lines
 
@@ -375,15 +744,15 @@ def generate_segmentation_debug_overlay(
     img: Image.Image | np.ndarray,
     config: LineSegmentationConfig = DEFAULT_LINE_SEGMENTATION_CONFIG,
 ) -> Image.Image:
-    """Generate a visual debugging image showing detected text block, line centers, and valley boundaries."""
+    """Generate a visual debugging image showing detected text block, line centers, initial valleys, safe boundaries, and crops."""
     if isinstance(img, Image.Image):
         raw_arr = np.array(img.convert("RGB"))
     else:
         raw_arr = img.copy() if img.ndim == 3 else cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
 
     h, w = raw_arr.shape[:2]
-    peaks, boundaries, (bx0, by0, bx1, by1) = detect_line_peaks_and_valleys(
-        img, config
+    peaks, safe_boundaries, initial_valleys, (bx0, by0, bx1, by1), decisions = (
+        detect_line_peaks_and_safe_boundaries(img, config)
     )
 
     overlay = raw_arr.copy()
@@ -391,7 +760,21 @@ def generate_segmentation_debug_overlay(
     # 1. Draw text block boundary in orange
     cv2.rectangle(overlay, (bx0, by0), (bx1, by1), (255, 140, 0), 2)
 
-    # 2. Draw line center peaks in green (shirorekha headline centers)
+    # 2. Draw initial candidate valleys in gold / yellow
+    for idx, v in enumerate(initial_valleys):
+        cv2.line(overlay, (bx0, v), (bx1, v), (0, 215, 255), 1)
+        lbl = f"Init B{idx} (Y={v})"
+        cv2.putText(
+            overlay,
+            lbl,
+            (bx0 + 5, max(12, v - 3)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.40,
+            (0, 180, 220),
+            1,
+        )
+
+    # 3. Draw line center peaks in green (shirorekha headline centers)
     for idx, p in enumerate(peaks):
         cv2.line(overlay, (bx0, p), (bx1, p), (0, 180, 0), 2)
         label = f"L{idx+1} (Y={p})"
@@ -405,19 +788,28 @@ def generate_segmentation_debug_overlay(
             2,
         )
 
-    # 3. Draw valley crop boundaries in red
-    for idx, b in enumerate(boundaries):
+    # 4. Draw final safe boundaries in red
+    for idx, b in enumerate(safe_boundaries):
         cv2.line(overlay, (0, b), (w, b), (220, 30, 30), 2)
-        label = f"B{idx} (Y={b})"
+        dec = decisions[idx] if idx < len(decisions) else None
+        if dec and dec.moved:
+            label = f"Safe B{idx} (Y={b}, moved {dec.movement_distance:+d}px)"
+        else:
+            label = f"Safe B{idx} (Y={b})"
         cv2.putText(
             overlay,
             label,
-            (max(10, w - 180), max(15, b - 6)),
+            (max(10, w - 240), max(15, b - 6)),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.55,
+            0.50,
             (200, 20, 20),
             2,
         )
+
+    # 5. Draw final line crop bounding boxes in cyan
+    detected_lines = detect_text_lines(img, config=config)
+    for idx, (y0, y1, lx0, lx1) in enumerate(detected_lines):
+        cv2.rectangle(overlay, (lx0, y0), (lx1, y1), (200, 160, 0), 1)
 
     return Image.fromarray(overlay)
 
@@ -427,7 +819,7 @@ def segment_and_reconstruct_image(
     config: LineSegmentationConfig = DEFAULT_LINE_SEGMENTATION_CONFIG,
     upscale_factor: int = 1,
 ) -> tuple[Image.Image, LineDetectionStats]:
-    """Complete end-to-end pipeline: detect line peaks, find valleys, crop lines, and build ONE synthetic page.
+    """Complete end-to-end pipeline: detect line peaks, find safe boundaries, crop lines, and build ONE synthetic page.
 
     When upscale_factor > 1, upscales each line crop individually before synthetic page reconstruction.
     If 0 lines are detected or detection fails, gracefully returns the original (optionally upscaled) image.
@@ -439,9 +831,12 @@ def segment_and_reconstruct_image(
     t0 = time.perf_counter()
 
     try:
-        peaks, boundaries, text_block = detect_line_peaks_and_valleys(img, config=config)
+        peaks, boundaries, initial_valleys, text_block, decisions = (
+            detect_line_peaks_and_safe_boundaries(img, config=config)
+        )
         stats.line_peaks = peaks
         stats.line_boundaries = boundaries
+        stats.boundary_decisions = decisions
         stats.text_block = text_block
         stats.lines_detected = len(peaks)
 
@@ -458,14 +853,22 @@ def segment_and_reconstruct_image(
             stats.segmentation_latency_ms = (time.perf_counter() - t0) * 1000.0
             return fallback_img, stats
 
-        detected_lines: list[tuple[int, int, int, int]] = []
-        bx0, _, bx1, _ = text_block
-        for i in range(len(boundaries) - 1):
-            y0 = boundaries[i]
-            y1 = boundaries[i + 1]
-            if y1 > y0:
-                detected_lines.append((y0, y1, bx0, bx1))
+        # Log boundary movements and metrics
+        for dec in decisions:
+            if dec.moved or config.debug_mode:
+                logger.info(
+                    "Boundary %d: initial=%d, final=%d, moved=%s (%+dpx), reason=%s, ink_density=%d, window_score=%d",
+                    dec.boundary_index,
+                    dec.initial_boundary,
+                    dec.final_boundary,
+                    dec.moved,
+                    dec.movement_distance,
+                    dec.reason,
+                    dec.ink_density_at_boundary,
+                    dec.whitespace_window_score,
+                )
 
+        detected_lines = detect_text_lines(img, config=config)
         stats.line_heights = [y1 - y0 for y0, y1, _, _ in detected_lines]
         crops = crop_text_lines(img, detected_lines, config=config)
 

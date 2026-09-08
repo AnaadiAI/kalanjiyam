@@ -182,6 +182,7 @@ export default () => ({
   voiceSupported: isVoiceCaptureSupported(),
   voiceEnabled: (typeof window.VOICE_EDIT_ENABLED !== 'undefined') && window.VOICE_EDIT_ENABLED,
   voiceActive: false,
+  voiceMuted: false,
   voicePanelOpen: false,
   voiceLanguage: 'ta',
   voiceStatus: 'idle', // idle | listening | speaking | thinking | clarifying | error
@@ -616,15 +617,19 @@ export default () => ({
     window.onbeforeunload = this.onBeforeUnload.bind(this);
     window.addEventListener('pagehide', () => this.stopVoice());
 
-    // Alt+M toggles the mic. Alt+Enter commits the current utterance immediately.
+    // Alt+M toggles the mic. Alt+Shift+M toggles mute. Alt+Enter commits the current utterance immediately.
     // Registered here rather than in setupKeyboardNavigation, which deliberately
     // ignores keys while focus is inside a block -- exactly where a proofreader's cursor lives.
     window.addEventListener('keydown', (e) => {
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
-        if (e.key === 'm' || e.key === 'M') {
+        if (e.code === 'KeyM') {
           if (!this.voiceEnabled) return;
           e.preventDefault();
-          this.toggleVoice();
+          if (e.shiftKey) {
+            if (this.voiceActive) this.toggleVoiceMute();
+          } else {
+            this.toggleVoice();
+          }
         } else if (e.key === 'Enter' || e.code === 'Enter') {
           if (this.voiceActive && this.voiceStatus === 'speaking') {
             e.preventDefault();
@@ -1472,6 +1477,7 @@ export default () => ({
         // Never let a mic state overwrite a pending question or an in-flight
         // request -- those are what the user is actually waiting on.
         if (this.voiceStatus === 'thinking' || this.voiceStatus === 'clarifying') return;
+        if (this.voiceMuted && state !== 'muted') return;
         this.voiceStatus = state;
       },
       onError: (err) => {
@@ -1484,6 +1490,7 @@ export default () => ({
     try {
       await this._voiceSession.start();
       this.voiceActive = true;
+      this.voiceMuted = false;
       this.voicePanelOpen = true;
       this.voiceMessage = '';
       this.voiceStatus = 'calibrating';
@@ -1505,8 +1512,22 @@ export default () => ({
       this._voiceSession = null;
     }
     this.voiceActive = false;
+    this.voiceMuted = false;
     this.voiceStatus = 'idle';
     this.voiceLevel = 0;
+  },
+
+  toggleVoiceMute() {
+    if (!this._voiceSession || !this.voiceActive) return;
+    this.voiceMuted = !this.voiceMuted;
+    if (this.voiceMuted) {
+      this._voiceSession.mute();
+      this.voiceStatus = 'muted';
+      this.voiceLevel = 0;
+    } else {
+      this._voiceSession.unmute();
+      this.voiceStatus = 'listening';
+    }
   },
 
   commitVoice() {
@@ -1527,6 +1548,7 @@ export default () => ({
   },
 
   async sendVoiceSegment(blob) {
+    if (this.voiceMuted) return;
     // One turn at a time. Two concurrent applies against the same document
     // would race, and the second would be reasoning about stale text anyway.
     if (this._voiceBusy) return;

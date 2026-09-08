@@ -103,6 +103,7 @@ export default class VoiceSession {
     this.calibrationMs = 0;
     this.calibrationPeak = 0;
     this.running = false;
+    this.isMuted = false;
     this.mimeType = '';
   }
 
@@ -136,6 +137,7 @@ export default class VoiceSession {
     this.mimeType = pickMimeType();
     this.running = true;
     this.isSpeaking = false;
+    this.isMuted = false;
     this.silenceMs = 0;
     this.speechMs = 0;
     this.calibrationMs = 0;
@@ -159,6 +161,11 @@ export default class VoiceSession {
 
   _tick(buffer) {
     if (!this.running || !this.analyser) return;
+
+    if (this.isMuted) {
+      this.onLevel(0);
+      return;
+    }
 
     const level = this._level(buffer);
     this.onLevel(level);
@@ -279,10 +286,65 @@ export default class VoiceSession {
     }
   }
 
+  /**
+   * Temporarily mute the microphone without tearing down the session or
+   * losing room calibration. Discards any partial utterance currently recording.
+   */
+  mute() {
+    if (!this.running || this.isMuted) return;
+    this.isMuted = true;
+
+    // Discard any in-flight utterance
+    this.isSpeaking = false;
+    this.consecutiveLoudTicks = 0;
+    if (this.recorder && this.recorder.state !== 'inactive') {
+      this.recorder.onstop = null;
+      try { this.recorder.stop(); } catch (e) { /* already stopping */ }
+    }
+    this.recorder = null;
+    this.chunks = [];
+
+    // Hardware mute audio tracks
+    if (this.stream) {
+      this.stream.getAudioTracks().forEach((t) => { t.enabled = false; });
+    }
+
+    this.onLevel(0);
+    this.onState('muted');
+  }
+
+  /**
+   * Unmute the microphone and resume listening immediately.
+   */
+  unmute() {
+    if (!this.running || !this.isMuted) return;
+    this.isMuted = false;
+    this.silenceMs = 0;
+    this.speechMs = 0;
+    this.consecutiveLoudTicks = 0;
+
+    // Re-enable hardware audio tracks
+    if (this.stream) {
+      this.stream.getAudioTracks().forEach((t) => { t.enabled = true; });
+    }
+
+    this.onState('listening');
+  }
+
+  toggleMute() {
+    if (this.isMuted) {
+      this.unmute();
+    } else {
+      this.mute();
+    }
+    return this.isMuted;
+  }
+
   /** Stop listening but keep the object reusable via start(). */
   stop() {
     if (!this.running) return;
     this.running = false;
+    this.isMuted = false;
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
     // Deliberately drop any in-flight utterance: the user asked to stop, so
     // acting on whatever they were half-way through saying would be wrong.

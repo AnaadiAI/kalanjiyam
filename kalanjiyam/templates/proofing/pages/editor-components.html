@@ -1035,20 +1035,45 @@ these components in our help text and documentation.
       </div>
     </div>
 
-    <div class="flex items-center gap-1.5 shrink-0">
+    <div class="flex items-center gap-2 shrink-0">
       <button type="button" class="voice-btn" @click.prevent="undoVoiceEdit()"
-              :disabled="!canUndoVoice" title="{{ _('Undo the last voice edit') }}">{{ _('Undo') }}</button>
+              :disabled="!canUndoVoice" title="{{ _('Undo the last voice edit') }}">
+        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2m-15-7l4-4m-4 4l4 4"></path>
+        </svg>
+        <span>{{ _('Undo') }}</span>
+      </button>
       <button type="button" class="voice-btn" @click.prevent="clearVoiceLog()"
-              x-show="voiceLog.length" title="{{ _('Clear the conversation') }}">{{ _('Clear') }}</button>
-      <button type="button" class="voice-btn text-emerald-600 hover:text-emerald-700 font-medium"
+              x-show="voiceLog.length" x-cloak title="{{ _('Clear the conversation') }}">
+        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+        </svg>
+        <span>{{ _('Clear') }}</span>
+      </button>
+      <button type="button" class="voice-btn-done"
               x-show="voiceActive && voiceStatus === 'speaking'"
+              x-cloak
               @click.prevent="commitVoice()"
-              title="{{ _('Send voice command now without waiting for silence pause (Alt+Enter)') }}">{{ _('Done') }}</button>
+              title="{{ _('Send voice command now without waiting for silence pause (Alt+Enter)') }}">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <span>{{ _('Done') }}</span>
+      </button>
       <button type="button"
               class="voice-btn-primary"
               :class="voiceActive ? 'voice-btn-stop' : ''"
               @click.prevent="toggleVoice()"
-              x-text="voiceActive ? '{{ _('Stop') }}' : '{{ _('Start') }}'"></button>
+              :title="voiceActive ? '{{ _('Stop and turn off microphone (Alt+M)') }}' : '{{ _('Start handsfree voice editing (Alt+M)') }}'">
+        <svg x-show="!voiceActive" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 11a7 7 0 01-14 0m7 7v3m0-3a4 4 0 004-4V6a4 4 0 10-8 0v5a4 4 0 004 4z"></path>
+        </svg>
+        <svg x-show="voiceActive" x-cloak class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+          <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+        </svg>
+        <span x-text="voiceActive ? '{{ _('Stop') }}' : '{{ _('Start') }}'"></span>
+      </button>
       <button type="button" class="voice-btn-icon" @click.prevent="voicePanelOpen=false"
               title="{{ _('Close') }}" aria-label="{{ _('Close') }}">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

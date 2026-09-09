@@ -117,6 +117,7 @@ SUPPORTED_ENGINES = [
     "tesseract_manuscript",
     "dots_ocr",
     "gemma_ocr",
+    "indic_ocr",
 ]
 
 # OCR service ids (hyphenated) ↔ Kalanjiyam internal ids (underscored).
@@ -131,6 +132,9 @@ SERVICE_ENGINE_ALIASES = {
     "gemma-31b": "gemma_ocr",
     "llm-gemma": "gemma_ocr",
     "llm_gemma": "gemma_ocr",
+    "indic-ocr": "indic_ocr",
+    "bodhan-ocr": "indic_ocr",
+    "bodhan": "indic_ocr",
 }
 
 ENGINE_MAP = {
@@ -147,6 +151,7 @@ ENGINE_MAP = {
     "11": "tesseract_manuscript",
     "12": "dots_ocr",
     "13": "gemma_ocr",
+    "14": "indic_ocr",
 }
 
 
@@ -190,13 +195,14 @@ ENGINE_LABELS = {
     "tesseract_manuscript": "Sanskrit Manuscript OCR",
     "dots_ocr": "Dots OCR",
     "gemma_ocr": "Gemma OCR",
+    "indic_ocr": "Indic OCR",
 }
 
 # Engines that return HTML (not plain text or Markdown)
 HTML_ENGINES = {"nanonets", "chandra"}
 
 # Engines that return Markdown
-MARKDOWN_ENGINES = {"deepseek", "qwen3", "gemma_ocr"}
+MARKDOWN_ENGINES = {"deepseek", "qwen3", "gemma_ocr", "indic_ocr"}
 
 
 def build_engine_choices(

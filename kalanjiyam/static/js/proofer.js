@@ -544,6 +544,11 @@ export default () => ({
              { value: 'san', text: 'Sanskrit (san)' }
            ],
            supportsBilingual: false
+         },
+         '14': {
+           name: 'Indic OCR',
+           languages: [],
+           supportsBilingual: false
          }
   },
 
@@ -692,7 +697,9 @@ export default () => ({
         "gemma-4-31b": "13",
         "gemma_4_31b": "13",
         "llm_gemma": "13",
-        "llm-gemma": "13"
+        "llm-gemma": "13",
+        "indic_ocr": "14",
+        "indic-ocr": "14"
       };
       const profileMap = {
         'document_cleanup': 'Document Cleanup',
@@ -731,7 +738,9 @@ export default () => ({
         "gemma-4-31b": "13",
         "gemma_4_31b": "13",
         "llm_gemma": "13",
-        "llm-gemma": "13"
+        "llm-gemma": "13",
+        "indic_ocr": "14",
+        "indic-ocr": "14"
       };
       const num = engineMap[engine] || engine;
       if (/^\d+$/.test(num)) {
@@ -1906,6 +1915,7 @@ export default () => ({
       '11': 'tesseract_manuscript',
       '12': 'dots_ocr',
       '13': 'gemma_ocr',
+      '14': 'indic_ocr',
     };
     return engineMap[engineValue] || 'google';
   },
@@ -2111,7 +2121,9 @@ export default () => ({
       "gemma-4-31b": "13",
       "gemma_4_31b": "13",
       "llm_gemma": "13",
-      "llm-gemma": "13"
+      "llm-gemma": "13",
+      "indic_ocr": "14",
+      "indic-ocr": "14"
     };
     if (val && /^\d+$/.test(val)) {
       return 'OCR ' + val;

@@ -131,6 +131,7 @@ OCR_ENGINE_PREFERENCE = (
     "chandra",
     "dots_ocr",
     "gemma_ocr",
+    "indic_ocr",
     "glm_ocr",
     "qwen3",
     "deepseek",

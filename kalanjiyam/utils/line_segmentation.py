@@ -353,8 +353,8 @@ def find_safe_boundaries(
             boundary_index=0,
             initial_boundary=int(y_init_0),
             final_boundary=int(b0_candidate),
-            ink_density_at_boundary=int(row_ink[b0_candidate]),
-            whitespace_window_score=int(window_ink[b0_candidate]),
+            ink_density_at_boundary=int(row_ink[b0_candidate]) if 0 <= b0_candidate < h else 0,
+            whitespace_window_score=int(window_ink[b0_candidate]) if 0 <= b0_candidate < h else 0,
             moved=top_moved,
             movement_distance=top_dist,
             reason=top_reason,
@@ -489,8 +489,8 @@ def find_safe_boundaries(
             boundary_index=len(peaks),
             initial_boundary=int(y_init_last),
             final_boundary=int(bn_candidate),
-            ink_density_at_boundary=int(row_ink[bn_candidate]),
-            whitespace_window_score=int(window_ink[bn_candidate]),
+            ink_density_at_boundary=int(row_ink[bn_candidate]) if 0 <= bn_candidate < h else 0,
+            whitespace_window_score=int(window_ink[bn_candidate]) if 0 <= bn_candidate < h else 0,
             moved=bot_moved,
             movement_distance=bot_dist,
             reason=bot_reason,
@@ -790,7 +790,8 @@ def generate_segmentation_debug_overlay(
 
     # 4. Draw final safe boundaries in red
     for idx, b in enumerate(safe_boundaries):
-        cv2.line(overlay, (0, b), (w, b), (220, 30, 30), 2)
+        b_draw = min(h - 1, max(0, b))
+        cv2.line(overlay, (0, b_draw), (w, b_draw), (220, 30, 30), 2)
         dec = decisions[idx] if idx < len(decisions) else None
         if dec and dec.moved:
             label = f"Safe B{idx} (Y={b}, moved {dec.movement_distance:+d}px)"
@@ -799,7 +800,7 @@ def generate_segmentation_debug_overlay(
         cv2.putText(
             overlay,
             label,
-            (max(10, w - 240), max(15, b - 6)),
+            (max(10, w - 240), max(15, min(h - 6, b - 6))),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.50,
             (200, 20, 20),

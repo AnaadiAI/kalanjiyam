@@ -1984,3 +1984,36 @@ def test_content_aware_boundary_adjacent_to_ink():
     assert overlay.size == im.size
 
 
+# 11. Bottom boundary at image edge boundary does not raise IndexError
+def test_bottom_boundary_at_image_edge_does_not_error():
+    """Ensure safe boundary detection does not IndexError when bottom boundary reaches image height."""
+    from kalanjiyam.utils.line_segmentation import (
+        detect_line_peaks_and_safe_boundaries,
+        generate_segmentation_debug_overlay,
+        segment_and_reconstruct_image,
+    )
+
+    w, h = 300, 150
+    im = Image.new("RGB", (w, h), color=(255, 255, 255))
+    draw = ImageDraw.Draw(im)
+
+    # Line 1 at 40
+    _make_base_line(draw, 30, 270, 40, glyph_height=18)
+    # Line 2 at 110, with ink extending all the way down to near bottom edge
+    _make_base_line(draw, 30, 270, 110, glyph_height=18)
+    for x in range(40, 260, 20):
+        draw.line([(x, 128), (x, 149)], fill=(0, 0, 0), width=2)
+
+    peaks, safe_b, init_v, block, decisions = detect_line_peaks_and_safe_boundaries(im)
+    assert len(peaks) == 2
+    assert len(safe_b) == 3
+    assert safe_b[-1] <= h
+    recon, stats = segment_and_reconstruct_image(im)
+    assert stats.fallback_used is False
+    assert stats.lines_detected == 2
+
+    overlay = generate_segmentation_debug_overlay(im)
+    assert overlay.size == im.size
+
+
+

@@ -522,6 +522,15 @@ def test_get_version_display_name_translation():
         str(get_version_display_name("translation:gemma-4-31b:en->ta"))
         == "Translation 9 (EN → TA)"
     )
+    # Indic-Translate is mapped to 10
+    assert (
+        str(get_version_display_name("translation:indic_translate:en->ta"))
+        == "Translation 10 (EN → TA)"
+    )
+    assert (
+        str(get_version_display_name("translation:indic-translate:en->ta"))
+        == "Translation 10 (EN → TA)"
+    )
 
 
 def test_api_page_versions(rama_client):

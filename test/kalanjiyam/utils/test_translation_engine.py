@@ -194,6 +194,32 @@ class TestIndicTransEngine:
             assert call_kwargs["json"]["target_language"] == "Tamil"
 
     @patch('httpx.Client')
+    def test_translate_indic_translate_text(self, mock_client_class):
+        """Test Indic-Translate text translation uses bodhan-ai/indic-translate."""
+        mock_client = Mock()
+        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"text": "வணக்கம் உலகம்"}
+        mock_client.post.return_value = mock_response
+
+        from flask import Flask
+        app = Flask("test_app")
+        app.config["TRANSLATION_SERVICE_URL"] = "http://localhost:8888"
+
+        with app.app_context():
+            engine = IndicTransEngine("indic_translate")
+            response = engine.translate("Hello world", "en", "ta")
+
+            assert response.translated_text == "வணக்கம் உலகம்"
+            assert response.engine == "indic_translate"
+
+            call_kwargs = mock_client.post.call_args[1]
+            assert call_kwargs["json"]["model_name"] == "bodhan-ai/indic-translate"
+            assert call_kwargs["json"]["source_language"] == "English"
+            assert call_kwargs["json"]["target_language"] == "Tamil"
+
+    @patch('httpx.Client')
     def test_translate_with_api_key(self, mock_client_class):
         """Test text translation sends X-API-Key header when configured."""
         mock_client = Mock()
@@ -480,6 +506,7 @@ class TestTranslationMaskingAndChoices:
         assert normalize_translation_engine("7") == "openai"
         assert normalize_translation_engine("8") == "llm_gemma"
         assert normalize_translation_engine("9") == "gemma_4_31b"
+        assert normalize_translation_engine("10") == "indic_translate"
 
         # Service aliases
         assert normalize_translation_engine("gemma-4") == "gemma"
@@ -488,6 +515,9 @@ class TestTranslationMaskingAndChoices:
         assert normalize_translation_engine("gemma_4_31b") == "gemma_4_31b"
         assert normalize_translation_engine("gemma-31b") == "gemma_4_31b"
         assert normalize_translation_engine("gemma_31b") == "gemma_4_31b"
+        assert normalize_translation_engine("indic-translate") == "indic_translate"
+        assert normalize_translation_engine("indic_translate") == "indic_translate"
+        assert normalize_translation_engine("indictranslate") == "indic_translate"
         assert normalize_translation_engine("llm-gemma") == "llm_gemma"
         assert normalize_translation_engine("llm_gemma") == "llm_gemma"
         assert normalize_translation_engine("param-lc-translate-ep4") == "param_lc_translate_ep4"
@@ -499,6 +529,7 @@ class TestTranslationMaskingAndChoices:
         assert normalize_translation_engine("indictrans2") == "indictrans2"
         assert normalize_translation_engine("gemma") == "gemma"
         assert normalize_translation_engine("gemma_4_31b") == "gemma_4_31b"
+        assert normalize_translation_engine("indic_translate") == "indic_translate"
         assert normalize_translation_engine("llm_gemma") == "llm_gemma"
 
     def test_build_translation_choices_regular_user(self):
@@ -595,6 +626,14 @@ class TestTranslationMaskingAndChoices:
         assert isinstance(engine8, LlmGemmaTranslateEngine)
         assert engine8.model_name == "llm-gemma"
 
+        engine10 = TranslationEngineFactory.create("10")
+        assert isinstance(engine10, IndicTransEngine)
+        assert engine10.version == "indic_translate"
+
+        engine_indic_name = TranslationEngineFactory.create("indic-translate")
+        assert isinstance(engine_indic_name, IndicTransEngine)
+        assert engine_indic_name.version == "indic_translate"
+
         engine_by_name = TranslationEngineFactory.create("llm_gemma")
         assert isinstance(engine_by_name, LlmGemmaTranslateEngine)
 
@@ -607,8 +646,11 @@ class TestTranslationMaskingAndChoices:
         assert TranslationEngineFactory.is_supported("4") is True
         assert TranslationEngineFactory.is_supported("8") is True
         assert TranslationEngineFactory.is_supported("9") is True
+        assert TranslationEngineFactory.is_supported("10") is True
         assert TranslationEngineFactory.is_supported("gemma-4-31b") is True
         assert TranslationEngineFactory.is_supported("gemma_4_31b") is True
+        assert TranslationEngineFactory.is_supported("indic_translate") is True
+        assert TranslationEngineFactory.is_supported("indic-translate") is True
         assert TranslationEngineFactory.is_supported("llm_gemma") is True
         assert TranslationEngineFactory.is_supported("llm-gemma") is True
         assert TranslationEngineFactory.is_supported("unsupported") is False

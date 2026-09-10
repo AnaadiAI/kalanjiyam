@@ -158,9 +158,17 @@ class BaseConfig:
     ENABLE_UNREGISTERED_ACCESS = ENABLE_GUEST_ACCESS
 
     #: If True, allow new users to register.
-    ENABLE_REGISTERED_ACCESS = (
-        _env("ENABLE_REGISTERED_ACCESS", "true").lower() in ("true", "1", "yes")
-    )
+    _reg_val = _env("ENABLE_REGISTERED_ACCESS", None)
+    _reg_user_val = _env("ENABLE_REGISTER_USER", None) or _env("ENABLE_REGISTERED_USER", None)
+    if _reg_val is not None and _reg_user_val is not None:
+        ENABLE_REGISTERED_ACCESS = (_reg_val.lower() in ("true", "1", "yes")) and (_reg_user_val.lower() in ("true", "1", "yes"))
+    elif _reg_val is not None:
+        ENABLE_REGISTERED_ACCESS = _reg_val.lower() in ("true", "1", "yes")
+    elif _reg_user_val is not None:
+        ENABLE_REGISTERED_ACCESS = _reg_user_val.lower() in ("true", "1", "yes")
+    else:
+        ENABLE_REGISTERED_ACCESS = True
+    ENABLE_REGISTER_USER = ENABLE_REGISTERED_ACCESS
 
 
     #: Guest daily rate limits (creations and OCR runs)

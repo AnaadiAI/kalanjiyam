@@ -293,3 +293,18 @@ def test_register__rate_limiting(client):
         },
     )
     assert "Too many registration attempts" in r.text
+
+
+def test_register__disabled_aborts_404(flask_app, client):
+    """When registration is disabled, /register returns 404 and create account link is hidden."""
+    flask_app.config["ENABLE_REGISTERED_ACCESS"] = False
+    try:
+        resp = client.get("/register")
+        assert resp.status_code == 404
+
+        resp_signin = client.get("/sign-in")
+        assert resp_signin.status_code == 200
+        assert b'href="/register"' not in resp_signin.data
+    finally:
+        flask_app.config["ENABLE_REGISTERED_ACCESS"] = True
+

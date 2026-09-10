@@ -131,3 +131,88 @@ def test_process_page_image_for_storage_never_upscales():
     assert processed.size == (800, 1200)
 
 
+def test_create_batch_image_projects_inner(flask_app):
+    with flask_app.app_context():
+        storage = get_storage()
+        projects_data = []
+
+        for name in ["batch-proj-1", "batch-proj-2"]:
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                im = Image.new("RGB", (100, 100), color="green")
+                im.save(tmp.name, "JPEG")
+                raw_key = project_raw_image_key(name, "1.jpg")
+                storage.save(raw_key, tmp.name)
+                projects_data.append({
+                    "display_title": name.replace("-", " ").title(),
+                    "image_keys": [raw_key],
+                })
+
+        res = projects.create_batch_image_projects_inner(
+            projects_data=projects_data,
+            app_environment=flask_app.config["KALANJIYAM_ENVIRONMENT"],
+            creator_id=1,
+            task_status=kalanjiyam.tasks.utils.LocalTaskStatus(),
+        )
+
+        assert res["total"] == 2
+        assert res["current"] == 2
+        assert res["doc_type"] == "batch_images"
+        assert len(res["created_slugs"]) == 2
+
+        p1 = q.project("batch-proj-1")
+        p2 = q.project("batch-proj-2")
+        assert p1 is not None
+        assert p2 is not None
+        assert len(p1.pages) == 1
+        assert len(p2.pages) == 1
+        assert storage.exists(page_image_key("batch-proj-1", "1"))
+        assert storage.exists(page_image_key("batch-proj-2", "1"))
+
+
+def test_create_batch_pdf_projects_inner(flask_app):
+    with flask_app.app_context():
+        storage = get_storage()
+        projects_data = []
+
+        for name, page_count in [("batch-pdf-1", 2), ("batch-pdf-2", 3)]:
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                _create_sample_pdf(tmp.name, num_pages=page_count)
+                source_key = pdf_key(name)
+                storage.save(source_key, tmp.name)
+                projects_data.append({
+                    "display_title": name.replace("-", " ").title(),
+                    "pdf_key": source_key,
+                })
+
+        res = projects.create_batch_pdf_projects_inner(
+            projects_data=projects_data,
+            app_environment=flask_app.config["KALANJIYAM_ENVIRONMENT"],
+            creator_id=1,
+            task_status=kalanjiyam.tasks.utils.LocalTaskStatus(),
+        )
+
+        assert res["total"] == 2
+        assert res["current"] == 2
+        assert res["doc_type"] == "batch_pdfs"
+        assert len(res["created_slugs"]) == 2
+
+        p1 = q.project("batch-pdf-1")
+        p2 = q.project("batch-pdf-2")
+        assert p1 is not None
+        assert p2 is not None
+        assert len(p1.pages) == 2
+        assert len(p2.pages) == 3
+
+        # Page images exist
+        assert storage.exists(page_image_key("batch-pdf-1", "1"))
+        assert storage.exists(page_image_key("batch-pdf-1", "2"))
+        assert storage.exists(page_image_key("batch-pdf-2", "1"))
+        assert storage.exists(page_image_key("batch-pdf-2", "3"))
+
+        # Staged PDFs should have been cleaned up after page extraction
+        for item in projects_data:
+            assert not storage.exists(item["pdf_key"])
+
+
+
+

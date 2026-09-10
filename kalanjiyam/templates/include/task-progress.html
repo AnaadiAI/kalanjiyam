@@ -31,7 +31,13 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
         </svg>
       </div>
-      {% if doc_type == 'images' %}
+      {% if doc_type == 'batch_pdfs' %}
+        <h3 class="text-4xl font-black text-slate-900 mb-4">{{ _('Processing PDFs...') }}</h3>
+        <p class="text-slate-500 font-medium text-lg">{{ _('We are converting PDF pages to images and creating projects.') }}</p>
+      {% elif doc_type == 'batch_images' %}
+        <h3 class="text-4xl font-black text-slate-900 mb-4">{{ _('Creating Projects...') }}</h3>
+        <p class="text-slate-500 font-medium text-lg">{{ _('We are creating a separate project for each uploaded image.') }}</p>
+      {% elif doc_type == 'images' %}
         <h3 class="text-4xl font-black text-slate-900 mb-4">{{ _('Processing Images...') }}</h3>
         <p class="text-slate-500 font-medium text-lg">{{ _('We are optimizing and preparing your images for proofing.') }}</p>
       {% elif doc_type == 'docx' %}
@@ -44,7 +50,11 @@
     </div>
     {{ progress_bar(percent) }}
     <div class="text-4xl font-black text-royalblue mb-4">{{ percent|round|int }}%</div>
-    <p class="text-slate-400 font-bold text-sm tracking-widest uppercase">{{ _('Processed') }} <span class="text-slate-900">{{ current }}</span> {{ _('of') }} <span class="text-slate-900">{{ total }}</span> {{ _('pages') }}</p>
+    {% if doc_type == 'batch_images' or doc_type == 'batch_pdfs' %}
+      <p class="text-slate-400 font-bold text-sm tracking-widest uppercase">{{ _('Created') }} <span class="text-slate-900">{{ current }}</span> {{ _('of') }} <span class="text-slate-900">{{ total }}</span> {{ _('projects') }}</p>
+    {% else %}
+      <p class="text-slate-400 font-bold text-sm tracking-widest uppercase">{{ _('Processed') }} <span class="text-slate-900">{{ current }}</span> {{ _('of') }} <span class="text-slate-900">{{ total }}</span> {{ _('pages') }}</p>
+    {% endif %}
 
   {% elif status == 'SUCCESS' %}
     <div class="mb-8">
@@ -53,7 +63,12 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
         </svg>
       </div>
-      <h3 class="text-4xl font-black text-slate-900 mb-4">{{ _('Upload Complete!') }}</h3>
+      {% if doc_type == 'batch_images' or doc_type == 'batch_pdfs' %}
+        <h3 class="text-4xl font-black text-slate-900 mb-4">{{ _('Projects Created!') }}</h3>
+        <p class="text-slate-500 font-medium text-lg">{{ _('All %(total)s projects have been created and are ready for proofreading.', total=total) }}</p>
+      {% else %}
+        <h3 class="text-4xl font-black text-slate-900 mb-4">{{ _('Upload Complete!') }}</h3>
+      {% endif %}
     </div>
     {{ progress_bar(100) }}
     {% if slug %}
@@ -63,7 +78,11 @@
         </a>
       </div>
     {% else %}
-      <p class="text-slate-500 font-medium">{{ _('Your project will be available on the') }} <a href="{{ url_for('proofing.index') }}" class="text-royalblue font-black hover:underline">{{ _('main dashboard') }}</a> {{ _('shortly.') }}</p>
+      <div class="mt-12">
+        <a href="{{ url_for('proofing.index') }}" class="btn-premium px-12 py-5 text-xl rounded-2xl shadow-xl">
+          {{ _('View Projects on Dashboard') }}
+        </a>
+      </div>
     {% endif %}
 
   {% else %}
@@ -72,7 +91,11 @@
           <div class="pulse-indicator"></div>
       </div>
       <h3 class="text-4xl font-black text-slate-900 mb-4">{{ _('Queueing Task...') }}</h3>
-      {% if doc_type == 'images' %}
+      {% if doc_type == 'batch_pdfs' %}
+        <p class="text-slate-500 font-medium text-lg">{{ _('Waiting for the server to start processing your PDFs.') }}</p>
+      {% elif doc_type == 'batch_images' %}
+        <p class="text-slate-500 font-medium text-lg">{{ _('Waiting for the server to start creating your projects.') }}</p>
+      {% elif doc_type == 'images' %}
         <p class="text-slate-500 font-medium text-lg">{{ _('Waiting for the server to start processing your images.') }}</p>
       {% elif doc_type == 'docx' %}
         <p class="text-slate-500 font-medium text-lg">{{ _('Waiting for the server to start importing your document.') }}</p>
@@ -81,7 +104,11 @@
       {% endif %}
     </div>
     {{ progress_bar(0) }}
-    {% if doc_type == 'images' %}
+    {% if doc_type == 'batch_pdfs' %}
+      <p class="text-royalblue font-black uppercase tracking-widest text-xs animate-pulse mt-4">{{ _('Starting batch PDF processing...') }}</p>
+    {% elif doc_type == 'batch_images' %}
+      <p class="text-royalblue font-black uppercase tracking-widest text-xs animate-pulse mt-4">{{ _('Starting project creation...') }}</p>
+    {% elif doc_type == 'images' %}
       <p class="text-royalblue font-black uppercase tracking-widest text-xs animate-pulse mt-4">{{ _('Starting image processing...') }}</p>
     {% elif doc_type == 'docx' %}
       <p class="text-royalblue font-black uppercase tracking-widest text-xs animate-pulse mt-4">{{ _('Starting document import...') }}</p>

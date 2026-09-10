@@ -954,6 +954,136 @@ def create_project(
     )
 
 
+def create_batch_image_projects_inner(
+    *,
+    projects_data: list[dict],
+    app_environment: str,
+    creator_id: int | None,
+    fingerprint_id: str | None = None,
+    task_status: TaskStatus,
+    org_slug: str = "open-tenant",
+):
+    """Create multiple separate 1-page projects from a batch of images."""
+    total = len(projects_data)
+    logging.info(f"Received batch image projects task for {total} projects.")
+    task_status.progress(0, total, doc_type="batch_images")
+
+    created_slugs = []
+    for idx, item in enumerate(projects_data, start=1):
+        display_title = item["display_title"]
+        image_keys = item["image_keys"]
+        from kalanjiyam.tasks.utils import LocalTaskStatus
+
+        local_status = LocalTaskStatus()
+        res = create_project_inner(
+            display_title=display_title,
+            image_keys=image_keys,
+            app_environment=app_environment,
+            creator_id=creator_id,
+            fingerprint_id=fingerprint_id,
+            task_status=local_status,
+            org_slug=org_slug,
+        )
+        created_slugs.append(res["slug"])
+        task_status.progress(idx, total, doc_type="batch_images")
+
+    task_status.success(total, slug=None, doc_type="batch_images")
+    return {
+        "current": total,
+        "total": total,
+        "slug": None,
+        "doc_type": "batch_images",
+        "created_slugs": created_slugs,
+    }
+
+
+@app.task(bind=True)
+def create_batch_image_projects(
+    self,
+    *,
+    projects_data: list[dict],
+    app_environment: str,
+    creator_id: int | None,
+    fingerprint_id: str | None = None,
+    org_slug: str = "open-tenant",
+):
+    """Celery task to create multiple separate 1-page projects from a batch of images."""
+    task_status = CeleryTaskStatus(self)
+    return create_batch_image_projects_inner(
+        projects_data=projects_data,
+        app_environment=app_environment,
+        creator_id=creator_id,
+        fingerprint_id=fingerprint_id,
+        task_status=task_status,
+        org_slug=org_slug,
+    )
+
+
+def create_batch_pdf_projects_inner(
+    *,
+    projects_data: list[dict],
+    app_environment: str,
+    creator_id: int | None,
+    fingerprint_id: str | None = None,
+    task_status: TaskStatus,
+    org_slug: str = "open-tenant",
+):
+    """Create multiple separate projects from a batch of PDFs (PDF pages to JPGs)."""
+    total = len(projects_data)
+    logging.info(f"Received batch PDF projects task for {total} PDFs.")
+    task_status.progress(0, total, doc_type="batch_pdfs")
+
+    created_slugs = []
+    for idx, item in enumerate(projects_data, start=1):
+        display_title = item["display_title"]
+        pdf_key = item["pdf_key"]
+        from kalanjiyam.tasks.utils import LocalTaskStatus
+
+        local_status = LocalTaskStatus()
+        res = create_project_inner(
+            display_title=display_title,
+            pdf_key=pdf_key,
+            app_environment=app_environment,
+            creator_id=creator_id,
+            fingerprint_id=fingerprint_id,
+            task_status=local_status,
+            org_slug=org_slug,
+        )
+        created_slugs.append(res["slug"])
+        task_status.progress(idx, total, doc_type="batch_pdfs")
+
+    task_status.success(total, slug=None, doc_type="batch_pdfs")
+    return {
+        "current": total,
+        "total": total,
+        "slug": None,
+        "doc_type": "batch_pdfs",
+        "created_slugs": created_slugs,
+    }
+
+
+@app.task(bind=True)
+def create_batch_pdf_projects(
+    self,
+    *,
+    projects_data: list[dict],
+    app_environment: str,
+    creator_id: int | None,
+    fingerprint_id: str | None = None,
+    org_slug: str = "open-tenant",
+):
+    """Celery task to batch process PDFs into separate projects."""
+    task_status = CeleryTaskStatus(self)
+    return create_batch_pdf_projects_inner(
+        projects_data=projects_data,
+        app_environment=app_environment,
+        creator_id=creator_id,
+        fingerprint_id=fingerprint_id,
+        task_status=task_status,
+        org_slug=org_slug,
+    )
+
+
 @app.task(bind=True)
 def cleanup_uploaded_files_task(
     self, days: int = 7, force: bool = False, app_environment: str = "testing"

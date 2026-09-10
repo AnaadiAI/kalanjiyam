@@ -15,7 +15,7 @@ from flask_login import current_user
 from flask_wtf import FlaskForm
 from slugify import slugify
 from sqlalchemy import orm
-from wtforms import FileField, MultipleFileField, RadioField, StringField
+from wtforms import BooleanField, FileField, MultipleFileField, RadioField, StringField
 from wtforms.validators import DataRequired, ValidationError
 from wtforms.widgets import TextArea
 
@@ -23,7 +23,7 @@ from kalanjiyam import consts
 from kalanjiyam import database as db
 from kalanjiyam import queries as q
 from kalanjiyam.enums import SitePageStatus
-from kalanjiyam.tasks import projects as project_tasks
+from kalanjiyam.tasks import PRIORITY_BATCH, PRIORITY_LOW, projects as project_tasks
 from kalanjiyam.utils.quotas import ensure_storage_quota_for_user
 from kalanjiyam.views.proofing.decorators import moderator_required, p2_required
 
@@ -41,6 +41,27 @@ def _is_allowed_document_file(filename: str) -> bool:
 def _natural_sort_key(s: str):
     """Sort strings with embedded numbers naturally (e.g., page_2 before page_10)."""
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r"(\d+)", s)]
+
+
+def _filename_to_project_title(filename: str, fallback_index: int = 1) -> str:
+    """Convert an image filename into a clean project title."""
+    base = re.sub(r"\.[^/.]+$", "", filename.strip())
+    clean = re.sub(r"[_\-]+", " ", base).strip()
+    if clean:
+        return clean[0].upper() + clean[1:]
+    if base:
+        return base
+    return f"Project {fallback_index}"
+
+
+def is_group_images_enabled(request_form) -> bool:
+    """Determine whether multiple images should be grouped into one project."""
+    if "group_images" in request_form:
+        val = str(request_form.get("group_images", "")).lower()
+        return val in ("1", "true", "on", "yes", "y")
+    if "group_images_submitted" in request_form:
+        return False
+    return True
 
 
 def _required_if_archive(message: str):
@@ -63,6 +84,31 @@ def _required_if_local(message: str):
                 if not any(bool(getattr(f, "filename", None)) for f in data):
                     raise ValidationError(message)
             elif hasattr(data, "filename") and not data.filename:
+                raise ValidationError(message)
+
+    return fn
+
+
+def _required_if_local_title(message: str):
+    def fn(form, field):
+        source = form.pdf_source.data
+        if source == "local":
+            raw_files = request.files.getlist("local_file")
+            uploaded = [f for f in raw_files if f and getattr(f, "filename", None)]
+            is_multi_image = (
+                len(uploaded) > 1
+                and all(Path(f.filename).suffix.lower() in IMAGE_EXTENSIONS for f in uploaded)
+            )
+            is_multi_pdf = (
+                len(uploaded) > 1
+                and all(Path(f.filename).suffix.lower() == ".pdf" for f in uploaded)
+            )
+            # If multiple images and group_images is unchecked, or multiple PDFs, title is not required
+            group_images = is_group_images_enabled(request.form)
+            if (is_multi_image and not group_images) or is_multi_pdf:
+                return
+            data = field.data
+            if not data or not data.strip():
                 raise ValidationError(message)
 
     return fn
@@ -92,10 +138,14 @@ class CreateProjectForm(FlaskForm):
     local_title = StringField(
         _l("Title of the book (you can change this later)"),
         validators=[
-            _required_if_local(
+            _required_if_local_title(
                 _l("Please provide a title for your document or images."),
             )
         ],
+    )
+    group_images = BooleanField(
+        _l("Group into one project"),
+        default=True,
     )
 
     license = RadioField(
@@ -546,16 +596,6 @@ def create_project():
             ) and not user_organizations:
                 flash(_l("Your account is not assigned to an organization."), "error")
                 return render_template("proofing/create-project.html", form=form, guest_upload_limit=guest_upload_limit, engines=engines, languages=languages, user_organizations=user_organizations)
-        title = form.local_title.data
-
-        slug = slugify(title)
-
-        # Check DB before writing files to storage to prevent overwriting existing project files
-        existing_proj = session.query(db.Project).filter_by(slug=slug).first()
-        if existing_proj:
-            flash(_l('Project "%(title)s" already exists. Please choose a different title.', title=title), "error")
-            return render_template("proofing/create-project.html", form=form, guest_upload_limit=guest_upload_limit, engines=engines, languages=languages, user_organizations=user_organizations)
-
         selected_org_slug = request.form.get("selected_org_slug")
         org_slug = "open-tenant"
         if current_user.is_authenticated:
@@ -589,14 +629,80 @@ def create_project():
 
         is_multiple = len(uploaded_files) > 1
         all_are_images = all(Path(f.filename).suffix.lower() in IMAGE_EXTENSIONS for f in uploaded_files)
+        all_are_pdfs = all(Path(f.filename).suffix.lower() == ".pdf" for f in uploaded_files)
 
-        if is_multiple and not all_are_images:
-            flash(_l("When uploading multiple files, all files must be images (.jpg, .jpeg, .png, .webp)."), "error")
+        if is_multiple and not all_are_images and not all_are_pdfs:
+            flash(_l("When uploading multiple files, all files must be either all images (.jpg, .jpeg, .png, .webp) or all PDFs (.pdf)."), "error")
             return render_template("proofing/create-project.html", form=form, guest_upload_limit=guest_upload_limit, engines=engines, languages=languages, user_organizations=user_organizations)
 
         is_image_upload = all_are_images
+        is_batch_pdf_upload = is_multiple and all_are_pdfs
         first_filename = uploaded_files[0].filename
-        is_uploaded_docx = (not is_image_upload) and Path(first_filename).suffix.lower() in (".docx", ".doc")
+        is_uploaded_docx = (not is_image_upload) and (not is_batch_pdf_upload) and Path(first_filename).suffix.lower() in (".docx", ".doc")
+
+        group_images = is_group_images_enabled(request.form) if (is_multiple and is_image_upload) else True
+        is_batch_mode = (is_image_upload and not group_images) or is_batch_pdf_upload
+
+        title = None
+        slug = None
+        batch_projects_preview = []
+
+        if not is_batch_mode:
+            title = form.local_title.data
+            slug = slugify(title)
+            # Check DB before writing files to storage to prevent overwriting existing project files
+            existing_proj = session.query(db.Project).filter_by(slug=slug).first()
+            if existing_proj:
+                flash(_l('Project "%(title)s" already exists. Please choose a different title.', title=title), "error")
+                return render_template("proofing/create-project.html", form=form, guest_upload_limit=guest_upload_limit, engines=engines, languages=languages, user_organizations=user_organizations)
+        else:
+            conflicts = []
+            seen_slugs = set()
+            for idx, f in enumerate(uploaded_files, start=1):
+                p_title = _filename_to_project_title(f.filename, fallback_index=idx)
+                p_slug = slugify(p_title) or f"project-{idx}"
+                if p_slug in seen_slugs:
+                    conflicts.append(f'"{p_title}" (duplicate in upload)')
+                else:
+                    seen_slugs.add(p_slug)
+                    if session.query(db.Project).filter_by(slug=p_slug).first():
+                        conflicts.append(f'"{p_title}" (already exists in database)')
+                batch_projects_preview.append((p_title, p_slug, f))
+
+            if conflicts:
+                flash(
+                    _l(
+                        "Cannot create projects due to naming conflicts: %(conflicts)s. Please rename the files.",
+                        conflicts=", ".join(conflicts),
+                    ),
+                    "error",
+                )
+                return render_template("proofing/create-project.html", form=form, guest_upload_limit=guest_upload_limit, engines=engines, languages=languages, user_organizations=user_organizations)
+
+            if not current_user.is_authenticated:
+                from datetime import datetime, timedelta
+                cutoff = datetime.utcnow() - timedelta(seconds=86400)
+                existing_count = (
+                    session.query(db.UsageLog)
+                    .filter(
+                        db.UsageLog.action == "create_project",
+                        db.UsageLog.created_at >= cutoff,
+                        (db.UsageLog.ip_address == request.remote_addr)
+                        | (db.UsageLog.fingerprint_id == request.cookies.get("device_fingerprint")),
+                    )
+                    .count()
+                )
+                limit = settings.unregistered_user_project_limit
+                if existing_count + len(uploaded_files) > limit:
+                    flash(
+                        _l(
+                            "Creating %(count)s projects would exceed your limit (%(remaining)s remaining today).",
+                            count=len(uploaded_files),
+                            remaining=max(0, limit - existing_count),
+                        ),
+                        "error",
+                    )
+                    return render_template("proofing/create-project.html", form=form, guest_upload_limit=guest_upload_limit, engines=engines, languages=languages, user_organizations=user_organizations)
 
         upload_size = 0
         for f in uploaded_files:
@@ -620,28 +726,53 @@ def create_project():
                 return render_template("proofing/create-project.html", form=form, guest_upload_limit=guest_upload_limit, engines=engines, languages=languages, user_organizations=user_organizations)
 
         # Save the original file so that it can be processed/downloaded later.
-        # The Celery worker fetches it from storage by key, so web and worker
-        # don't need a shared filesystem.
         from kalanjiyam.utils.storage import get_storage, pdf_key, project_docx_key, project_raw_image_key
 
         source_pdf_key = None
         source_docx_key = None
         image_keys = None
+        batch_projects_data = None
+        batch_pdf_projects_data = None
 
         if is_uploaded_docx:
             source_docx_key = project_docx_key(slug, org_slug=org_slug)
             uploaded_files[0].stream.seek(0)
             get_storage().save(source_docx_key, uploaded_files[0].stream)
         elif is_image_upload:
-            sorted_images = sorted(uploaded_files, key=lambda f: _natural_sort_key(f.filename))
-            image_keys = []
-            for idx, img_file in enumerate(sorted_images, start=1):
-                ext = Path(img_file.filename).suffix.lower() or ".jpg"
-                staged_name = f"{idx}{ext}"
-                img_key = project_raw_image_key(slug, staged_name, org_slug=org_slug)
-                img_file.stream.seek(0)
-                get_storage().save(img_key, img_file.stream)
-                image_keys.append(img_key)
+            if group_images:
+                sorted_images = sorted(uploaded_files, key=lambda f: _natural_sort_key(f.filename))
+                image_keys = []
+                for idx, img_file in enumerate(sorted_images, start=1):
+                    ext = Path(img_file.filename).suffix.lower() or ".jpg"
+                    staged_name = f"{idx}{ext}"
+                    img_key = project_raw_image_key(slug, staged_name, org_slug=org_slug)
+                    img_file.stream.seek(0)
+                    get_storage().save(img_key, img_file.stream)
+                    image_keys.append(img_key)
+            else:
+                batch_projects_data = []
+                for p_title, p_slug, img_file in batch_projects_preview:
+                    ext = Path(img_file.filename).suffix.lower() or ".jpg"
+                    staged_name = f"1{ext}"
+                    img_key = project_raw_image_key(p_slug, staged_name, org_slug=org_slug)
+                    img_file.stream.seek(0)
+                    get_storage().save(img_key, img_file.stream)
+                    batch_projects_data.append({
+                        "display_title": p_title,
+                        "slug": p_slug,
+                        "image_keys": [img_key],
+                    })
+        elif is_batch_pdf_upload:
+            batch_pdf_projects_data = []
+            for p_title, p_slug, pdf_file in batch_projects_preview:
+                source_key = pdf_key(p_slug, org_slug=org_slug)
+                pdf_file.stream.seek(0)
+                get_storage().save(source_key, pdf_file.stream)
+                batch_pdf_projects_data.append({
+                    "display_title": p_title,
+                    "slug": p_slug,
+                    "pdf_key": source_key,
+                })
         else:
             source_pdf_key = pdf_key(slug, org_slug=org_slug)
             uploaded_files[0].stream.seek(0)
@@ -650,56 +781,155 @@ def create_project():
         # Log usage action for guests
         if not current_user.is_authenticated:
             from kalanjiyam.utils.rate_limit import log_usage_action
-            log_usage_action(
-                action="create_project",
-                ip_address=request.remote_addr,
-                fingerprint_id=request.cookies.get("device_fingerprint"),
-                project_slug=slug
-            )
+            if is_image_upload and not group_images:
+                for item in batch_projects_data:
+                    log_usage_action(
+                        action="create_project",
+                        ip_address=request.remote_addr,
+                        fingerprint_id=request.cookies.get("device_fingerprint"),
+                        project_slug=item["slug"],
+                    )
+            elif is_batch_pdf_upload:
+                for item in batch_pdf_projects_data:
+                    log_usage_action(
+                        action="create_project",
+                        ip_address=request.remote_addr,
+                        fingerprint_id=request.cookies.get("device_fingerprint"),
+                        project_slug=item["slug"],
+                    )
+            else:
+                log_usage_action(
+                    action="create_project",
+                    ip_address=request.remote_addr,
+                    fingerprint_id=request.cookies.get("device_fingerprint"),
+                    project_slug=slug,
+                )
 
-        if not current_user.is_authenticated:
-            # Guest split task is routed to low-priority queue
-            task = project_tasks.create_project.apply_async(
-                kwargs={
-                    "display_title": title,
-                    "pdf_key": source_pdf_key,
-                    "docx_key": source_docx_key,
-                    "image_keys": image_keys,
-                    "app_environment": current_app.config["KALANJIYAM_ENVIRONMENT"],
-                    "creator_id": None,
-                    "fingerprint_id": request.cookies.get("device_fingerprint"),
-                    "org_slug": org_slug,
-                },
-                queue="low_priority"
-            )
+        if is_batch_pdf_upload:
+            if not current_user.is_authenticated:
+                task = project_tasks.create_batch_pdf_projects.apply_async(
+                    kwargs={
+                        "projects_data": batch_pdf_projects_data,
+                        "app_environment": current_app.config["KALANJIYAM_ENVIRONMENT"],
+                        "creator_id": None,
+                        "fingerprint_id": request.cookies.get("device_fingerprint"),
+                        "org_slug": org_slug,
+                    },
+                    queue="low_priority",
+                    priority=PRIORITY_LOW,
+                )
+            else:
+                task = project_tasks.create_batch_pdf_projects.apply_async(
+                    kwargs={
+                        "projects_data": batch_pdf_projects_data,
+                        "app_environment": current_app.config["KALANJIYAM_ENVIRONMENT"],
+                        "creator_id": current_user.id,
+                        "org_slug": org_slug,
+                    },
+                    priority=PRIORITY_BATCH,
+                )
+        elif is_image_upload and not group_images:
+            if not current_user.is_authenticated:
+                task = project_tasks.create_batch_image_projects.apply_async(
+                    kwargs={
+                        "projects_data": batch_projects_data,
+                        "app_environment": current_app.config["KALANJIYAM_ENVIRONMENT"],
+                        "creator_id": None,
+                        "fingerprint_id": request.cookies.get("device_fingerprint"),
+                        "org_slug": org_slug,
+                    },
+                    queue="low_priority",
+                    priority=PRIORITY_LOW,
+                )
+            else:
+                task = project_tasks.create_batch_image_projects.apply_async(
+                    kwargs={
+                        "projects_data": batch_projects_data,
+                        "app_environment": current_app.config["KALANJIYAM_ENVIRONMENT"],
+                        "creator_id": current_user.id,
+                        "org_slug": org_slug,
+                    },
+                    priority=PRIORITY_BATCH,
+                )
         else:
-            task = project_tasks.create_project.delay(
-                display_title=title,
-                pdf_key=source_pdf_key,
-                docx_key=source_docx_key,
-                image_keys=image_keys,
-                app_environment=current_app.config["KALANJIYAM_ENVIRONMENT"],
-                creator_id=current_user.id,
-                org_slug=org_slug,
-            )
+            if not current_user.is_authenticated:
+                # Guest split task is routed to low-priority queue
+                task = project_tasks.create_project.apply_async(
+                    kwargs={
+                        "display_title": title,
+                        "pdf_key": source_pdf_key,
+                        "docx_key": source_docx_key,
+                        "image_keys": image_keys,
+                        "app_environment": current_app.config["KALANJIYAM_ENVIRONMENT"],
+                        "creator_id": None,
+                        "fingerprint_id": request.cookies.get("device_fingerprint"),
+                        "org_slug": org_slug,
+                    },
+                    queue="low_priority",
+                    priority=PRIORITY_LOW,
+                )
+            else:
+                task = project_tasks.create_project.delay(
+                    display_title=title,
+                    pdf_key=source_pdf_key,
+                    docx_key=source_docx_key,
+                    image_keys=image_keys,
+                    app_environment=current_app.config["KALANJIYAM_ENVIRONMENT"],
+                    creator_id=current_user.id,
+                    org_slug=org_slug,
+                )
 
         from kalanjiyam.utils.user_tasks import add_user_task, get_user_identifier
         user_id = get_user_identifier(current_user, request)
         if user_id:
-            add_user_task(
-                user_identifier=user_id,
-                task_id=task.id,
-                task_type="create_project",
-                project_slug=slug,
-                project_title=title,
-            )
+            if is_batch_pdf_upload:
+                add_user_task(
+                    user_identifier=user_id,
+                    task_id=task.id,
+                    task_type="create_project",
+                    project_slug="",
+                    project_title=f"{len(batch_pdf_projects_data)} PDF Projects",
+                    extra_info={"total_projects": len(batch_pdf_projects_data)},
+                )
+            elif is_image_upload and not group_images:
+                add_user_task(
+                    user_identifier=user_id,
+                    task_id=task.id,
+                    task_type="create_project",
+                    project_slug="",
+                    project_title=f"{len(batch_projects_data)} Projects",
+                    extra_info={"total_projects": len(batch_projects_data)},
+                )
+            else:
+                add_user_task(
+                    user_identifier=user_id,
+                    task_id=task.id,
+                    task_type="create_project",
+                    project_slug=slug,
+                    project_title=title,
+                )
 
-        doc_type = "images" if is_image_upload else ("docx" if is_uploaded_docx else "pdf")
+        if is_batch_pdf_upload:
+            doc_type = "batch_pdfs"
+            total_count = len(batch_pdf_projects_data)
+        elif is_image_upload and not group_images:
+            doc_type = "batch_images"
+            total_count = len(batch_projects_data)
+        elif is_image_upload:
+            doc_type = "images"
+            total_count = 0
+        elif is_uploaded_docx:
+            doc_type = "docx"
+            total_count = 0
+        else:
+            doc_type = "pdf"
+            total_count = 0
+
         return render_template(
             "proofing/create-project-post.html",
             status=task.status,
             current=0,
-            total=0,
+            total=total_count,
             percent=0,
             task_id=task.id,
             doc_type=doc_type,

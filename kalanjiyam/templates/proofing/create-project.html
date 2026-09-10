@@ -57,9 +57,12 @@
        status: '',
        isDocx: false,
        isImage: false,
+       isPdf: false,
        fileName: '',
        fileCount: 0,
+       groupImages: true,
        imageFileNames: [],
+       pdfFileNames: [],
        totalFileSizeStr: '',
        docxWorkflow: 'direct',
        sourceLang: 'sa',
@@ -94,6 +97,11 @@
        get showGlossaryWarning() {
          return this.selectedGlossaries.includes('all') || this.selectedGlossaries.length > 3;
        },
+       getProjectTitle(name) {
+         if (!name) return '';
+         const base = name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
+         return base ? base.charAt(0).toUpperCase() + base.slice(1) : name;
+       },
        getGlossaryDisplayName(name) {
          const lookup = {
            'agri': 'Agriculture',
@@ -115,9 +123,11 @@
          const files = Array.from(e.target.files || []);
          this.fileCount = files.length;
          this.imageFileNames = [];
+         this.pdfFileNames = [];
          if (files.length === 0) {
            this.isDocx = false;
            this.isImage = false;
+           this.isPdf = false;
            this.fileName = '';
            this.totalFileSizeStr = '';
            return;
@@ -132,11 +142,13 @@
            : (totalBytes / (1024 * 1024)).toFixed(1) + ' MB';
 
          if (files.length === 1) {
+           this.groupImages = true;
            const name = files[0].name;
            this.fileName = `${name} (${this.totalFileSizeStr})`;
            const nameLower = name.toLowerCase();
            this.isDocx = nameLower.endsWith('.docx') || nameLower.endsWith('.doc');
            this.isImage = /\.(jpe?g|png|webp)$/i.test(nameLower);
+           this.isPdf = nameLower.endsWith('.pdf');
 
            // Auto-suggest title if empty
            const titleInput = document.getElementById('local_title');
@@ -147,25 +159,36 @@
          } else {
            this.isDocx = false;
            const allImages = files.every(f => /\.(jpe?g|png|webp)$/i.test(f.name.toLowerCase()));
-           if (!allImages) {
-             alert('{{ _("When uploading multiple files, all files must be images (.jpg, .jpeg, .png, .webp).") }}');
+           const allPdfs = files.every(f => f.name.toLowerCase().endsWith('.pdf'));
+           if (!allImages && !allPdfs) {
+             alert('{{ _("When uploading multiple files, all files must be either all images (.jpg, .jpeg, .png, .webp) or all PDFs (.pdf).") }}');
              e.target.value = '';
              this.fileCount = 0;
              this.fileName = '';
              this.isImage = false;
+             this.isPdf = false;
              return;
            }
-           this.isImage = true;
-           this.fileName = `${files.length} {{ _("image scans selected") }} (${this.totalFileSizeStr})`;
-           this.imageFileNames = files.map(f => f.name).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+           if (allImages) {
+             this.isImage = true;
+             this.isPdf = false;
+             this.groupImages = true;
+             this.fileName = `${files.length} {{ _("image scans selected") }} (${this.totalFileSizeStr})`;
+             this.imageFileNames = files.map(f => f.name).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
-           // Auto-suggest title from common prefix or first filename
-           const titleInput = document.getElementById('local_title');
-           if (titleInput && !titleInput.value.trim() && this.imageFileNames.length > 0) {
-             let baseTitle = this.imageFileNames[0].replace(/\.[^/.]+$/, '').replace(/[_\-\d]+$/, '').replace(/[_-]+/g, ' ').trim();
-             if (baseTitle.length > 2) {
-               titleInput.value = baseTitle.charAt(0).toUpperCase() + baseTitle.slice(1);
+             // Auto-suggest title from common prefix or first filename
+             const titleInput = document.getElementById('local_title');
+             if (titleInput && !titleInput.value.trim() && this.imageFileNames.length > 0) {
+               let baseTitle = this.imageFileNames[0].replace(/\.[^/.]+$/, '').replace(/[_\-\d]+$/, '').replace(/[_-]+/g, ' ').trim();
+               if (baseTitle.length > 2) {
+                 titleInput.value = baseTitle.charAt(0).toUpperCase() + baseTitle.slice(1);
+               }
              }
+           } else if (allPdfs) {
+             this.isImage = false;
+             this.isPdf = true;
+             this.fileName = `${files.length} {{ _("PDF documents selected") }} (${this.totalFileSizeStr})`;
+             this.pdfFileNames = files.map(f => f.name).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
            }
          }
        },
@@ -198,8 +221,8 @@
          const formData = new FormData(form);
          this.uploading = true;
          const docLabel = this.isImage
-           ? (this.fileCount > 1 ? `${this.fileCount} images` : 'image')
-           : (this.fileName || (isDirect ? '{{ _("document") }}' : '{{ _("PDF") }}'));
+           ? (this.fileCount > 1 ? (this.groupImages ? `${this.fileCount} images` : `${this.fileCount} projects`) : 'image')
+           : (this.isPdf && this.fileCount > 1 ? `${this.fileCount} PDF projects` : (this.fileName || (isDirect ? '{{ _("document") }}' : '{{ _("PDF") }}')));
          this.status = `{{ _('Uploading') }} ${docLabel} ...`;
 
          const xhr = new XMLHttpRequest();
@@ -272,17 +295,61 @@
               <span class="font-bold text-slate-800 ml-1" x-text="fileName"></span>
             </div>
 
-            <!-- Page Sequence for Multi-Images -->
+            <!-- Group Multi-Images Option -->
+            <div class="mt-3.5 p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs" x-show="isImage && fileCount > 1" x-cloak x-transition>
+              <input type="hidden" name="group_images_submitted" value="1">
+              <label class="flex items-start cursor-pointer select-none">
+                <input type="checkbox" name="group_images" id="group_images" value="1" x-model="groupImages" class="w-4 h-4 mt-0.5 text-royalblue rounded border-slate-300 focus:ring-royalblue mr-3 shrink-0 cursor-pointer">
+                <div>
+                  <span class="text-xs sm:text-sm font-bold text-slate-800">{{ _('Group into one project') }}</span>
+                  <p class="text-[11px] text-slate-500 font-medium mt-0.5 leading-relaxed">
+                    <span x-show="groupImages">{{ _('Combine all images as consecutive pages of a single project.') }}</span>
+                    <span x-show="!groupImages">{{ _('Create a separate project for each image, using the file name as the project name.') }}</span>
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <!-- Page Sequence / Project List for Multi-Images -->
             <template x-if="imageFileNames.length > 1">
-              <div class="mt-3 text-xs text-slate-600 bg-white border border-slate-200 rounded-xl p-3 max-h-36 overflow-y-auto space-y-1">
+              <div class="mt-3 text-xs text-slate-600 bg-white border border-slate-200 rounded-xl p-3 max-h-48 overflow-y-auto space-y-1">
                 <div class="font-bold text-slate-700 mb-1 flex items-center justify-between">
-                  <span>{{ _('Page sequence (sorted by filename):') }}</span>
-                  <span class="text-[11px] text-slate-400 font-medium" x-text="`${imageFileNames.length} pages`"></span>
+                  <span x-show="groupImages">{{ _('Page sequence (sorted by filename):') }}</span>
+                  <span x-show="!groupImages">{{ _('Projects to be created (1 per image):') }}</span>
+                  <span class="text-[11px] text-slate-400 font-medium" x-text="groupImages ? `${imageFileNames.length} pages` : `${imageFileNames.length} projects`"></span>
                 </div>
                 <template x-for="(name, idx) in imageFileNames" :key="name">
-                  <div class="flex items-center text-slate-600 font-mono py-0.5 border-b border-slate-50 last:border-0 text-[11px]">
-                    <span class="w-7 text-slate-400 font-semibold" x-text="`${idx + 1}.`"></span>
-                    <span class="truncate" x-text="name"></span>
+                  <div class="flex items-center justify-between text-slate-600 font-mono py-0.5 border-b border-slate-50 last:border-0 text-[11px]">
+                    <div class="flex items-center truncate">
+                      <span class="w-7 text-slate-400 font-semibold" x-text="`${idx + 1}.`"></span>
+                      <span class="truncate" x-text="name"></span>
+                    </div>
+                    <div x-show="!groupImages" class="ml-2 shrink-0 font-sans text-right">
+                      <span class="text-[10px] text-slate-400">{{ _('Project:') }}</span>
+                      <span class="font-bold text-slate-800 text-xs ml-0.5" x-text="getProjectTitle(name)"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Project List for Multi-PDFs -->
+            <template x-if="isPdf && fileCount > 1 && pdfFileNames.length > 1">
+              <div class="mt-3 text-xs text-slate-600 bg-white border border-slate-200 rounded-xl p-3 max-h-48 overflow-y-auto space-y-1">
+                <div class="font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>{{ _('Projects to be created (1 per PDF):') }}</span>
+                  <span class="text-[11px] text-slate-400 font-medium" x-text="`${pdfFileNames.length} projects`"></span>
+                </div>
+                <template x-for="(name, idx) in pdfFileNames" :key="name">
+                  <div class="flex items-center justify-between text-slate-600 font-mono py-0.5 border-b border-slate-50 last:border-0 text-[11px]">
+                    <div class="flex items-center truncate">
+                      <span class="w-7 text-slate-400 font-semibold" x-text="`${idx + 1}.`"></span>
+                      <span class="truncate" x-text="name"></span>
+                    </div>
+                    <div class="ml-2 shrink-0 font-sans text-right">
+                      <span class="text-[10px] text-slate-400">{{ _('Project:') }}</span>
+                      <span class="font-bold text-slate-800 text-xs ml-0.5" x-text="getProjectTitle(name)"></span>
+                    </div>
                   </div>
                 </template>
               </div>
@@ -414,7 +481,7 @@
         </div>
 
         <!-- 2. Describe: Book / Manuscript Title -->
-        <div x-show="!isDocx || docxWorkflow === 'project'" x-transition>
+        <div x-show="(!isDocx || docxWorkflow === 'project') && (!isImage || fileCount <= 1 || groupImages) && !(isPdf && fileCount > 1)" x-transition>
           <label for="local_title" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
             <svg class="w-4 h-4 text-royalblue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
@@ -425,6 +492,22 @@
             {{ form.local_title(id="local_title", class_="w-full px-3.5 py-2.5 sm:py-3 text-sm sm:text-base border border-slate-200 rounded-xl focus:border-royalblue focus:bg-white focus:ring-2 focus:ring-royalblue/20 outline-none transition-all bg-slate-50 font-semibold text-slate-900 placeholder:text-slate-400", placeholder=_("e.g. Raghuvamsha with Mallinatha's commentary")) }}
           </fieldset>
           <p class="text-[11px] text-slate-400 mt-1 font-medium">{{ _('Auto-suggested from file name. You can edit this anytime.') }}</p>
+        </div>
+
+        <!-- Info note when creating separate projects per image -->
+        <div x-show="isImage && fileCount > 1 && !groupImages" x-cloak x-transition class="p-3.5 bg-blue-50/60 border border-blue-100 rounded-2xl flex items-center gap-2.5 text-xs text-royalblue font-medium">
+          <svg class="w-4 h-4 shrink-0 text-royalblue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>{{ _('Each project will automatically be named after its image file name.') }}</span>
+        </div>
+
+        <!-- Info note when creating separate projects per PDF -->
+        <div x-show="isPdf && fileCount > 1" x-cloak x-transition class="p-3.5 bg-blue-50/60 border border-blue-100 rounded-2xl flex items-center gap-2.5 text-xs text-royalblue font-medium">
+          <svg class="w-4 h-4 shrink-0 text-royalblue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>{{ _('Each project will automatically be named after its PDF file name.') }}</span>
         </div>
 
         {% if user_organizations and user_organizations|length > 1 %}
@@ -448,7 +531,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
             </svg>
-            <span x-text="isDocx && docxWorkflow === 'direct' ? '{{ _("Translate Document") }}' : '{{ _("Create Project") }}'"></span>
+            <span x-text="isDocx && docxWorkflow === 'direct' ? '{{ _("Translate Document") }}' : (((isImage && fileCount > 1 && !groupImages) || (isPdf && fileCount > 1)) ? '{{ _("Create") }} ' + fileCount + ' {{ _("Projects") }}' : '{{ _("Create Project") }}')"></span>
           </button>
         </div>
 

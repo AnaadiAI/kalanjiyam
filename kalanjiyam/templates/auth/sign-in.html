@@ -32,13 +32,11 @@
       {{ form.password(class_="google-auth-input", id="password", placeholder=_('Enter your password'), autocomplete="current-password") }}
     </div>
 
-    <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <div class="pt-2 flex flex-col sm:flex-row items-center {% if config.ENABLE_REGISTERED_ACCESS %}justify-between{% else %}justify-end{% endif %} gap-3">
       {% if config.ENABLE_REGISTERED_ACCESS %}
       <a href="{{ url_for('auth.register') }}" class="text-xs sm:text-sm font-semibold text-royalblue hover:underline order-2 sm:order-1">
         {{ _('Create account') }}
       </a>
-      {% else %}
-      <div></div>
       {% endif %}
 
       <button type="submit" class="google-auth-btn w-full sm:w-auto order-1 sm:order-2">

@@ -10,8 +10,9 @@ import sys
 
 import sentry_sdk
 from dotenv import load_dotenv
-from flask import Flask, render_template, session
+from flask import Flask, redirect, render_template, request, session, url_for
 from flask_babel import Babel, pgettext
+from flask_login import current_user
 from flask_wtf.csrf import generate_csrf
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sqlalchemy import exc
@@ -166,6 +167,24 @@ def create_app(config_env: str):
     app.register_blueprint(public, url_prefix=f"{url_prefix}/books")
     app.register_blueprint(search, url_prefix=f"{url_prefix}/search")
     app.register_blueprint(site, url_prefix=url_prefix)
+
+    @app.before_request
+    def enforce_guest_access_restrictions():
+        if not app.config.get("ENABLE_GUEST_ACCESS", True) and not current_user.is_authenticated:
+            bp = request.blueprint or ""
+            path = request.path
+            prefix = (config_spec.APPLICATION_URL_PREFIX or "").rstrip("/")
+            search_prefix = f"{prefix}/search"
+            proofing_prefix = f"{prefix}/proofing"
+            if (
+                bp == "search"
+                or bp.startswith("proofing")
+                or path == search_prefix
+                or path.startswith(f"{search_prefix}/")
+                or path == proofing_prefix
+                or path.startswith(f"{proofing_prefix}/")
+            ):
+                return redirect(url_for("auth.sign_in"))
 
     # Admin functionality is now integrated into the main Flask-Admin interface
 

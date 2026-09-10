@@ -239,6 +239,7 @@ def register():
 
 
 @bp.route("/sign-in", methods=["GET", "POST"])
+@bp.route("/login", methods=["GET", "POST"], endpoint="login")
 def sign_in():
     if current_user.is_authenticated:
         logout_if_not_ok()

@@ -29,6 +29,12 @@ from kalanjiyam.views.proofing.decorators import moderator_required, p2_required
 
 bp = Blueprint("proofing", __name__)
 
+
+@bp.before_request
+def _require_guest_access_or_login():
+    if not current_app.config.get("ENABLE_GUEST_ACCESS", True) and not current_user.is_authenticated:
+        return redirect(url_for("auth.sign_in"))
+
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".jpg", ".jpeg", ".png", ".webp"}
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
@@ -423,7 +429,7 @@ def editor_guide():
 def create_project():
     if not current_app.config.get("ENABLE_GUEST_ACCESS", True) and not current_user.is_authenticated:
         flash(_l("Guest project creation is disabled. Please log in to create a project."), "warning")
-        return redirect(url_for("auth.login"))
+        return redirect(url_for("auth.sign_in"))
 
     settings = q.get_system_settings()
     guest_upload_limit = getattr(settings, "unregistered_user_upload_limit", 10)

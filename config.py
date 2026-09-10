@@ -145,9 +145,17 @@ class BaseConfig:
     )
 
     #: If True, allow guest (unregistered) users to create projects and access features.
-    ENABLE_GUEST_ACCESS = (
-        _env("ENABLE_GUEST_ACCESS", "true").lower() in ("true", "1", "yes")
-    )
+    _guest_val = _env("ENABLE_GUEST_ACCESS", None)
+    _unreg_val = _env("ENABLE_UNREGISTERED_ACCESS", None)
+    if _guest_val is not None and _unreg_val is not None:
+        ENABLE_GUEST_ACCESS = (_guest_val.lower() in ("true", "1", "yes")) and (_unreg_val.lower() in ("true", "1", "yes"))
+    elif _guest_val is not None:
+        ENABLE_GUEST_ACCESS = _guest_val.lower() in ("true", "1", "yes")
+    elif _unreg_val is not None:
+        ENABLE_GUEST_ACCESS = _unreg_val.lower() in ("true", "1", "yes")
+    else:
+        ENABLE_GUEST_ACCESS = True
+    ENABLE_UNREGISTERED_ACCESS = ENABLE_GUEST_ACCESS
 
     #: If True, allow new users to register.
     ENABLE_REGISTERED_ACCESS = (

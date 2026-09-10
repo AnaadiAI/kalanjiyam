@@ -44,6 +44,7 @@
           }
       }" @mouseleave="hideCursor()">
 
+    {% if config.ENABLE_GUEST_ACCESS or current_user.is_authenticated %}
     {% set is_search_active = request.blueprint == 'search' %}
     <li class="relative z-10 block cursor-pointer font-bold text-xs uppercase tracking-widest transition-colors"
       @mouseenter="moveCursor($el)">
@@ -148,6 +149,7 @@
         {% if is_help_active %}style="background: linear-gradient(135deg, #0ea5e9, #6366f1);" {% endif %}
         href="{{ url_for('proofing.help_index') }}">{{ _('Help') }}</a>
     </li>
+    {% endif %}
 
     {% set is_admin_active = request.endpoint and ('admin' in request.endpoint or 'platform_view' in request.endpoint or
     'groups_view' in request.endpoint or 'org_admin_view' in request.endpoint or 'master_metrics_view' in request.endpoint) %}
@@ -217,6 +219,7 @@
     </li>
 
     <!-- Task Dropdown -->
+    {% if config.ENABLE_GUEST_ACCESS or current_user.is_authenticated %}
     <li class="relative z-10 block cursor-pointer font-bold text-xs uppercase tracking-widest transition-colors"
         x-show="tasks.length > 0 || {{ 'true' if current_user.is_authenticated else 'false' }}"
         x-cloak
@@ -361,6 +364,7 @@
             </div>
         </div>
     </li>
+    {% endif %}
 
 
     {% if current_user.is_authenticated %}

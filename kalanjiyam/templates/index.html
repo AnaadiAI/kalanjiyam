@@ -71,6 +71,7 @@
         </p>
       </div>
 
+      {% if config.ENABLE_GUEST_ACCESS or current_user.is_authenticated %}
       <!-- Google-Style Omni Search Box -->
       <div class="pt-2 max-w-2xl mx-auto">
         <form action="{{ url_for('search.index') }}" method="GET" class="w-full">
@@ -114,6 +115,17 @@
           <span>{{ _('Guidelines & Help') }}</span>
         </a>
       </div>
+      {% else %}
+      <div class="pt-6 max-w-md mx-auto">
+        <a href="{{ url_for('auth.sign_in') }}"
+           class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-royalblue hover:bg-blue-600 text-white font-semibold text-sm transition-all shadow-md">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+          </svg>
+          <span>{{ _('Sign in to access Search & Proofreading') }}</span>
+        </a>
+      </div>
+      {% endif %}
 
     </div>
   </section>

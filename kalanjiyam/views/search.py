@@ -5,13 +5,19 @@ cluster cannot be reached, the page falls back to a plain SQL match over
 project metadata so the site keeps working -- degraded, but never broken.
 """
 
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from kalanjiyam.search import query as search_query
 from kalanjiyam.search.client import is_enabled
 
 bp = Blueprint("search", __name__)
+
+
+@bp.before_request
+def _require_guest_access_or_login():
+    if not current_app.config.get("ENABLE_GUEST_ACCESS", True) and not current_user.is_authenticated:
+        return redirect(url_for("auth.sign_in"))
 
 #: Guard against absurd page numbers in hand-edited URLs.
 MAX_PAGE = 500

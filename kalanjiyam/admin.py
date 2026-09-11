@@ -2761,6 +2761,15 @@ class OrgAdminView(AdminBaseView):
                     else:
                         label = "public on /books/" if is_public else "organization-only"
                         flash(f'"{updated.display_title}" is now {label}.', "success")
+            elif action == "update_org_name":
+                new_name = (request.form.get("name") or "").strip()
+                if not new_name:
+                    flash("Organization name is required.", "error")
+                else:
+                    org.name = new_name
+                    session.add(org)
+                    session.commit()
+                    flash(f'Organization name updated to "{org.name}".', "success")
             return redirect(url_for("org_admin_view.index"))
 
         users = q.users_in_group(org.id)

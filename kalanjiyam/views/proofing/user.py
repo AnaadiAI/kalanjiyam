@@ -23,6 +23,7 @@ class RolesForm(FlaskForm):
 
 class EditProfileForm(FlaskForm):
     description = StringField(_l("Profile description"), widget=TextArea())
+    org_name = StringField(_l("Organization Name"))
 
 
 @bp.route("/<username>/")
@@ -124,10 +125,23 @@ def edit(username):
     if username != current_user.username:
         abort(403)
 
-    form = EditProfileForm(obj=user_)
+    form = EditProfileForm()
+    if request.method == "GET":
+        form.description.data = user_.description
+        if user_.is_org_admin and user_.organization:
+            form.org_name.data = user_.organization.name
+
     if form.validate_on_submit():
         session = q.get_session()
-        form.populate_obj(user_)
+        user_.description = form.description.data or ""
+        if user_.is_org_admin and user_.organization and form.org_name.data is not None:
+            new_org_name = form.org_name.data.strip()
+            if not new_org_name:
+                flash(_l("Organization name cannot be empty."), "error")
+                return render_template("proofing/user/edit.html", user=user_, form=form)
+            user_.organization.name = new_org_name
+            session.add(user_.organization)
+        session.add(user_)
         session.commit()
         flash(_l("Saved changes."), "success")
         return redirect(url_for("proofing.user.summary", username=username))

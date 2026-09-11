@@ -180,8 +180,6 @@ def test_engine_aliases_map_service_ids():
         normalize_service_engine,
     )
 
-    assert normalize_service_engine("surya-table") == "surya_table"
-    assert normalize_service_engine("glm-ocr") == "glm_ocr"
     assert normalize_service_engine("gemma-ocr") == "gemma_ocr"
     assert normalize_service_engine("gemma-4") == "gemma_ocr"
     assert normalize_service_engine("gemma-4-31b") == "gemma_ocr"
@@ -190,24 +188,33 @@ def test_engine_aliases_map_service_ids():
     assert normalize_service_engine("indic-ocr") == "indic_ocr"
     assert normalize_service_engine("bodhan-ocr") == "indic_ocr"
     assert normalize_service_engine("bodhan") == "indic_ocr"
-    assert engine_for_service("surya_table") == "surya-table"
-    assert engine_for_service("glm_ocr") == "glm-ocr"
+    assert normalize_service_engine("chandra") == "chandra"
+    assert normalize_service_engine("sanskrit-manuscript") == "tesseract_manuscript"
+    assert normalize_service_engine("sanskrit_manuscript") == "tesseract_manuscript"
     assert engine_for_service("gemma_ocr") == "gemma-ocr"
     assert engine_for_service("indic_ocr") == "indic-ocr"
+    assert engine_for_service("chandra") == "chandra"
+    assert engine_for_service("tesseract_manuscript") == "sanskrit-manuscript"
+    assert normalize_engine("1") == "gemma_ocr"
+    assert normalize_engine("2") == "indic_ocr"
+    assert normalize_engine("3") == "chandra"
+    assert normalize_engine("4") == "tesseract_manuscript"
     assert normalize_engine("13") == "gemma_ocr"
     assert normalize_engine("14") == "indic_ocr"
-    assert ENGINE_MAP["13"] == "gemma_ocr"
-    assert ENGINE_MAP["14"] == "indic_ocr"
+    assert ENGINE_MAP["1"] == "gemma_ocr"
+    assert ENGINE_MAP["2"] == "indic_ocr"
+    assert ENGINE_MAP["3"] == "chandra"
+    assert ENGINE_MAP["4"] == "tesseract_manuscript"
 
     choices = build_engine_choices(
-        ["tesseract", "surya-table", "chandra", "glm-ocr", "gemma-ocr", "indic-ocr"],
+        ["chandra", "gemma-ocr", "indic-ocr", "sanskrit-manuscript"],
         is_super_admin=True,
     )
     labels = {c["label"] for c in choices}
-    assert "Surya Table" in labels
-    assert "GLM OCR" in labels
-    assert "Gemma OCR" in labels
+    assert "Chandra" in labels
+    assert "LLM Gemma OCR" in labels
     assert "Indic OCR" in labels
+    assert "Sanskrit Manuscript OCR" in labels
 
 
 def test_run_ocr_remote_parses_v2_contract_fields(flask_app, tmp_path):

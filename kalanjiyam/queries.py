@@ -260,11 +260,11 @@ def get_system_settings() -> db.SystemSetting:
     settings = session.query(db.SystemSetting).first()
     if not settings:
         from flask import current_app
-        default_eng = "tesseract"
-        default_trans = "indictrans2"
+        default_eng = "gemma_ocr"
+        default_trans = "indictrans3"
         try:
-            default_eng = current_app.config.get("DEFAULT_OCR_ENGINE", "tesseract")
-            default_trans = current_app.config.get("DEFAULT_TRANSLATION_ENGINE", "indictrans2")
+            default_eng = current_app.config.get("DEFAULT_OCR_ENGINE", "gemma_ocr")
+            default_trans = current_app.config.get("DEFAULT_TRANSLATION_ENGINE", "indictrans3")
         except RuntimeError:
             pass
         settings = db.SystemSetting(

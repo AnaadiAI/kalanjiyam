@@ -17,10 +17,10 @@ class SystemSetting(Base):
     unregistered_user_project_limit = Column(Integer, nullable=False, default=5)
     unregistered_user_upload_limit = Column(Integer, nullable=False, default=10)
 
-    default_ocr_engine = Column(String, nullable=False, default="tesseract")
+    default_ocr_engine = Column(String, nullable=False, default="gemma_ocr")
     recommended_ocr_engine = Column(String, nullable=True)
 
-    default_translation_engine = Column(String, nullable=False, default="indictrans2")
+    default_translation_engine = Column(String, nullable=False, default="indictrans3")
     recommended_translation_engine = Column(String, nullable=True)
 
     @property
@@ -51,8 +51,8 @@ class SystemSetting(Base):
     auto_cleanup_days = Column(Integer, nullable=False, default=7)
 
     def __init__(self, **kwargs):
-        kwargs.setdefault("default_ocr_engine", "tesseract")
-        kwargs.setdefault("default_translation_engine", "indictrans2")
+        kwargs.setdefault("default_ocr_engine", "gemma_ocr")
+        kwargs.setdefault("default_translation_engine", "indictrans3")
         kwargs.setdefault("unregistered_user_ocr_limit", 10)
         kwargs.setdefault("unregistered_user_project_limit", 5)
         kwargs.setdefault("unregistered_user_upload_limit", 10)

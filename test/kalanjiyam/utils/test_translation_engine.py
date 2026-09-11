@@ -9,6 +9,8 @@ from kalanjiyam.utils.translation_engine import (
     OpenAITranslateEngine,
     IndicTransEngine,
     BharatGenTranslateEngine,
+    GenericTranslationEngine,
+    LlmGemmaTranslateEngine,
     clean_translation_preambles,
     TranslationEngineFactory,
     translate_text,
@@ -66,24 +68,25 @@ class TestTranslationEngineFactory:
     def test_get_supported_engines(self):
         """Test getting supported engines."""
         engines = TranslationEngineFactory.get_supported_engines()
-        assert "indictrans2" in engines
-        assert "gemma" in engines
+        assert "indictrans3" in engines
+        assert "indic_translate" in engines
+        assert "llm_gemma" in engines
         assert "param_lc_translate_ep4" in engines
-        assert "translation_1b_exp_40" in engines
+        assert "indictrans2" not in engines
         assert "google" not in engines
         assert "openai" not in engines
     
     def test_create_indictrans_engine(self):
         """Test creating IndicTrans engine."""
-        engine = TranslationEngineFactory.create("indictrans2")
-        assert isinstance(engine, IndicTransEngine)
-        assert engine.version == "indictrans2"
+        engine = TranslationEngineFactory.create("indictrans3")
+        assert isinstance(engine, GenericTranslationEngine)
+        assert engine.engine_name == "indictrans3"
 
     def test_create_gemma_engine(self):
         """Test creating Gemma engine."""
-        engine = TranslationEngineFactory.create("gemma")
-        assert isinstance(engine, IndicTransEngine)
-        assert engine.version == "gemma"
+        engine = TranslationEngineFactory.create("llm_gemma")
+        assert isinstance(engine, LlmGemmaTranslateEngine)
+        assert engine.model_name == "llm-gemma"
 
     def test_create_param_lc_translate_engine(self):
         """Test creating param_lc_translate_ep4 engine."""
@@ -91,11 +94,11 @@ class TestTranslationEngineFactory:
         assert isinstance(engine, BharatGenTranslateEngine)
         assert engine.model_name == "param_lc_translate_ep4"
 
-    def test_create_translation_1b_exp_engine(self):
-        """Test creating translation_1b_exp_40 engine."""
-        engine = TranslationEngineFactory.create("translation_1b_exp_40")
-        assert isinstance(engine, BharatGenTranslateEngine)
-        assert engine.model_name == "translation_1b_exp_40"
+    def test_create_indic_translate_engine(self):
+        """Test creating indic_translate engine."""
+        engine = TranslationEngineFactory.create("indic_translate")
+        assert isinstance(engine, GenericTranslationEngine)
+        assert engine.engine_name == "indic_translate"
     
     def test_create_unsupported_engine(self):
         """Test creating unsupported engine raises error."""
@@ -438,8 +441,8 @@ class TestAvailableTranslationEngines:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
-            {"model_name": "ai4bharat/indictrans2-en-indic-1B"},
-            {"model_name": "google/gemma-4-12b-it"}
+            {"model_name": "ai4bharat/indictrans3"},
+            {"model_name": "bodhan-ai/indic-translate"}
         ]
         mock_client.get.return_value = mock_response
 
@@ -450,17 +453,15 @@ class TestAvailableTranslationEngines:
 
         with app.app_context():
             engines = get_available_translation_engines()
-            assert len(engines) == 5
-            assert engines[0]["value"] == "indictrans2"
-            assert engines[0]["label"] == "IndicTrans v2"
-            assert engines[1]["value"] == "gemma"
-            assert engines[1]["label"] == "Gemma 4 12B"
+            assert len(engines) == 4
+            assert engines[0]["value"] == "indictrans3"
+            assert engines[0]["label"] == "IndicTrans v3"
+            assert engines[1]["value"] == "indic_translate"
+            assert engines[1]["label"] == "Indic-Translate"
             assert engines[2]["value"] == "llm_gemma"
             assert engines[2]["label"] == "LLM Gemma"
             assert engines[3]["value"] == "param_lc_translate_ep4"
             assert engines[3]["label"] == "Param LC Translate EP4"
-            assert engines[4]["value"] == "translation_1b_exp_40"
-            assert engines[4]["label"] == "Translation 1B Exp 40"
 
             mock_client.get.assert_called_once()
             call_kwargs = mock_client.get.call_args[1]
@@ -497,59 +498,51 @@ class TestTranslationMaskingAndChoices:
         from kalanjiyam.utils.translation_engine import normalize_translation_engine
 
         # Numeric keys
-        assert normalize_translation_engine("1") == "indictrans2"
-        assert normalize_translation_engine("2") == "gemma"
-        assert normalize_translation_engine("3") == "param_lc_translate_ep4"
-        assert normalize_translation_engine("4") == "translation_1b_exp_40"
+        assert normalize_translation_engine("1") == "indictrans3"
+        assert normalize_translation_engine("2") == "indic_translate"
+        assert normalize_translation_engine("3") == "llm_gemma"
+        assert normalize_translation_engine("4") == "param_lc_translate_ep4"
+
+        # Legacy numeric keys
         assert normalize_translation_engine("5") == "indictrans3"
-        assert normalize_translation_engine("6") == "google"
-        assert normalize_translation_engine("7") == "openai"
         assert normalize_translation_engine("8") == "llm_gemma"
-        assert normalize_translation_engine("9") == "gemma_4_31b"
         assert normalize_translation_engine("10") == "indic_translate"
 
         # Service aliases
-        assert normalize_translation_engine("gemma-4") == "gemma"
-        assert normalize_translation_engine("gemma4") == "gemma"
-        assert normalize_translation_engine("gemma-4-31b") == "gemma_4_31b"
-        assert normalize_translation_engine("gemma_4_31b") == "gemma_4_31b"
-        assert normalize_translation_engine("gemma-31b") == "gemma_4_31b"
-        assert normalize_translation_engine("gemma_31b") == "gemma_4_31b"
+        assert normalize_translation_engine("indictrans-v3") == "indictrans3"
+        assert normalize_translation_engine("indictrans-3") == "indictrans3"
         assert normalize_translation_engine("indic-translate") == "indic_translate"
         assert normalize_translation_engine("indic_translate") == "indic_translate"
         assert normalize_translation_engine("indictranslate") == "indic_translate"
         assert normalize_translation_engine("llm-gemma") == "llm_gemma"
         assert normalize_translation_engine("llm_gemma") == "llm_gemma"
+        assert normalize_translation_engine("gemma") == "llm_gemma"
+        assert normalize_translation_engine("param") == "param_lc_translate_ep4"
         assert normalize_translation_engine("param-lc-translate-ep4") == "param_lc_translate_ep4"
-        assert normalize_translation_engine("translation-1b-exp-40") == "translation_1b_exp_40"
-        assert normalize_translation_engine("indictrans-2") == "indictrans2"
-        assert normalize_translation_engine("indictrans-3") == "indictrans3"
 
         # Canonical names unchanged
-        assert normalize_translation_engine("indictrans2") == "indictrans2"
-        assert normalize_translation_engine("gemma") == "gemma"
-        assert normalize_translation_engine("gemma_4_31b") == "gemma_4_31b"
+        assert normalize_translation_engine("indictrans3") == "indictrans3"
         assert normalize_translation_engine("indic_translate") == "indic_translate"
         assert normalize_translation_engine("llm_gemma") == "llm_gemma"
+        assert normalize_translation_engine("param_lc_translate_ep4") == "param_lc_translate_ep4"
 
     def test_build_translation_choices_regular_user(self):
         from kalanjiyam.utils.translation_engine import build_translation_choices
 
         engines = [
-            {"value": "indictrans2", "label": "IndicTrans v2"},
-            {"value": "gemma", "label": "Gemma 4 12B"},
-            {"value": "gemma_4_31b", "label": "Gemma 4 31B"},
+            {"value": "indictrans3", "label": "IndicTrans v3"},
+            {"value": "indic_translate", "label": "Indic-Translate"},
             {"value": "llm_gemma", "label": "LLM Gemma"},
             {"value": "param_lc_translate_ep4", "label": "Param LC Translate EP4"},
         ]
         choices = build_translation_choices(
             available_engines=engines,
             is_super_admin=False,
-            recommended_engine="gemma_4_31b",
-            default_engine="indictrans2",
+            recommended_engine="llm_gemma",
+            default_engine="indictrans3",
         )
 
-        assert len(choices) == 5
+        assert len(choices) == 4
         # Masked names for regular users
         assert choices[0]["value"] == "1"
         assert choices[0]["label"] == "Translation 1"
@@ -559,80 +552,75 @@ class TestTranslationMaskingAndChoices:
         assert choices[1]["value"] == "2"
         assert choices[1]["label"] == "Translation 2"
 
-        assert choices[2]["value"] == "9"
-        assert choices[2]["label"] == "Translation 9"
+        assert choices[2]["value"] == "3"
+        assert choices[2]["label"] == "Translation 3"
         assert choices[2]["is_recommended"] is True
 
-        assert choices[3]["value"] == "8"
-        assert choices[3]["label"] == "Translation 8"
+        assert choices[3]["value"] == "4"
+        assert choices[3]["label"] == "Translation 4"
         assert choices[3]["is_recommended"] is False
-
-        assert choices[4]["value"] == "3"
-        assert choices[4]["label"] == "Translation 3"
-        assert choices[4]["is_recommended"] is False
 
     def test_build_translation_choices_super_admin(self):
         from kalanjiyam.utils.translation_engine import build_translation_choices
 
         engines = [
-            {"value": "indictrans2", "label": "IndicTrans v2"},
-            {"value": "gemma", "label": "Gemma 4 12B"},
-            {"value": "gemma_4_31b", "label": "Gemma 4 31B"},
+            {"value": "indictrans3", "label": "IndicTrans v3"},
+            {"value": "indic_translate", "label": "Indic-Translate"},
             {"value": "llm_gemma", "label": "LLM Gemma"},
+            {"value": "param_lc_translate_ep4", "label": "Param LC Translate EP4"},
         ]
         choices = build_translation_choices(
             available_engines=engines,
             is_super_admin=True,
-            recommended_engine="9",  # Can also be passed by numeric ID
+            recommended_engine="3",  # Can also be passed by numeric ID
             default_engine="1",
         )
 
         assert len(choices) == 4
         # Real labels for super admin
         assert choices[0]["value"] == "1"
-        assert choices[0]["label"] == "IndicTrans v2"
+        assert choices[0]["label"] == "IndicTrans v3"
         assert choices[0]["is_default"] is True
 
         assert choices[1]["value"] == "2"
-        assert choices[1]["label"] == "Gemma 4 12B"
+        assert choices[1]["label"] == "Indic-Translate"
 
-        assert choices[2]["value"] == "9"
-        assert choices[2]["label"] == "Gemma 4 31B"
+        assert choices[2]["value"] == "3"
+        assert choices[2]["label"] == "LLM Gemma"
         assert choices[2]["is_recommended"] is True
 
-        assert choices[3]["value"] == "8"
-        assert choices[3]["label"] == "LLM Gemma"
+        assert choices[3]["value"] == "4"
+        assert choices[3]["label"] == "Param LC Translate EP4"
 
     def test_factory_with_numeric_keys(self):
         # Should be able to create engines by numeric ID
         engine = TranslationEngineFactory.create("1")
-        assert isinstance(engine, IndicTransEngine)
-        assert engine.version == "indictrans2"
+        assert isinstance(engine, GenericTranslationEngine)
+        assert engine.engine_name == "indictrans3"
 
         engine2 = TranslationEngineFactory.create("2")
-        assert isinstance(engine2, IndicTransEngine)
-        assert engine2.version == "gemma"
+        assert isinstance(engine2, GenericTranslationEngine)
+        assert engine2.engine_name == "indic_translate"
 
-        engine9 = TranslationEngineFactory.create("9")
-        assert isinstance(engine9, IndicTransEngine)
-        assert engine9.version == "gemma_4_31b"
+        engine3 = TranslationEngineFactory.create("3")
+        assert isinstance(engine3, LlmGemmaTranslateEngine)
+        assert engine3.model_name == "llm-gemma"
 
-        engine_31b_name = TranslationEngineFactory.create("gemma-4-31b")
-        assert isinstance(engine_31b_name, IndicTransEngine)
-        assert engine_31b_name.version == "gemma_4_31b"
+        engine4 = TranslationEngineFactory.create("4")
+        assert isinstance(engine4, BharatGenTranslateEngine)
+        assert engine4.model_name == "param_lc_translate_ep4"
+
+        # Legacy numbers
+        engine5 = TranslationEngineFactory.create("5")
+        assert isinstance(engine5, GenericTranslationEngine)
+        assert engine5.engine_name == "indictrans3"
 
         engine8 = TranslationEngineFactory.create("8")
-        from kalanjiyam.utils.translation_engine import LlmGemmaTranslateEngine
         assert isinstance(engine8, LlmGemmaTranslateEngine)
-        assert engine8.model_name == "llm-gemma"
 
         engine10 = TranslationEngineFactory.create("10")
-        assert isinstance(engine10, IndicTransEngine)
-        assert engine10.version == "indic_translate"
-
-        engine_indic_name = TranslationEngineFactory.create("indic-translate")
-        assert isinstance(engine_indic_name, IndicTransEngine)
-        assert engine_indic_name.version == "indic_translate"
+        assert isinstance(engine10, GenericTranslationEngine)
+        assert engine10.engine_name == "indic_translate"
 
         engine_by_name = TranslationEngineFactory.create("llm_gemma")
         assert isinstance(engine_by_name, LlmGemmaTranslateEngine)
@@ -644,22 +632,19 @@ class TestTranslationMaskingAndChoices:
         assert TranslationEngineFactory.is_supported("2") is True
         assert TranslationEngineFactory.is_supported("3") is True
         assert TranslationEngineFactory.is_supported("4") is True
-        assert TranslationEngineFactory.is_supported("8") is True
-        assert TranslationEngineFactory.is_supported("9") is True
-        assert TranslationEngineFactory.is_supported("10") is True
-        assert TranslationEngineFactory.is_supported("gemma-4-31b") is True
-        assert TranslationEngineFactory.is_supported("gemma_4_31b") is True
-        assert TranslationEngineFactory.is_supported("indic_translate") is True
+        assert TranslationEngineFactory.is_supported("indictrans3") is True
         assert TranslationEngineFactory.is_supported("indic-translate") is True
+        assert TranslationEngineFactory.is_supported("indic_translate") is True
         assert TranslationEngineFactory.is_supported("llm_gemma") is True
         assert TranslationEngineFactory.is_supported("llm-gemma") is True
+        assert TranslationEngineFactory.is_supported("param_lc_translate_ep4") is True
         assert TranslationEngineFactory.is_supported("unsupported") is False
 
     def test_system_settings_translation_fields(self):
         from kalanjiyam.models.settings import SystemSetting
 
         setting = SystemSetting()
-        assert setting.default_translation_engine == "indictrans2"
+        assert setting.default_translation_engine == "indictrans3"
         assert setting.recommended_translation_engine is None
 
         # Test property aliases
@@ -671,9 +656,9 @@ class TestTranslationMaskingAndChoices:
         assert setting.recommended_translation_engine == "param_lc_translate_ep4"
         assert setting.recommended_translation_model == "param_lc_translate_ep4"
 
-        setting.best_translation_model = "translation_1b_exp_40"
-        assert setting.recommended_translation_engine == "translation_1b_exp_40"
-        assert setting.best_translation_model == "translation_1b_exp_40"
+        setting.best_translation_model = "param_lc_translate_ep4"
+        assert setting.recommended_translation_engine == "param_lc_translate_ep4"
+        assert setting.best_translation_model == "param_lc_translate_ep4"
 
 
 class TestLlmGemmaTranslateEngine:

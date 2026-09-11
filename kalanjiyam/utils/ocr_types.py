@@ -104,27 +104,14 @@ def calculate_p05_confidence(
 
 
 SUPPORTED_ENGINES = [
-    "google",
-    "tesseract",
-    "surya",
-    "surya_table",
-    "nanonets",
-    "deepseek",
-    "chandra",
-    "qwen3",
-    "paddle_table",
-    "glm_ocr",
-    "tesseract_manuscript",
-    "dots_ocr",
     "gemma_ocr",
     "indic_ocr",
+    "chandra",
+    "tesseract_manuscript",
 ]
 
 # OCR service ids (hyphenated) ↔ Kalanjiyam internal ids (underscored).
 SERVICE_ENGINE_ALIASES = {
-    "surya-table": "surya_table",
-    "glm-ocr": "glm_ocr",
-    "dots-ocr": "dots_ocr",
     "gemma-ocr": "gemma_ocr",
     "gemma-4": "gemma_ocr",
     "gemma-4-31b": "gemma_ocr",
@@ -135,21 +122,20 @@ SERVICE_ENGINE_ALIASES = {
     "indic-ocr": "indic_ocr",
     "bodhan-ocr": "indic_ocr",
     "bodhan": "indic_ocr",
+    "sanskrit-manuscript": "tesseract_manuscript",
+    "sanskrit_manuscript": "tesseract_manuscript",
 }
 
 ENGINE_MAP = {
-    "1": "google",
-    "2": "tesseract",
-    "3": "surya",
-    "4": "nanonets",
-    "5": "deepseek",
+    "1": "gemma_ocr",
+    "2": "indic_ocr",
+    "3": "chandra",
+    "4": "tesseract_manuscript",
+}
+
+LEGACY_ENGINE_MAP = {
     "6": "chandra",
-    "7": "qwen3",
-    "8": "surya_table",
-    "9": "paddle_table",
-    "10": "glm_ocr",
     "11": "tesseract_manuscript",
-    "12": "dots_ocr",
     "13": "gemma_ocr",
     "14": "indic_ocr",
 }
@@ -157,10 +143,16 @@ ENGINE_MAP = {
 
 # Reverse: engine name → numeric key shown to users
 REVERSE_ENGINE_MAP = {v: k for k, v in ENGINE_MAP.items()}
+REVERSE_ENGINE_MAP["llm-gemma"] = "1"
+REVERSE_ENGINE_MAP["llm_gemma"] = "1"
+REVERSE_ENGINE_MAP["indic-ocr"] = "2"
+REVERSE_ENGINE_MAP["sanskrit-manuscript"] = "4"
+REVERSE_ENGINE_MAP["sanskrit_manuscript"] = "4"
 
 
 def normalize_engine(engine: str) -> str:
-    return normalize_service_engine(ENGINE_MAP.get(engine, engine))
+    mapped = ENGINE_MAP.get(str(engine), LEGACY_ENGINE_MAP.get(str(engine), str(engine)))
+    return normalize_service_engine(mapped)
 
 
 def normalize_service_engine(engine: str) -> str:
@@ -182,27 +174,17 @@ def engine_for_service(engine: str) -> str:
 
 
 ENGINE_LABELS = {
-    "google": "Google",
-    "tesseract": "Tesseract",
-    "surya": "Surya",
-    "surya_table": "Surya Table",
-    "nanonets": "Nanonets",
-    "deepseek": "DeepSeek",
-    "chandra": "Chandra",
-    "qwen3": "Qwen 2VL",
-    "paddle_table": "Paddle Table OCR",
-    "glm_ocr": "GLM OCR",
-    "tesseract_manuscript": "Sanskrit Manuscript OCR",
-    "dots_ocr": "Dots OCR",
-    "gemma_ocr": "Gemma OCR",
+    "gemma_ocr": "LLM Gemma OCR",
     "indic_ocr": "Indic OCR",
+    "chandra": "Chandra",
+    "tesseract_manuscript": "Sanskrit Manuscript OCR",
 }
 
 # Engines that return HTML (not plain text or Markdown)
-HTML_ENGINES = {"nanonets", "chandra"}
+HTML_ENGINES = {"chandra"}
 
 # Engines that return Markdown
-MARKDOWN_ENGINES = {"deepseek", "qwen3", "gemma_ocr", "indic_ocr"}
+MARKDOWN_ENGINES = {"gemma_ocr", "indic_ocr"}
 
 
 def build_engine_choices(

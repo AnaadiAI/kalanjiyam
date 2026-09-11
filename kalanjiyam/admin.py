@@ -1657,7 +1657,7 @@ class PlatformView(AdminBaseView):
             default_ocr_engine = SelectField(
                 "Default OCR Engine",
                 choices=[],
-                default="tesseract",
+                default="gemma_ocr",
                 description="The OCR engine that registered (non-super-admin) and unregistered users will use."
             )
             recommended_ocr_engine = SelectField(
@@ -1669,7 +1669,7 @@ class PlatformView(AdminBaseView):
             default_translation_engine = SelectField(
                 "Default Translation Model",
                 choices=[],
-                default="indictrans2",
+                default="indictrans3",
                 description="The translation model that registered (non-super-admin) and unregistered users will use by default."
             )
             recommended_translation_engine = SelectField(
@@ -1700,9 +1700,9 @@ class PlatformView(AdminBaseView):
         ocr_ping = get_available_engines()
         active_engines = ocr_ping.get("engines", [])
         
-        choices_set = {eng for eng in active_engines if eng in SUPPORTED_ENGINES and eng != "google"}
-        choices_set.add("tesseract")
-        if system_settings.default_ocr_engine and system_settings.default_ocr_engine != "google":
+        choices_set = {eng for eng in active_engines if eng in SUPPORTED_ENGINES}
+        choices_set.add("gemma_ocr")
+        if system_settings.default_ocr_engine and system_settings.default_ocr_engine in SUPPORTED_ENGINES:
             choices_set.add(system_settings.default_ocr_engine)
             
         sorted_engines = [eng for eng in SUPPORTED_ENGINES if eng in choices_set]
@@ -1710,7 +1710,7 @@ class PlatformView(AdminBaseView):
         
         # Populate recommended engine choices
         rec_choices_set = set(choices_set)
-        if system_settings.recommended_ocr_engine and system_settings.recommended_ocr_engine != "google":
+        if system_settings.recommended_ocr_engine and system_settings.recommended_ocr_engine in SUPPORTED_ENGINES:
             rec_choices_set.add(system_settings.recommended_ocr_engine)
         sorted_rec_engines = [eng for eng in SUPPORTED_ENGINES if eng in rec_choices_set]
         rec_choices = [("", "None (No recommended engine)")] + [(eng, ENGINE_LABELS.get(eng, eng.capitalize())) for eng in sorted_rec_engines]
@@ -1727,11 +1727,11 @@ class PlatformView(AdminBaseView):
         trans_choices_set = {
             eng
             for eng in active_trans_engines
-            if eng in SUPPORTED_TRANSLATION_ENGINES and eng not in ("google", "openai")
+            if eng in SUPPORTED_TRANSLATION_ENGINES
         }
-        trans_choices_set.add("indictrans2")
+        trans_choices_set.add("indictrans3")
         curr_def_trans = getattr(system_settings, "default_translation_engine", None)
-        if curr_def_trans and curr_def_trans not in ("google", "openai"):
+        if curr_def_trans and curr_def_trans in SUPPORTED_TRANSLATION_ENGINES:
             trans_choices_set.add(curr_def_trans)
 
         sorted_trans_engines = [
@@ -1749,7 +1749,7 @@ class PlatformView(AdminBaseView):
         # Populate recommended translation model choices
         rec_trans_choices_set = set(trans_choices_set)
         curr_rec_trans = getattr(system_settings, "recommended_translation_engine", None)
-        if curr_rec_trans and curr_rec_trans not in ("google", "openai"):
+        if curr_rec_trans and curr_rec_trans in SUPPORTED_TRANSLATION_ENGINES:
             rec_trans_choices_set.add(curr_rec_trans)
         sorted_rec_trans_engines = [
             eng for eng in SUPPORTED_TRANSLATION_ENGINES if eng in rec_trans_choices_set
@@ -1770,12 +1770,12 @@ class PlatformView(AdminBaseView):
             system_settings.unregistered_user_ocr_limit = form.unregistered_user_ocr_limit.data if form.unregistered_user_ocr_limit.data is not None else 10
             system_settings.unregistered_user_project_limit = form.unregistered_user_project_limit.data if form.unregistered_user_project_limit.data is not None else 5
             system_settings.unregistered_user_upload_limit = form.unregistered_user_upload_limit.data if form.unregistered_user_upload_limit.data is not None else 10
-            system_settings.default_ocr_engine = form.default_ocr_engine.data if form.default_ocr_engine.data else "tesseract"
+            system_settings.default_ocr_engine = form.default_ocr_engine.data if form.default_ocr_engine.data else "gemma_ocr"
             system_settings.recommended_ocr_engine = form.recommended_ocr_engine.data if form.recommended_ocr_engine.data else None
             system_settings.default_translation_engine = (
                 form.default_translation_engine.data
                 if form.default_translation_engine.data
-                else "indictrans2"
+                else "indictrans3"
             )
             system_settings.recommended_translation_engine = (
                 form.recommended_translation_engine.data
@@ -1793,11 +1793,16 @@ class PlatformView(AdminBaseView):
             form.unregistered_user_ocr_limit.data = system_settings.unregistered_user_ocr_limit
             form.unregistered_user_project_limit.data = system_settings.unregistered_user_project_limit
             form.unregistered_user_upload_limit.data = getattr(system_settings, "unregistered_user_upload_limit", 10)
-            form.default_ocr_engine.data = system_settings.default_ocr_engine
+            form.default_ocr_engine.data = (
+                system_settings.default_ocr_engine
+                if system_settings.default_ocr_engine in SUPPORTED_ENGINES
+                else "gemma_ocr"
+            )
             form.recommended_ocr_engine.data = system_settings.recommended_ocr_engine or ""
             form.default_translation_engine.data = (
-                getattr(system_settings, "default_translation_engine", "indictrans2")
-                or "indictrans2"
+                getattr(system_settings, "default_translation_engine", "indictrans3")
+                if getattr(system_settings, "default_translation_engine", None) in SUPPORTED_TRANSLATION_ENGINES
+                else "indictrans3"
             )
             form.recommended_translation_engine.data = (
                 getattr(system_settings, "recommended_translation_engine", "")

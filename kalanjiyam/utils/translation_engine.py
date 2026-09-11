@@ -841,73 +841,64 @@ IndicTransEngine = GenericTranslationEngine
 
 
 SUPPORTED_TRANSLATION_ENGINES = [
-    "indictrans2",
-    "gemma",
-    "gemma_4_31b",
+    "indictrans3",
     "indic_translate",
     "llm_gemma",
     "param_lc_translate_ep4",
-    "translation_1b_exp_40",
-    "indictrans3",
-    "google",
-    "openai",
 ]
 
 TRANSLATION_SERVICE_ENGINE_ALIASES = {
-    "indictrans-2": "indictrans2",
-    "indictrans_2": "indictrans2",
+    "indictrans-v3": "indictrans3",
+    "indictrans_v3": "indictrans3",
     "indictrans-3": "indictrans3",
     "indictrans_3": "indictrans3",
-    "gemma-4": "gemma",
-    "gemma4": "gemma",
-    "gemma_4": "gemma",
-    "gemma-4-12b": "gemma",
-    "gemma_4_12b": "gemma",
-    "gemma-12b": "gemma",
-    "gemma_12b": "gemma",
-    "gemma-4-31b": "gemma_4_31b",
-    "gemma_4_31b": "gemma_4_31b",
-    "gemma-31b": "gemma_4_31b",
-    "gemma_31b": "gemma_4_31b",
+    "indictrans3": "indictrans3",
     "indic-translate": "indic_translate",
     "indic_translate": "indic_translate",
     "indictranslate": "indic_translate",
     "llm-gemma": "llm_gemma",
     "llm_gemma": "llm_gemma",
+    "gemma": "llm_gemma",
+    "gemma-4": "llm_gemma",
+    "gemma4": "llm_gemma",
     "param-lc-translate-ep4": "param_lc_translate_ep4",
     "param_lc": "param_lc_translate_ep4",
-    "translation-1b-exp-40": "translation_1b_exp_40",
-    "translation_1b": "translation_1b_exp_40",
+    "param": "param_lc_translate_ep4",
+    "param_lc_translate_ep4": "param_lc_translate_ep4",
 }
 
 TRANSLATION_ENGINE_MAP = {
+    "1": "indictrans3",
+    "2": "indic_translate",
+    "3": "llm_gemma",
+    "4": "param_lc_translate_ep4",
+}
+
+LEGACY_TRANSLATION_ENGINE_MAP = {
     "1": "indictrans2",
-    "2": "gemma",
     "3": "param_lc_translate_ep4",
-    "4": "translation_1b_exp_40",
     "5": "indictrans3",
-    "6": "google",
-    "7": "openai",
     "8": "llm_gemma",
-    "9": "gemma_4_31b",
     "10": "indic_translate",
 }
 
 REVERSE_TRANSLATION_ENGINE_MAP = {v: k for k, v in TRANSLATION_ENGINE_MAP.items()}
-REVERSE_TRANSLATION_ENGINE_MAP["indic-translate"] = "10"
+REVERSE_TRANSLATION_ENGINE_MAP["indic-translate"] = "2"
+REVERSE_TRANSLATION_ENGINE_MAP["indictrans-3"] = "1"
+REVERSE_TRANSLATION_ENGINE_MAP["indictrans_3"] = "1"
+REVERSE_TRANSLATION_ENGINE_MAP["llm-gemma"] = "3"
+REVERSE_TRANSLATION_ENGINE_MAP["param"] = "4"
+REVERSE_TRANSLATION_ENGINE_MAP["param-lc-translate-ep4"] = "4"
+REVERSE_TRANSLATION_ENGINE_MAP["param_lc"] = "4"
 
 TRANSLATION_ENGINE_LABELS = {
-    "indictrans2": "IndicTrans v2",
-    "gemma": "Gemma 4 12B",
-    "gemma_4_31b": "Gemma 4 31B",
+    "indictrans3": "IndicTrans v3",
     "indic_translate": "Indic-Translate",
     "indic-translate": "Indic-Translate",
     "llm_gemma": "LLM Gemma",
+    "llm-gemma": "LLM Gemma",
     "param_lc_translate_ep4": "Param LC Translate EP4",
-    "translation_1b_exp_40": "Translation 1B Exp 40",
-    "indictrans3": "IndicTrans v3",
-    "google": "Google",
-    "openai": "OpenAI",
+    "param": "Param LC Translate EP4",
 }
 
 
@@ -927,6 +918,8 @@ def normalize_translation_engine(engine: str) -> str:
     stripped = str(engine).strip()
     if stripped in TRANSLATION_ENGINE_MAP:
         return TRANSLATION_ENGINE_MAP[stripped]
+    if stripped in LEGACY_TRANSLATION_ENGINE_MAP:
+        return LEGACY_TRANSLATION_ENGINE_MAP[stripped]
     return normalize_translation_service_engine(stripped)
 
 
@@ -964,7 +957,11 @@ def build_translation_choices(
             item_label = None
 
         engine_name = normalize_translation_engine(raw_name)
-        if not engine_name or engine_name in seen_engines:
+        if (
+            not engine_name
+            or engine_name in seen_engines
+            or engine_name not in SUPPORTED_TRANSLATION_ENGINES
+        ):
             continue
         seen_engines.add(engine_name)
 
@@ -1000,16 +997,12 @@ class TranslationEngineFactory:
     """Dynamic factory for creating translation engines."""
 
     _engines = {
+        "indictrans3": lambda: GenericTranslationEngine("indictrans3"),
         "indictrans2": lambda: GenericTranslationEngine("indictrans2"),
-        "gemma": lambda: GenericTranslationEngine("gemma"),
-        "gemma_4_31b": lambda: GenericTranslationEngine("gemma_4_31b"),
         "indic_translate": lambda: GenericTranslationEngine("indic_translate"),
         "llm_gemma": lambda: LlmGemmaTranslateEngine(),
         "param_lc_translate_ep4": lambda: BharatGenTranslateEngine(
             "param_lc_translate_ep4"
-        ),
-        "translation_1b_exp_40": lambda: BharatGenTranslateEngine(
-            "translation_1b_exp_40"
         ),
     }
 
@@ -1168,7 +1161,7 @@ def restore_dnt_and_math(text: str, dnt_map: dict[str, str]) -> str:
     return result
 
 
-def translate_text(text: str, source_lang: str, target_lang: str, engine_name: str = 'indictrans2', **kwargs) -> TranslationResponse:
+def translate_text(text: str, source_lang: str, target_lang: str, engine_name: str = 'indictrans3', **kwargs) -> TranslationResponse:
     """Convenience function to translate text using the specified engine.
     
     :param text: Text to translate
@@ -1357,7 +1350,10 @@ def get_available_translation_engines() -> List[Dict[str, str]]:
                             }
                             label_val = label_map.get(engine_val, engine_val.replace('_', ' ').replace('-', ' ').title())
 
-                        if engine_val not in seen_engines:
+                        if (
+                            engine_val in SUPPORTED_TRANSLATION_ENGINES
+                            and engine_val not in seen_engines
+                        ):
                             seen_engines[engine_val] = {
                                 'value': engine_val,
                                 'label': label_val,
@@ -1368,20 +1364,10 @@ def get_available_translation_engines() -> List[Dict[str, str]]:
 
     # Fallback to default remote engines if none discovered
     if not seen_engines:
-        seen_engines['indictrans2'] = {
-            'value': 'indictrans2',
-            'label': 'IndicTrans v2',
-            'model_name': 'ai4bharat/indictrans2',
-        }
-        seen_engines['gemma'] = {
-            'value': 'gemma',
-            'label': 'Gemma 4 12B',
-            'model_name': 'google/gemma-4-12b-it',
-        }
-        seen_engines['gemma_4_31b'] = {
-            'value': 'gemma_4_31b',
-            'label': 'Gemma 4 31B',
-            'model_name': 'google/gemma-4-31b-it',
+        seen_engines['indictrans3'] = {
+            'value': 'indictrans3',
+            'label': 'IndicTrans v3',
+            'model_name': 'ai4bharat/indictrans3',
         }
         seen_engines['indic_translate'] = {
             'value': 'indic_translate',
@@ -1393,6 +1379,11 @@ def get_available_translation_engines() -> List[Dict[str, str]]:
             'label': 'LLM Gemma',
             'model_name': 'llm-gemma',
         }
+        seen_engines['param_lc_translate_ep4'] = {
+            'value': 'param_lc_translate_ep4',
+            'label': 'Param LC Translate EP4',
+            'model_name': 'param_lc_translate_ep4',
+        }
 
     # Add llm-gemma model
     llm_gemma_model = {
@@ -1403,32 +1394,20 @@ def get_available_translation_engines() -> List[Dict[str, str]]:
     if llm_gemma_model['value'] not in seen_engines:
         seen_engines[llm_gemma_model['value']] = llm_gemma_model
 
-    # Add BharatGen models
-    bharatgen_models = [
-        {
-            'value': 'param_lc_translate_ep4',
-            'label': 'Param LC Translate EP4',
-            'model_name': 'param_lc_translate_ep4',
-        },
-        {
-            'value': 'translation_1b_exp_40',
-            'label': 'Translation 1B Exp 40',
-            'model_name': 'translation_1b_exp_40',
-        },
-    ]
-    for bg in bharatgen_models:
-        if bg['value'] not in seen_engines:
-            seen_engines[bg['value']] = bg
+    # Add BharatGen param model
+    param_model = {
+        'value': 'param_lc_translate_ep4',
+        'label': 'Param LC Translate EP4',
+        'model_name': 'param_lc_translate_ep4',
+    }
+    if param_model['value'] not in seen_engines:
+        seen_engines[param_model['value']] = param_model
 
     sort_order = {
-        'indictrans2': 0,
-        'gemma': 1,
-        'gemma_4_31b': 2,
-        'indic_translate': 3,
-        'llm_gemma': 4,
-        'param_lc_translate_ep4': 5,
-        'translation_1b_exp_40': 6,
-        'indictrans3': 7,
+        'indictrans3': 0,
+        'indic_translate': 1,
+        'llm_gemma': 2,
+        'param_lc_translate_ep4': 3,
     }
     sorted_choices = sorted(
         list(seen_engines.values()),

@@ -129,17 +129,9 @@ TIER_UNKNOWN = 5
 #: after it, alphabetically.
 OCR_ENGINE_PREFERENCE = (
     "chandra",
-    "dots_ocr",
     "gemma_ocr",
     "indic_ocr",
-    "glm_ocr",
-    "qwen3",
-    "deepseek",
-    "nanonets",
-    "surya",
     "tesseract_manuscript",
-    "google",
-    "tesseract",
 )
 
 #: Unicode ranges we bucket characters into, as (script_code, first, last).

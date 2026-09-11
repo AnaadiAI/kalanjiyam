@@ -289,10 +289,10 @@ class BaseConfig:
     VOICE_SERVICE_TIMEOUT = int(_env("VOICE_SERVICE_TIMEOUT", "30") or "30")
 
     #: Default OCR engine/model.
-    DEFAULT_OCR_ENGINE = _env("DEFAULT_OCR_ENGINE", "tesseract")
+    DEFAULT_OCR_ENGINE = _env("DEFAULT_OCR_ENGINE", "gemma_ocr")
 
     #: Default Translation engine/model.
-    DEFAULT_TRANSLATION_ENGINE = _env("DEFAULT_TRANSLATION_ENGINE", "indictrans2")
+    DEFAULT_TRANSLATION_ENGINE = _env("DEFAULT_TRANSLATION_ENGINE", "indictrans3")
 
     # Full-text search (OpenSearch)
     # ----------------------------

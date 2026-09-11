@@ -22,7 +22,7 @@ def _run_translation_for_page_inner(
     page_slug: str,
     source_lang: str = 'sa',
     target_lang: str = 'en',
-    engine: str = 'google',
+    engine: str = 'indictrans3',
     revision_id: int = None,
     glossary: str = None,
 ) -> int:
@@ -301,7 +301,7 @@ def run_translation_for_page(
     page_slug: str,
     source_lang: str = 'sa',
     target_lang: str = 'en',
-    engine: str = 'google',
+    engine: str = 'indictrans3',
     revision_id: int = None,
     glossary: str = None,
 ):
@@ -327,7 +327,7 @@ def run_translation_for_project(
     project: db.Project,
     source_lang: str = 'sa',
     target_lang: str = 'en',
-    engine: str = 'google',
+    engine: str = 'indictrans3',
     revision_id: int = None,
     queue: str | None = None,
     glossary: str = None,
@@ -451,7 +451,7 @@ def run_translation_for_revision(
     revision_id: int,
     source_lang: str = 'sa',
     target_lang: str = 'en',
-    engine: str = 'google',
+    engine: str = 'indictrans3',
     glossary: str = None,
 ):
     """Run translation for a specific revision across all pages in the project."""
@@ -508,7 +508,7 @@ def run_docx_translation(
     docx_id: str,
     source_lang: str = 'sa',
     target_lang: str = 'en',
-    engine: str = 'indictrans2',
+    engine: str = 'indictrans3',
     glossary: str = None,
     creator_id: int = None,
 ):

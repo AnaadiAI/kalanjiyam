@@ -1575,7 +1575,7 @@ def batch_ocr(slug):
     )
 
     system_settings = q.get_system_settings()
-    default_ocr_engine = system_settings.default_ocr_engine or "google"
+    default_ocr_engine = system_settings.default_ocr_engine or "gemma_ocr"
     default_engine_value = REVERSE_ENGINE_MAP.get(default_ocr_engine, "1")
     from kalanjiyam.utils.org_access import is_restricted_ocr_user
 
@@ -1863,7 +1863,7 @@ def batch_enhanced_ocr(slug):
 
                     from kalanjiyam.utils.ocr_types import REVERSE_ENGINE_MAP
 
-                    numeric_value = REVERSE_ENGINE_MAP.get(engine, "12")
+                    numeric_value = REVERSE_ENGINE_MAP.get(engine, "1")
                     tag_parts = [profile.replace("_", " ").title()]
                     if line_segmentation:
                         tag_parts.append("Segmented")
@@ -1908,8 +1908,8 @@ def batch_enhanced_ocr(slug):
     )
 
     system_settings = q.get_system_settings()
-    default_ocr_engine = system_settings.default_ocr_engine or "dots_ocr"
-    default_engine_value = REVERSE_ENGINE_MAP.get(default_ocr_engine, "12")
+    default_ocr_engine = system_settings.default_ocr_engine or "gemma_ocr"
+    default_engine_value = REVERSE_ENGINE_MAP.get(default_ocr_engine, "1")
     from kalanjiyam.utils.org_access import is_restricted_ocr_user
 
     is_restricted_ocr = is_restricted_ocr_user(current_user)
@@ -2014,7 +2014,7 @@ def batch_enhanced_ocr(slug):
                             "upscale_factor": upscale_factor,
                         },
                     )
-                numeric_value = REVERSE_ENGINE_MAP.get(engine, "12")
+                numeric_value = REVERSE_ENGINE_MAP.get(engine, "1")
                 tag_parts = [profile.replace("_", " ").title()]
                 if line_segmentation:
                     tag_parts.append("Segmented")
@@ -2101,7 +2101,7 @@ def batch_enhanced_ocr_status(task_id):
 
     from kalanjiyam.utils.ocr_types import REVERSE_ENGINE_MAP
 
-    numeric_value = REVERSE_ENGINE_MAP.get(engine, "12")
+    numeric_value = REVERSE_ENGINE_MAP.get(engine, "1")
     engine_label = f"OCR {numeric_value} ({profile.replace('_', ' ').title()})"
 
     if r.results:
@@ -2166,8 +2166,8 @@ def batch_translate(slug):
 
     system_settings = q.get_system_settings()
     default_trans_engine = (
-        getattr(system_settings, "default_translation_engine", "indictrans2")
-        or "indictrans2"
+        getattr(system_settings, "default_translation_engine", "indictrans3")
+        or "indictrans3"
     )
     rec_trans_engine = getattr(
         system_settings, "recommended_translation_engine", None
@@ -2379,7 +2379,7 @@ def batch_translate_status(task_id):
             failed_tasks=0,
         )
 
-    engine = "indictrans2"
+    engine = "indictrans3"
     source_lang = "sa"
     target_lang = "en"
     try:
@@ -2388,7 +2388,7 @@ def batch_translate_status(task_id):
             if task_info:
                 task_data = json.loads(task_info)
                 if task_data.get("task_id") == task_id:
-                    engine = task_data.get("engine", "indictrans2")
+                    engine = task_data.get("engine", "indictrans3")
                     source_lang = task_data.get("source_lang", "sa")
                     target_lang = task_data.get("target_lang", "en")
                     break

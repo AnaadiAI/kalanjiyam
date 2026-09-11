@@ -139,7 +139,7 @@ def test_to_plain_text__unescapes_entities():
 
 
 def test_to_plain_text__strips_markdown_from_markdown_engines():
-    got = pm.to_plain_text("## Title\n**bold** text", "plain", "ocr:deepseek")
+    got = pm.to_plain_text("## Title\n**bold** text", "plain", "ocr:gemma_ocr")
     assert got == "Title\nbold text"
 
 

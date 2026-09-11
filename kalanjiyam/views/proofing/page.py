@@ -575,7 +575,7 @@ def _editor_template_kwargs(
 
     # Fetch default OCR engine configuration for restricted users
     system_settings = q.get_system_settings()
-    default_ocr_engine = system_settings.default_ocr_engine or "google"
+    default_ocr_engine = system_settings.default_ocr_engine or "gemma_ocr"
     from kalanjiyam.utils.ocr_types import REVERSE_ENGINE_MAP
 
     default_engine_value = REVERSE_ENGINE_MAP.get(default_ocr_engine, "1")
@@ -588,8 +588,8 @@ def _editor_template_kwargs(
         REVERSE_TRANSLATION_ENGINE_MAP,
     )
     default_trans_engine = (
-        getattr(system_settings, "default_translation_engine", "indictrans2")
-        or "indictrans2"
+        getattr(system_settings, "default_translation_engine", "indictrans3")
+        or "indictrans3"
     )
     default_translation_value = REVERSE_TRANSLATION_ENGINE_MAP.get(
         default_trans_engine, "1"
@@ -1307,7 +1307,7 @@ def ocr(project_slug, page_slug):
 
     if is_restricted_ocr_user(current_user):
         settings = q.get_system_settings()
-        engine = settings.default_ocr_engine or "google"
+        engine = settings.default_ocr_engine or "gemma_ocr"
 
     from kalanjiyam.utils.ocr_runner import normalize_engine, run_ocr
     from kalanjiyam.utils.ocr_types import SUPPORTED_ENGINES
@@ -2524,7 +2524,7 @@ def translate(project_slug, page_slug):
 
     source_lang = request.args.get("source_lang") or doc_data.get("source_lang") or "sa"
     target_lang = request.args.get("target_lang") or doc_data.get("target_lang") or "en"
-    engine = request.args.get("engine") or doc_data.get("engine") or "indictrans2"
+    engine = request.args.get("engine") or doc_data.get("engine") or "indictrans3"
     revision_id = request.args.get("revision_id", type=int)
     glossary = request.args.get("glossary") or doc_data.get("glossary") or None
 

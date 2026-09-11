@@ -3,7 +3,7 @@
 Covers:
 1. Normal OCR remains unchanged.
 2. Enhanced OCR can run with Gemma.
-3. Enhanced OCR can run with Dots.
+3. Enhanced OCR can run with Indic OCR.
 4. Each supported preprocessing profile works (document_cleanup, clahe, sharpen, text_enhancement).
 5. Output dimensions are preserved and source image is not modified in-place.
 6. Each profile produces a distinct preprocessed output.
@@ -86,7 +86,7 @@ def mock_ocr_response():
         pipeline="standard",
         coordinate_space="pixel",
         contract_version="2.2",
-        model={"name": "dots-ocr", "version": "1.0.0"},
+        model={"name": "indic-ocr", "version": "1.0.0"},
         page_confidence=0.95,
         p05=0.95,
         blocks_count=1,
@@ -102,20 +102,20 @@ def test_normal_ocr_remains_unchanged(test_image, mock_ocr_response):
     with patch(
         "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
     ) as mock_remote:
-        resp = run_ocr(test_image, engine_name="dots-ocr", language="sa")
+        resp = run_ocr(test_image, engine_name="indic-ocr", language="sa")
         assert resp.ocr_mode == "standard"
         assert resp.enhancement_profile is None
         assert resp.enhancement_version is None
         # Verify normal API dict output does not inject enhanced fields
         api_dict = ocr_response_to_api_dict(
-            resp, "dots_ocr", image_width=400, image_height=600
+            resp, "indic_ocr", image_width=400, image_height=600
         )
         assert "ocr_mode" not in api_dict
         assert "enhancement" not in api_dict
         assert "preprocessing" not in api_dict
-        assert api_dict["engine"] == "dots_ocr"
+        assert api_dict["engine"] == "indic_ocr"
         assert api_dict["coordinate_space"] == "pixel"
-        mock_remote.assert_called_once_with(test_image, "dots_ocr", "sa")
+        mock_remote.assert_called_once_with(test_image, "indic_ocr", "sa")
 
 
 # ---------------------------------------------------------------------------
@@ -162,20 +162,20 @@ def test_enhanced_ocr_runs_with_gemma(test_image, mock_ocr_response):
 
 
 # ---------------------------------------------------------------------------
-# 3. Enhanced OCR can run with Dots
+# 3. Enhanced OCR can run with Indic OCR
 # ---------------------------------------------------------------------------
-def test_enhanced_ocr_runs_with_dots(test_image, mock_ocr_response):
+def test_enhanced_ocr_runs_with_indic(test_image, mock_ocr_response):
     with patch(
         "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
     ) as mock_remote:
         resp = run_enhanced_ocr(
             test_image,
-            engine_name="dots-ocr",
+            engine_name="indic-ocr",
             profile="bg_clahe",
             language="sa",
         )
         assert resp.ocr_mode == "enhanced"
-        assert resp.engine == "dots_ocr"
+        assert resp.engine == "indic_ocr"
         assert resp.enhancement_profile == "bg_clahe"
         assert resp.enhancement_version == "1.0"
         mock_remote.assert_called_once()
@@ -274,7 +274,7 @@ def test_invalid_engine_is_rejected(test_image):
 def test_invalid_enhancement_profile_is_rejected(test_image):
     with pytest.raises(ValueError, match="Unsupported enhancement profile"):
         run_enhanced_ocr(
-            test_image, engine_name="dots-ocr", profile="invalid_magic_profile"
+            test_image, engine_name="indic-ocr", profile="invalid_magic_profile"
         )
 
     # "normal" profile is intentionally removed and must be rejected
@@ -311,15 +311,15 @@ def test_enhanced_result_metadata(test_image, mock_ocr_response):
         "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
     ):
         resp = run_enhanced_ocr(
-            test_image, engine_name="dots-ocr", profile="document_cleanup"
+            test_image, engine_name="indic-ocr", profile="document_cleanup"
         )
         api_dict = ocr_response_to_api_dict(
-            resp, "dots_ocr", image_width=400, image_height=600
+            resp, "indic_ocr", image_width=400, image_height=600
         )
         assert api_dict["ocr_mode"] == "enhanced"
         assert api_dict["enhancement_version"] == "1.0"
         assert api_dict["contract_version"] == "2.2"
-        assert api_dict["engine"] == "dots_ocr"
+        assert api_dict["engine"] == "indic_ocr"
         assert api_dict["enhancement"] == {
             "profile": "document_cleanup",
             "version": "1.0",
@@ -328,7 +328,7 @@ def test_enhanced_result_metadata(test_image, mock_ocr_response):
             "profile": "document_cleanup",
             "version": "1.0",
         }
-        assert api_dict["model"] == {"name": "dots-ocr", "version": "1.0.0"}
+        assert api_dict["model"] == {"name": "indic-ocr", "version": "1.0.0"}
         assert "preprocessing_latency_ms" in api_dict
 
 
@@ -349,13 +349,13 @@ def test_enhanced_result_does_not_overwrite_normal_ocr(flask_app):
 
             # 2. Store enhanced OCR
             enhanced_key = page_enhanced_ocr_key(
-                project_slug, page_slug, "dots-ocr", "document_cleanup"
+                project_slug, page_slug, "indic-ocr", "document_cleanup"
             )
             enhanced_payload = {
                 "contract_version": "2.2",
                 "ocr_mode": "enhanced",
                 "enhancement_version": "1.0",
-                "engine": "dots-ocr",
+                "engine": "indic-ocr",
                 "enhancement": {"profile": "document_cleanup", "version": "1.0"},
                 "preprocessing": {"profile": "document_cleanup", "version": "1.0"},
                 "blocks": [],
@@ -385,10 +385,10 @@ def test_json_gzip_compression_and_decompression(flask_app):
     with flask_app.app_context():
         mem_storage = MemoryStorage()
         with patch("kalanjiyam.utils.storage.get_storage", return_value=mem_storage):
-            key = page_enhanced_ocr_key("proj", "19", "dots-ocr", "bg_clahe")
+            key = page_enhanced_ocr_key("proj", "19", "indic-ocr", "bg_clahe")
             data = {
                 "ocr_mode": "enhanced",
-                "engine": "dots-ocr",
+                "engine": "indic-ocr",
                 "enhancement_version": "1.0",
                 "enhancement": {"profile": "bg_clahe", "version": "1.0"},
                 "preprocessing": {"profile": "bg_clahe", "version": "1.0"},
@@ -415,10 +415,10 @@ def test_page_dimensions_and_coordinate_space(test_image, mock_ocr_response):
         "kalanjiyam.utils.ocr_runner.run_ocr_remote", return_value=mock_ocr_response
     ):
         resp = run_enhanced_ocr(
-            test_image, engine_name="dots-ocr", profile="text_enhancement"
+            test_image, engine_name="indic-ocr", profile="text_enhancement"
         )
         api_dict = ocr_response_to_api_dict(
-            resp, "dots_ocr", image_width=400, image_height=600
+            resp, "indic_ocr", image_width=400, image_height=600
         )
         assert api_dict["page_width"] == 400
         assert api_dict["page_height"] == 600
@@ -438,17 +438,17 @@ def test_page_dimensions_and_coordinate_space(test_image, mock_ocr_response):
 def test_different_combinations_produce_distinguishable_results(flask_app):
     with flask_app.app_context():
         # Keys for combinations on page 19:
-        key1 = page_enhanced_ocr_key("cool-book", "19", "dots-ocr", "document_cleanup")
+        key1 = page_enhanced_ocr_key("cool-book", "19", "indic-ocr", "document_cleanup")
         key2 = page_enhanced_ocr_key("cool-book", "19", "gemma-ocr", "document_cleanup")
-        key3 = page_enhanced_ocr_key("cool-book", "19", "dots-ocr", "bg_clahe")
-        key4 = page_enhanced_ocr_key("cool-book", "19", "dots-ocr", "text_enhancement")
+        key3 = page_enhanced_ocr_key("cool-book", "19", "indic-ocr", "bg_clahe")
+        key4 = page_enhanced_ocr_key("cool-book", "19", "indic-ocr", "text_enhancement")
 
         assert len({key1, key2, key3, key4}) == 4
 
-        assert "dots-ocr/document_cleanup/19.json.gz" in key1
+        assert "indic-ocr/document_cleanup/19.json.gz" in key1
         assert "gemma-ocr/document_cleanup/19.json.gz" in key2
-        assert "dots-ocr/bg_clahe/19.json.gz" in key3
-        assert "dots-ocr/text_enhancement/19.json.gz" in key4
+        assert "indic-ocr/bg_clahe/19.json.gz" in key3
+        assert "indic-ocr/text_enhancement/19.json.gz" in key4
 
         # Revision tags for version tracks:
         class MockRevision:
@@ -458,11 +458,11 @@ def test_different_combinations_produce_distinguishable_results(flask_app):
                 self.translations = []
                 self.author = None
 
-        rev1 = MockRevision("ocr:enhanced:dots_ocr:document_cleanup")
+        rev1 = MockRevision("ocr:enhanced:indic_ocr:document_cleanup")
         rev2 = MockRevision("ocr:enhanced:gemma_ocr:document_cleanup")
-        rev3 = MockRevision("ocr:enhanced:dots_ocr:bg_clahe")
-        rev4 = MockRevision("ocr:enhanced:dots_ocr:text_enhancement")
-        rev_normal = MockRevision("ocr:dots_ocr")
+        rev3 = MockRevision("ocr:enhanced:indic_ocr:bg_clahe")
+        rev4 = MockRevision("ocr:enhanced:indic_ocr:text_enhancement")
+        rev_normal = MockRevision("ocr:indic_ocr")
 
         tag1 = derive_revision_tag(rev1)
         tag2 = derive_revision_tag(rev2)
@@ -470,11 +470,11 @@ def test_different_combinations_produce_distinguishable_results(flask_app):
         tag4 = derive_revision_tag(rev4)
         tag_normal = derive_revision_tag(rev_normal)
 
-        assert tag1 == "ocr-enhanced-dots-ocr_document-cleanup"
+        assert tag1 == "ocr-enhanced-indic-ocr_document-cleanup"
         assert tag2 == "ocr-enhanced-gemma-ocr_document-cleanup"
-        assert tag3 == "ocr-enhanced-dots-ocr_bg-clahe"
-        assert tag4 == "ocr-enhanced-dots-ocr_text-enhancement"
-        assert tag_normal == "ocr-dots-ocr"
+        assert tag3 == "ocr-enhanced-indic-ocr_bg-clahe"
+        assert tag4 == "ocr-enhanced-indic-ocr_text-enhancement"
+        assert tag_normal == "ocr-indic-ocr"
 
         assert len({tag1, tag2, tag3, tag4, tag_normal}) == 5
 
@@ -540,7 +540,7 @@ def test_enhanced_ocr_api_endpoint(flask_app, mock_ocr_response, tmp_path):
 
                 # Test document_cleanup
                 resp = client.get(
-                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=dots_ocr&enhancement=document_cleanup&language=sa"
+                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=indic_ocr&enhancement=document_cleanup&language=sa"
                 )
                 assert resp.status_code == 200
                 data = resp.get_json()
@@ -548,11 +548,11 @@ def test_enhanced_ocr_api_endpoint(flask_app, mock_ocr_response, tmp_path):
                 assert data["enhancement_version"] == "1.0"
                 assert data["enhancement"]["profile"] == "document_cleanup"
                 assert data["preprocessing"]["profile"] == "document_cleanup"
-                assert data["engine"] == "dots_ocr"
+                assert data["engine"] == "indic_ocr"
 
                 # Test text_enhancement
                 resp_text_enh = client.get(
-                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=dots_ocr&enhancement=text_enhancement&language=sa"
+                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=indic_ocr&enhancement=text_enhancement&language=sa"
                 )
                 assert resp_text_enh.status_code == 200
                 data_text_enh = resp_text_enh.get_json()
@@ -560,14 +560,14 @@ def test_enhanced_ocr_api_endpoint(flask_app, mock_ocr_response, tmp_path):
 
                 # Test alias route /api/ocr/enhanced/ with alias background_clahe -> bg_clahe
                 resp_alias = client.get(
-                    f"/api/ocr/enhanced/{project.slug}/{page.slug}/?engine=dots_ocr&enhancement=background_clahe&language=sa"
+                    f"/api/ocr/enhanced/{project.slug}/{page.slug}/?engine=indic_ocr&enhancement=background_clahe&language=sa"
                 )
                 assert resp_alias.status_code == 200
                 assert resp_alias.get_json()["enhancement"]["profile"] == "bg_clahe"
 
                 # Test invalid enhancement profile via API returns 400
                 bad_resp = client.get(
-                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=dots_ocr&enhancement=bad_profile"
+                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=indic_ocr&enhancement=bad_profile"
                 )
                 assert bad_resp.status_code == 400
 
@@ -619,7 +619,7 @@ def test_enhanced_ocr_background_task(flask_app, mock_ocr_response, tmp_path):
                 app_env="testing",
                 project_slug=project.slug,
                 page_slug=page.slug,
-                engine="dots-ocr",
+                engine="indic-ocr",
                 profile="document_cleanup",
                 language="sa",
             )
@@ -627,7 +627,7 @@ def test_enhanced_ocr_background_task(flask_app, mock_ocr_response, tmp_path):
             assert result["ocr_mode"] == "enhanced"
             assert result["enhancement"]["profile"] == "document_cleanup"
             assert result["preprocessing"]["profile"] == "document_cleanup"
-            assert result["engine"] == "dots_ocr"
+            assert result["engine"] == "indic_ocr"
 
 
 # ---------------------------------------------------------------------------
@@ -894,7 +894,7 @@ def test_batch_enhanced_ocr_get_and_post(flask_app, tmp_path):
                 post_resp = client.post(
                     f"/proofing/{project.slug}/batch-enhanced-ocr",
                     data={
-                        "engine": "12",
+                        "engine": "2",
                         "profile": "hybrid_binarization",
                         "language": "sa",
                         "save_enhanced_images": "1",
@@ -903,7 +903,7 @@ def test_batch_enhanced_ocr_get_and_post(flask_app, tmp_path):
                 assert post_resp.status_code == 200
                 mock_run_proj.assert_called_once()
                 call_kwargs = mock_run_proj.call_args.kwargs
-                assert call_kwargs["engine"] == "dots_ocr"
+                assert call_kwargs["engine"] == "indic_ocr"
                 assert call_kwargs["profile"] == "hybrid_binarization"
                 assert call_kwargs["save_enhanced_images"] is True
 
@@ -964,7 +964,7 @@ def test_line_segmentation_disabled_unchanged(test_image, mock_ocr_response):
     ) as mock_remote:
         resp = run_enhanced_ocr(
             test_image,
-            engine_name="dots-ocr",
+            engine_name="indic-ocr",
             profile="hybrid_binarization",
             language="sa",
             line_segmentation=False,
@@ -973,7 +973,7 @@ def test_line_segmentation_disabled_unchanged(test_image, mock_ocr_response):
         assert resp.line_segmentation_version is None
         mock_remote.assert_called_once()
         api_dict = ocr_response_to_api_dict(
-            resp, "dots_ocr", image_width=400, image_height=600
+            resp, "indic_ocr", image_width=400, image_height=600
         )
         assert "line_segmentation" not in api_dict
         assert "transformed_image_state" not in api_dict
@@ -1029,7 +1029,7 @@ def test_empty_or_no_line_detection_fallback(tmp_path, mock_ocr_response):
     ) as mock_remote:
         resp = run_enhanced_ocr(
             blank_img_path,
-            engine_name="dots-ocr",
+            engine_name="indic-ocr",
             profile="hybrid_binarization",
             language="sa",
             line_segmentation=True,
@@ -1094,7 +1094,7 @@ def test_ocr_invocation_count_is_strictly_one(
     ) as mock_remote:
         resp = run_enhanced_ocr(
             closely_written_manuscript_image,
-            engine_name="dots-ocr",
+            engine_name="indic-ocr",
             profile="hybrid_binarization",
             language="sa",
             line_segmentation=True,
@@ -1111,10 +1111,10 @@ def test_segmented_and_non_segmented_cache_and_revision_identity(flask_app):
     with flask_app.app_context():
         # Storage keys
         key_unseg = page_enhanced_ocr_key(
-            "cool-book", "19", "dots-ocr", "hybrid_binarization", line_segmentation=False
+            "cool-book", "19", "indic-ocr", "hybrid_binarization", line_segmentation=False
         )
         key_seg = page_enhanced_ocr_key(
-            "cool-book", "19", "dots-ocr", "hybrid_binarization", line_segmentation=True
+            "cool-book", "19", "indic-ocr", "hybrid_binarization", line_segmentation=True
         )
 
         assert key_unseg != key_seg
@@ -1129,14 +1129,14 @@ def test_segmented_and_non_segmented_cache_and_revision_identity(flask_app):
                 self.translations = []
                 self.author = None
 
-        rev_unseg = MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization")
-        rev_seg = MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization:segmented")
+        rev_unseg = MockRevision("ocr:enhanced:indic_ocr:hybrid_binarization")
+        rev_seg = MockRevision("ocr:enhanced:indic_ocr:hybrid_binarization:segmented")
 
         tag_unseg = derive_revision_tag(rev_unseg)
         tag_seg = derive_revision_tag(rev_seg)
 
-        assert tag_unseg == "ocr-enhanced-dots-ocr_hybrid-binarization"
-        assert tag_seg == "ocr-enhanced-dots-ocr_hybrid-binarization_segmented"
+        assert tag_unseg == "ocr-enhanced-indic-ocr_hybrid-binarization"
+        assert tag_seg == "ocr-enhanced-indic-ocr_hybrid-binarization_segmented"
         assert tag_unseg != tag_seg
 
 
@@ -1150,7 +1150,7 @@ def test_composition_with_all_enhancement_profiles(
     ) as mock_remote:
         resp = run_enhanced_ocr(
             closely_written_manuscript_image,
-            engine_name="dots-ocr",
+            engine_name="indic-ocr",
             profile=profile,
             language="sa",
             line_segmentation=True,
@@ -1207,7 +1207,7 @@ def test_line_segmentation_api_and_batch_task(flask_app, mock_ocr_response, tmp_
                 app_env="testing",
                 project_slug=project.slug,
                 page_slug=page.slug,
-                engine="dots-ocr",
+                engine="indic-ocr",
                 profile="hybrid_binarization",
                 language="sa",
                 line_segmentation=True,
@@ -1218,12 +1218,12 @@ def test_line_segmentation_api_and_batch_task(flask_app, mock_ocr_response, tmp_
             assert result["transformed_image_state"] == "reconstructed_segmented_lines"
             assert mock_remote.call_count == 1
 
-            # Check revision was saved to ocr:enhanced:dots_ocr:hybrid_binarization:segmented
+            # Check revision was saved to ocr:enhanced:indic_ocr:hybrid_binarization:segmented
             pv = (
                 session.query(db.PageVersion)
                 .filter_by(
                     page_id=page.id,
-                    version_key="ocr:enhanced:dots_ocr:hybrid_binarization:segmented",
+                    version_key="ocr:enhanced:indic_ocr:hybrid_binarization:segmented",
                 )
                 .first()
             )
@@ -1259,12 +1259,12 @@ def test_line_segmentation_api_and_batch_task(flask_app, mock_ocr_response, tmp_
                     u.id = 1
 
                 resp = client.get(
-                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=dots_ocr&enhancement=hybrid_binarization&line_segmentation=1&language=sa"
+                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=indic_ocr&enhancement=hybrid_binarization&line_segmentation=1&language=sa"
                 )
                 assert resp.status_code == 200
                 data = resp.get_json()
                 assert data["line_segmentation"] is True
-                assert data["version_key"] == "ocr:enhanced:dots_ocr:hybrid_binarization:segmented"
+                assert data["version_key"] == "ocr:enhanced:indic_ocr:hybrid_binarization:segmented"
                 assert mock_api_remote.call_count == 1
 
 
@@ -1333,7 +1333,7 @@ def test_pipeline_case_a_seg_off_upscale_off(test_image, mock_ocr_response):
     ) as mock_remote:
         resp = run_enhanced_ocr(
             test_image,
-            engine_name="dots-ocr",
+            engine_name="indic-ocr",
             profile="hybrid_binarization",
             language="sa",
             line_segmentation=False,
@@ -1345,7 +1345,7 @@ def test_pipeline_case_a_seg_off_upscale_off(test_image, mock_ocr_response):
         assert resp.upscale_factor == 1
         assert mock_remote.call_count == 1
 
-        api_dict = ocr_response_to_api_dict(resp, "dots_ocr", image_width=400, image_height=600)
+        api_dict = ocr_response_to_api_dict(resp, "indic_ocr", image_width=400, image_height=600)
         assert "line_segmentation" not in api_dict
         assert "upscale" not in api_dict
         assert "transformed_image_state" not in api_dict
@@ -1358,7 +1358,7 @@ def test_pipeline_case_b_seg_on_upscale_off(closely_written_manuscript_image, mo
     ) as mock_remote:
         resp = run_enhanced_ocr(
             closely_written_manuscript_image,
-            engine_name="dots-ocr",
+            engine_name="indic-ocr",
             profile="hybrid_binarization",
             language="sa",
             line_segmentation=True,
@@ -1370,7 +1370,7 @@ def test_pipeline_case_b_seg_on_upscale_off(closely_written_manuscript_image, mo
         assert resp.upscale_factor == 1
         assert mock_remote.call_count == 1
 
-        api_dict = ocr_response_to_api_dict(resp, "dots_ocr", image_width=500, image_height=700)
+        api_dict = ocr_response_to_api_dict(resp, "indic_ocr", image_width=500, image_height=700)
         assert api_dict["line_segmentation"] is True
         assert "upscale" not in api_dict
         assert api_dict["transformed_image_state"] == "reconstructed_segmented_lines"
@@ -1384,7 +1384,7 @@ def test_pipeline_case_c_seg_off_upscale_on(test_image, factor, mock_ocr_respons
     ) as mock_remote:
         resp = run_enhanced_ocr(
             test_image,
-            engine_name="dots-ocr",
+            engine_name="indic-ocr",
             profile="document_cleanup",
             language="sa",
             line_segmentation=False,
@@ -1397,7 +1397,7 @@ def test_pipeline_case_c_seg_off_upscale_on(test_image, factor, mock_ocr_respons
         assert resp.upscale_factor == factor
         assert mock_remote.call_count == 1
 
-        api_dict = ocr_response_to_api_dict(resp, "dots_ocr", image_width=400, image_height=600)
+        api_dict = ocr_response_to_api_dict(resp, "indic_ocr", image_width=400, image_height=600)
         assert api_dict["upscale"] is True
         assert api_dict["upscale_factor"] == factor
         if factor > 1:
@@ -1416,7 +1416,7 @@ def test_pipeline_case_d_seg_on_upscale_on(
     ) as mock_remote:
         resp = run_enhanced_ocr(
             closely_written_manuscript_image,
-            engine_name="dots-ocr",
+            engine_name="indic-ocr",
             profile="hybrid_binarization",
             language="sa",
             line_segmentation=True,
@@ -1429,7 +1429,7 @@ def test_pipeline_case_d_seg_on_upscale_on(
         assert resp.upscale_factor == factor
         assert mock_remote.call_count == 1
 
-        api_dict = ocr_response_to_api_dict(resp, "dots_ocr", image_width=500, image_height=700)
+        api_dict = ocr_response_to_api_dict(resp, "indic_ocr", image_width=500, image_height=700)
         assert api_dict["line_segmentation"] is True
         assert api_dict["upscale"] is True
         assert api_dict["upscale_factor"] == factor
@@ -1467,11 +1467,11 @@ def test_tempfile_dimensions_for_pipeline_cases(test_image):
 def test_upscale_storage_keys_and_revision_tags(flask_app):
     with flask_app.app_context():
         # Storage keys
-        k_base = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=False, upscale=False)
-        k_seg = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=True, upscale=False)
-        k_upscale_2x = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=False, upscale=True, upscale_factor=2)
-        k_both_2x = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=True, upscale=True, upscale_factor=2)
-        k_both_3x = page_enhanced_ocr_key("book", "1", "dots_ocr", "hybrid_binarization", line_segmentation=True, upscale=True, upscale_factor=3)
+        k_base = page_enhanced_ocr_key("book", "1", "indic_ocr", "hybrid_binarization", line_segmentation=False, upscale=False)
+        k_seg = page_enhanced_ocr_key("book", "1", "indic_ocr", "hybrid_binarization", line_segmentation=True, upscale=False)
+        k_upscale_2x = page_enhanced_ocr_key("book", "1", "indic_ocr", "hybrid_binarization", line_segmentation=False, upscale=True, upscale_factor=2)
+        k_both_2x = page_enhanced_ocr_key("book", "1", "indic_ocr", "hybrid_binarization", line_segmentation=True, upscale=True, upscale_factor=2)
+        k_both_3x = page_enhanced_ocr_key("book", "1", "indic_ocr", "hybrid_binarization", line_segmentation=True, upscale=True, upscale_factor=3)
 
         assert len({k_base, k_seg, k_upscale_2x, k_both_2x, k_both_3x}) == 5
         assert "hybrid_binarization_upscale_2x" in k_upscale_2x
@@ -1486,15 +1486,15 @@ def test_upscale_storage_keys_and_revision_tags(flask_app):
                 self.translations = []
                 self.author = None
 
-        tag_base = derive_revision_tag(MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization"))
-        tag_seg = derive_revision_tag(MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization:segmented"))
-        tag_up2 = derive_revision_tag(MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization:upscale:2x"))
-        tag_both = derive_revision_tag(MockRevision("ocr:enhanced:dots_ocr:hybrid_binarization:segmented:upscale:2x"))
+        tag_base = derive_revision_tag(MockRevision("ocr:enhanced:indic_ocr:hybrid_binarization"))
+        tag_seg = derive_revision_tag(MockRevision("ocr:enhanced:indic_ocr:hybrid_binarization:segmented"))
+        tag_up2 = derive_revision_tag(MockRevision("ocr:enhanced:indic_ocr:hybrid_binarization:upscale:2x"))
+        tag_both = derive_revision_tag(MockRevision("ocr:enhanced:indic_ocr:hybrid_binarization:segmented:upscale:2x"))
 
-        assert tag_base == "ocr-enhanced-dots-ocr_hybrid-binarization"
-        assert tag_seg == "ocr-enhanced-dots-ocr_hybrid-binarization_segmented"
-        assert tag_up2 == "ocr-enhanced-dots-ocr_hybrid-binarization_upscale_2x"
-        assert tag_both == "ocr-enhanced-dots-ocr_hybrid-binarization_segmented_upscale_2x"
+        assert tag_base == "ocr-enhanced-indic-ocr_hybrid-binarization"
+        assert tag_seg == "ocr-enhanced-indic-ocr_hybrid-binarization_segmented"
+        assert tag_up2 == "ocr-enhanced-indic-ocr_hybrid-binarization_upscale_2x"
+        assert tag_both == "ocr-enhanced-indic-ocr_hybrid-binarization_segmented_upscale_2x"
         assert len({tag_base, tag_seg, tag_up2, tag_both}) == 4
 
 
@@ -1564,14 +1564,14 @@ def test_enhanced_ocr_api_with_upscale(flask_app, mock_ocr_response, tmp_path):
 
                 # 1. Test Enhanced OCR with upscale=1 and upscale_factor=3
                 resp = client.get(
-                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=dots_ocr&enhancement=hybrid_binarization&upscale=1&upscale_factor=3&language=sa"
+                    f"/api/enhanced-ocr/{project.slug}/{page.slug}/?engine=indic_ocr&enhancement=hybrid_binarization&upscale=1&upscale_factor=3&language=sa"
                 )
                 assert resp.status_code == 200
                 data = resp.get_json()
                 assert data["upscale"] is True
                 assert data["upscale_factor"] == 3
                 assert data["transformed_image_state"] == "upscaled"
-                assert data["version_key"] == "ocr:enhanced:dots_ocr:hybrid_binarization:upscale:3x"
+                assert data["version_key"] == "ocr:enhanced:indic_ocr:hybrid_binarization:upscale:3x"
                 assert mock_api_remote.call_count == 1
 
                 # 2. Test Preview with upscale=1 and upscale_factor=2
@@ -1644,7 +1644,7 @@ def test_enhanced_ocr_runner_single_api_call_all_scales(mock_ocr_response, tmp_p
         with patch("kalanjiyam.utils.enhanced_ocr.run_ocr", return_value=mock_ocr_response) as mock_run_ocr:
             resp = run_enhanced_ocr(
                 dummy_img,
-                engine_name="dots_ocr",
+                engine_name="indic_ocr",
                 profile="hybrid_binarization",
                 line_segmentation=True,
                 upscale=bool(factor > 1),

@@ -493,8 +493,8 @@ def create_project():
 
     system_settings = q.get_system_settings()
     default_trans_engine = (
-        getattr(system_settings, "default_translation_engine", "indictrans2")
-        or "indictrans2"
+        getattr(system_settings, "default_translation_engine", "indictrans3")
+        or "indictrans3"
     )
     rec_trans_engine = getattr(
         system_settings, "recommended_translation_engine", None
@@ -1284,8 +1284,8 @@ def docx_translate():
     from flask import abort
     system_settings = q.get_system_settings()
     default_trans_engine = (
-        getattr(system_settings, "default_translation_engine", "indictrans2")
-        or "indictrans2"
+        getattr(system_settings, "default_translation_engine", "indictrans3")
+        or "indictrans3"
     )
     rec_trans_engine = getattr(
         system_settings, "recommended_translation_engine", None

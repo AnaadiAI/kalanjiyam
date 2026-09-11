@@ -390,24 +390,67 @@ test('OsdBboxOverlay highlightBlockId applies selected styling to matching rect'
 
 test('getVersionDisplayName formats masked OCR and Enhanced OCR correctly', () => {
   const p = Proofer();
-  expect(p.getVersionDisplayName('ocr:chandra')).toBe('OCR 6');
-  expect(p.getVersionDisplayName('ocr:google')).toBe('OCR 1');
-  expect(p.getVersionDisplayName('ocr:indic_ocr')).toBe('OCR 14');
-  expect(p.getVersionDisplayName('ocr:enhanced:chandra:document_cleanup')).toBe('Enhanced OCR 6 (Document Cleanup)');
-  expect(p.getVersionDisplayName('ocr:enhanced:google:bg_clahe')).toBe('Enhanced OCR 1 (BG + CLAHE)');
-  expect(p.getVersionDisplayName('ocr:enhanced:dots_ocr:hybrid_binarization')).toBe('Enhanced OCR 12 (Hybrid Binarization)');
-  expect(p.getVersionDisplayName('ocr:enhanced:indic_ocr:hybrid_binarization')).toBe('Enhanced OCR 14 (Hybrid Binarization)');
+  expect(p.getVersionDisplayName('ocr:chandra')).toBe('OCR 3');
+  expect(p.getVersionDisplayName('ocr:gemma_ocr')).toBe('OCR 1');
+  expect(p.getVersionDisplayName('ocr:indic_ocr')).toBe('OCR 2');
+  expect(p.getVersionDisplayName('ocr:tesseract_manuscript')).toBe('OCR 4');
+  expect(p.getVersionDisplayName('ocr:enhanced:chandra:document_cleanup')).toBe('Enhanced OCR 3 (Document Cleanup)');
+  expect(p.getVersionDisplayName('ocr:enhanced:gemma_ocr:bg_clahe')).toBe('Enhanced OCR 1 (BG + CLAHE)');
+  expect(p.getVersionDisplayName('ocr:enhanced:indic_ocr:hybrid_binarization')).toBe('Enhanced OCR 2 (Hybrid Binarization)');
+  expect(p.getVersionDisplayName('translation:indictrans3:sa->en')).toBe('Translation 1 (SA → EN)');
+  expect(p.getVersionDisplayName('translation:indic_translate:sa->en')).toBe('Translation 2 (SA → EN)');
+  expect(p.getVersionDisplayName('translation:llm_gemma:sa->en')).toBe('Translation 3 (SA → EN)');
+  expect(p.getVersionDisplayName('translation:param_lc_translate_ep4:sa->en')).toBe('Translation 4 (SA → EN)');
 });
 
 test('getOcrEngineName formats masked OCR names correctly for preview modal', () => {
   const p = Proofer();
   expect(p.getOcrEngineName('1')).toBe('OCR 1');
-  expect(p.getOcrEngineName('6')).toBe('OCR 6');
-  expect(p.getOcrEngineName('14')).toBe('OCR 14');
-  expect(p.getOcrEngineName('chandra')).toBe('OCR 6');
-  expect(p.getOcrEngineName('google')).toBe('OCR 1');
-  expect(p.getOcrEngineName('dots_ocr')).toBe('OCR 12');
-  expect(p.getOcrEngineName('indic_ocr')).toBe('OCR 14');
+  expect(p.getOcrEngineName('2')).toBe('OCR 2');
+  expect(p.getOcrEngineName('3')).toBe('OCR 3');
+  expect(p.getOcrEngineName('4')).toBe('OCR 4');
+  expect(p.getOcrEngineName('gemma_ocr')).toBe('OCR 1');
+  expect(p.getOcrEngineName('llm-gemma')).toBe('OCR 1');
+  expect(p.getOcrEngineName('indic_ocr')).toBe('OCR 2');
+  expect(p.getOcrEngineName('indic-ocr')).toBe('OCR 2');
+  expect(p.getOcrEngineName('chandra')).toBe('OCR 3');
+  expect(p.getOcrEngineName('tesseract_manuscript')).toBe('OCR 4');
+  expect(p.getOcrEngineName('sanskrit-manuscript')).toBe('OCR 4');
+  // Legacy numeric values
+  expect(p.getOcrEngineName('6')).toBe('OCR 3');
+  expect(p.getOcrEngineName('14')).toBe('OCR 2');
+  expect(p.getOcrEngineName('13')).toBe('OCR 1');
+  expect(p.getOcrEngineName('11')).toBe('OCR 4');
+});
+
+test('decodeEngine and decodeTranslationEngine map 1..4 correctly', () => {
+  const p = Proofer();
+  expect(p.decodeEngine('1')).toBe('gemma_ocr');
+  expect(p.decodeEngine('2')).toBe('indic_ocr');
+  expect(p.decodeEngine('3')).toBe('chandra');
+  expect(p.decodeEngine('4')).toBe('tesseract_manuscript');
+  expect(p.decodeEngine('6')).toBe('chandra');
+  expect(p.decodeEngine('14')).toBe('indic_ocr');
+
+  expect(p.decodeTranslationEngine('1')).toBe('indictrans3');
+  expect(p.decodeTranslationEngine('2')).toBe('indic_translate');
+  expect(p.decodeTranslationEngine('3')).toBe('llm_gemma');
+  expect(p.decodeTranslationEngine('4')).toBe('param_lc_translate_ep4');
+  expect(p.decodeTranslationEngine('5')).toBe('indictrans3');
+  expect(p.decodeTranslationEngine('8')).toBe('llm_gemma');
+  expect(p.decodeTranslationEngine('10')).toBe('indic_translate');
+});
+
+test('getTranslationDisplayName formats translation engines correctly', () => {
+  const p = Proofer();
+  expect(p.getTranslationDisplayName('indictrans3')).toBe('Translation 1');
+  expect(p.getTranslationDisplayName('indictrans-v3')).toBe('Translation 1');
+  expect(p.getTranslationDisplayName('indic_translate')).toBe('Translation 2');
+  expect(p.getTranslationDisplayName('indic-translate')).toBe('Translation 2');
+  expect(p.getTranslationDisplayName('llm_gemma')).toBe('Translation 3');
+  expect(p.getTranslationDisplayName('llm-gemma')).toBe('Translation 3');
+  expect(p.getTranslationDisplayName('param_lc_translate_ep4')).toBe('Translation 4');
+  expect(p.getTranslationDisplayName('param')).toBe('Translation 4');
 });
 
 
